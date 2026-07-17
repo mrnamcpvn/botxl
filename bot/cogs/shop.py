@@ -8,7 +8,7 @@ from bot.data.equipment import EQUIPMENT, STAR_LABELS, SLOT_NAMES as EQ_SLOT_NAM
 from bot.data.skills import SKILLS_DB, RARITY_STARS
 from bot.engine.rewards import calc_level
 
-EQUIP_SLOT_MAP = {"weapon": "🗡️ Vũ Khí", "armor": "🛡️ Giáp", "accessory": "💍 Phụ Kiện", "crown": "👑 Vương Miện"}
+EQUIP_SLOT_MAP = {}
 ALL_SLOTS = ["weapon", "armor", "boots", "gloves", "belt", "ring"]
 
 
@@ -40,16 +40,10 @@ class ShopCog(commands.Cog):
         embed = discord.Embed(title="🏪 SHOP BA QUE XỎ LÁ", color=0xffaa00,
                               description=f"💰 Xài lệnh: `{prefix}buy <số>` | `/buy`\n🔥 Kỹ năng xem ở `{prefix}skills` | `/skills`")
         consumables = {k: v for k, v in SHOP_ITEMS.items() if v["type"] == "consumable"}
-        equipments = {k: v for k, v in SHOP_ITEMS.items() if v["type"] == "equipment"}
         con_lines = []
         for iid, item in consumables.items():
             con_lines.append(f"`{iid}` {item['name']} — **{item['price']}🪙**\n　└ {item['desc']}")
         embed.add_field(name="🧪 Tiêu Hao", value="\n".join(con_lines), inline=False)
-        eq_lines = []
-        for iid, item in equipments.items():
-            slot_label = EQUIP_SLOT_MAP.get(item["slot"], item["slot"])
-            eq_lines.append(f"`{iid}` {item['name']} — **{item['price']}🪙**\n　└ {slot_label} | {item['desc']}")
-        embed.add_field(name="🗡️ Trang Bị", value="\n".join(eq_lines), inline=False)
         if isinstance(ctx_or_int, discord.ext.commands.Context):
             await ctx_or_int.send(embed=embed)
         else:
