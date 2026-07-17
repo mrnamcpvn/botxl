@@ -192,6 +192,7 @@ class ShopCog(commands.Cog):
                 enhance = equipped_row[1]
                 enhance_str = f" +{enhance}" if enhance > 0 else ""
                 await db.execute("UPDATE player_equipment SET equipped=0 WHERE id=?", (eq_id,))
+                await self._recalc_hp(db, uid)
                 await db.commit()
                 await self._reply(ctx_or_int, f"✅ Tháo **{name}{enhance_str}** khỏi {slot_name}!")
             else:
@@ -213,10 +214,43 @@ class ShopCog(commands.Cog):
                         await db.execute("UPDATE player_equipment SET equipped=0 WHERE id=?", (ee_id,))
 
                 await db.execute("UPDATE player_equipment SET equipped=1 WHERE id=?", (eq_id,))
+                await self._recalc_hp(db, uid)
                 await db.commit()
                 await self._reply(ctx_or_int, f"✅ Trang bị **{name}{enhance_str}** vào {slot_name}!")
         finally:
             await db.close()
+
+    async def _recalc_hp(self, db, uid: str):
+        cursor = await db.execute("SELECT * FROM players WHERE id=?", (uid,))
+        row = await cursor.fetchone()
+        if not row:
+            return
+        pdata = dict(row)
+        eq_cursor = await db.execute(
+            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (uid,))
+        equipped = {}
+        equip_items = {}
+        equip_enhances = {}
+        async for r in eq_cursor:
+            eq_id = r[0]
+            eiid = r[1]
+            enh = r[2]
+            slot = None
+            if eiid in EQUIPMENT:
+                slot = EQUIPMENT[eiid]["slot"]
+            elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid].get("type") == "equipment":
+                slot = SHOP_ITEMS[eiid]["slot"]
+            if slot:
+                equipped[slot] = eq_id
+                equip_items[str(eq_id)] = eiid
+                equip_enhances[str(eq_id)] = enh
+        pdata["equipped"] = equipped
+        pdata["_equip_items"] = equip_items
+        pdata["_equip_enhances"] = equip_enhances
+        from bot.engine.battle import get_effective_stats
+        eff = get_effective_stats(pdata)
+        new_hp = min(eff["hp_max"], max(0, pdata.get("hp", 0)))
+        await db.execute("UPDATE players SET hp=?, hp_max=? WHERE id=?", (new_hp, eff["hp_max"], uid))
 
     async def _show_inv(self, ctx_or_int, user, prefix):
         uid = str(user.id)
@@ -486,6 +520,7 @@ class ShopCog(commands.Cog):
                 await self._reply(ctx_or_int, f"⬜ {EQ_SLOT_NAMES.get(slot, slot)} đang trống!")
                 return
             await db.execute("UPDATE player_equipment SET equipped=0 WHERE id=?", (found["id"],))
+            await self._recalc_hp(db, uid)
             await db.commit()
             eiid = found["item_id"]
             enh = found.get("enhance", 0)
