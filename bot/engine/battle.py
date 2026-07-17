@@ -359,50 +359,74 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
     # ─── End of turn processing ───
 
-    # Increment turn counter
-    flags["turn_count"] = flags.get("turn_count", 0) + 1
+    # Check defeat before any post-turn effects
+    finished = False
+    winner_id = None
+    if p1.get("hp", 0) <= 0:
+        finished = True
+        p1["hp"] = 0
+        winner_id = p2.get("id")
+    elif p2.get("hp", 0) <= 0:
+        finished = True
+        p2["hp"] = 0
+        winner_id = p1.get("id")
 
-    # Reduce cooldowns
-    for p in [p1, p2]:
-        for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
-            if p.get(cdkey, 0) > 0:
-                p[cdkey] -= 1
-        if get_class_perk(p.get("class_id", "")) == "cd_reduce":
+    if not finished:
+        # Increment turn counter
+        flags["turn_count"] = flags.get("turn_count", 0) + 1
+
+        # Reduce cooldowns
+        for p in [p1, p2]:
             for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
                 if p.get(cdkey, 0) > 0:
                     p[cdkey] -= 1
+            if get_class_perk(p.get("class_id", "")) == "cd_reduce":
+                for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
+                    if p.get(cdkey, 0) > 0:
+                        p[cdkey] -= 1
 
-    # Regen passive
-    for p in [p1, p2]:
-        eff = get_effective_stats(p)
-        pid = p.get("skill_equipped", {}).get("passive")
-        pskill = SKILLS_DB.get(pid)
-        if pskill and pskill.get("type") == "regen":
-            reg = int(eff["hp_max"] * pskill["regen_pct"] / 100)
-            p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
+        # Regen passive
+        for p in [p1, p2]:
+            eff = get_effective_stats(p)
+            pid = p.get("skill_equipped", {}).get("passive")
+            pskill = SKILLS_DB.get(pid)
+            if pskill and pskill.get("type") == "regen":
+                reg = int(eff["hp_max"] * pskill["regen_pct"] / 100)
+                p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
 
-    # Burn tick
-    for i, p in enumerate([p1, p2]):
-        eff = get_effective_stats(p)
-        key = f"p{i+1}_burn"
-        burn = flags.get(key)
-        if burn and burn.get("turns", 0) > 0:
-            bd = int(eff["hp_max"] * burn["pct"] / 100)
-            p["hp"] = max(0, p.get("hp", 0) - bd)
-            burn["turns"] -= 1
-            result_lines.append(f"🔥 B\u1ecfng! {p.get('name', '???')} -{bd}HP ({burn['turns']}t)")
-            if burn["turns"] <= 0:
-                flags.pop(key, None)
+        # Burn tick
+        for i, p in enumerate([p1, p2]):
+            eff = get_effective_stats(p)
+            key = f"p{i+1}_burn"
+            burn = flags.get(key)
+            if burn and burn.get("turns", 0) > 0:
+                bd = int(eff["hp_max"] * burn["pct"] / 100)
+                p["hp"] = max(0, p.get("hp", 0) - bd)
+                burn["turns"] -= 1
+                result_lines.append(f"🔥 B\u1ecfng! {p.get('name', '???')} -{bd}HP ({burn['turns']}t)")
+                if burn["turns"] <= 0:
+                    flags.pop(key, None)
 
-    # ─── Check defeat ───
-    finished = False
-    winner_id = None
-    if defender.get("hp", 0) <= 0:
-        finished = True
-        defender["hp"] = 0
-        winner_id = attacker.get("id")
-        result_lines.append(f"\n💀 **{defender.get('name', '???')}** b\u1ecb x\u1ecf l\u00e1 \u0111\u1ebfn ch\u1ebft!")
-        result_lines.append(f"🏆 **{attacker.get('name', '???')}** CHI\u1ebeN TH\u1eaeNG! 🎉")
+        # Check defeat again after burn
+        if p1.get("hp", 0) <= 0:
+            finished = True
+            p1["hp"] = 0
+            winner_id = p2.get("id")
+            result_lines.append(f"\n🔥 **{p1.get('name', '???')}** ch\u00e1y ch\u1ebft!")
+        elif p2.get("hp", 0) <= 0:
+            finished = True
+            p2["hp"] = 0
+            winner_id = p1.get("id")
+            result_lines.append(f"\n🔥 **{p2.get('name', '???')}** ch\u00e1y ch\u1ebft!")
+    else:
+        if p1.get("hp", 0) <= 0:
+            loser = p1.get("name", "???")
+            winner = p2.get("name", "???")
+        else:
+            loser = p2.get("name", "???")
+            winner = p1.get("name", "???")
+        result_lines.append(f"\n💀 **{loser}** b\u1ecb x\u1ecf l\u00e1 \u0111\u1ebfn ch\u1ebft!")
+        result_lines.append(f"🏆 **{winner}** CHI\u1ebeN TH\u1eaeNG! 🎉")
 
     return {
         "p1": p1,
