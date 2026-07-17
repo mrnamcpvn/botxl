@@ -184,7 +184,6 @@ class NPCCog(commands.Cog):
                         await ctx_or_int.response.send_message(msg, ephemeral=True)
                     return
 
-            regen_hp(pdata)
             if pdata.get("hp", 0) <= 0:
                 msg = "💀 Mày 0 máu!"
                 if isinstance(ctx_or_int, discord.ext.commands.Context):
