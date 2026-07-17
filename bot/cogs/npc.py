@@ -184,14 +184,6 @@ class NPCCog(commands.Cog):
                         await ctx_or_int.response.send_message(msg, ephemeral=True)
                     return
 
-            if pdata.get("hp", 0) <= 0:
-                msg = "💀 Mày 0 máu!"
-                if isinstance(ctx_or_int, discord.ext.commands.Context):
-                    await ctx_or_int.reply(msg)
-                else:
-                    await ctx_or_int.response.send_message(msg, ephemeral=True)
-                return
-
             slots_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (sid,))
             slots = {}
             async for r in slots_cursor:
@@ -227,6 +219,14 @@ class NPCCog(commands.Cog):
             pdata["special_cd"] = 0
             pdata["defense_cd"] = 0
             regen_hp(pdata)
+
+            if pdata.get("hp", 0) <= 0:
+                msg = "💀 Mày 0 máu!"
+                if isinstance(ctx_or_int, discord.ext.commands.Context):
+                    await ctx_or_int.reply(msg)
+                else:
+                    await ctx_or_int.response.send_message(msg, ephemeral=True)
+                return
 
             npc_data = copy.deepcopy(NPC_DEFINITIONS[npc_id])
             npc_data["id"] = f"npc_{npc_id}"
