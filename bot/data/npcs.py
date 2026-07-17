@@ -3,7 +3,7 @@ from bot.data.classes import CLASSES
 NPC_DEFINITIONS = {
     "1": {
         "name": "🐀 Chuột Cống", "class_id": "banxabong", "level": 1,
-        "hp": 120, "hp_max": 120, "attack_min": 12, "attack_max": 17, "defense": 10,
+        "hp": 120, "hp_max": 120, "attack_min": 18, "attack_max": 25, "defense": 10,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 10, "passive": 14},
@@ -11,7 +11,7 @@ NPC_DEFINITIONS = {
     },
     "2": {
         "name": "🐍 Rắn Học Trò", "class_id": "sieunhan", "level": 3,
-        "hp": 96, "hp_max": 96, "attack_min": 28, "attack_max": 43, "defense": 6,
+        "hp": 96, "hp_max": 96, "attack_min": 42, "attack_max": 60, "defense": 8,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 10, "passive": 15},
@@ -19,7 +19,7 @@ NPC_DEFINITIONS = {
     },
     "3": {
         "name": "🦎 Kỳ Đà Cản Mũi", "class_id": "thaychua", "level": 5,
-        "hp": 180, "hp_max": 180, "attack_min": 35, "attack_max": 52, "defense": 18,
+        "hp": 180, "hp_max": 180, "attack_min": 52, "attack_max": 78, "defense": 22,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 2, "special": 7, "defense": 12, "passive": 17},
@@ -27,7 +27,7 @@ NPC_DEFINITIONS = {
     },
     "4": {
         "name": "🐊 Cá Sấu Nước Đục", "class_id": "chodien", "level": 8,
-        "hp": 350, "hp_max": 350, "attack_min": 55, "attack_max": 80, "defense": 28,
+        "hp": 350, "hp_max": 350, "attack_min": 82, "attack_max": 120, "defense": 35,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 3, "special": 5, "defense": 10, "passive": 19},
@@ -35,7 +35,7 @@ NPC_DEFINITIONS = {
     },
     "5": {
         "name": "🐉 Rồng Tem Bảo Hành", "class_id": "baque", "level": 12,
-        "hp": 420, "hp_max": 420, "attack_min": 65, "attack_max": 95, "defense": 55,
+        "hp": 420, "hp_max": 420, "attack_min": 100, "attack_max": 140, "defense": 60,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 12, "passive": 20},
@@ -43,7 +43,7 @@ NPC_DEFINITIONS = {
     },
     "6": {
         "name": "🦅 Đại Bàng Xỏ Lá", "class_id": "trumcuoi", "level": 15,
-        "hp": 600, "hp_max": 600, "attack_min": 120, "attack_max": 170, "defense": 80,
+        "hp": 600, "hp_max": 600, "attack_min": 180, "attack_max": 250, "defense": 85,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -51,7 +51,7 @@ NPC_DEFINITIONS = {
     },
     "7": {
         "name": "💀 Tử Thần Bóng Tối", "class_id": "muoi", "level": 18,
-        "hp": 720, "hp_max": 720, "attack_min": 140, "attack_max": 200, "defense": 95,
+        "hp": 720, "hp_max": 720, "attack_min": 210, "attack_max": 300, "defense": 100,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 3, "special": 6, "defense": 12, "passive": 17},
@@ -59,7 +59,7 @@ NPC_DEFINITIONS = {
     },
     "8": {
         "name": "👹 Diêm Vương Địa Ngục", "class_id": "baque", "level": 21,
-        "hp": 880, "hp_max": 880, "attack_min": 170, "attack_max": 240, "defense": 115,
+        "hp": 880, "hp_max": 880, "attack_min": 250, "attack_max": 360, "defense": 120,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 3, "special": 9, "defense": 12, "passive": 20},
@@ -67,7 +67,7 @@ NPC_DEFINITIONS = {
     },
     "9": {
         "name": "🐉 Hắc Long Hủy Diệt", "class_id": "trumcuoi", "level": 24,
-        "hp": 1050, "hp_max": 1050, "attack_min": 210, "attack_max": 290, "defense": 135,
+        "hp": 1050, "hp_max": 1050, "attack_min": 310, "attack_max": 430, "defense": 140,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -75,7 +75,7 @@ NPC_DEFINITIONS = {
     },
     "10": {
         "name": "⚡ Lôi Thần Sấm Sét", "class_id": "chodien", "level": 27,
-        "hp": 1200, "hp_max": 1200, "attack_min": 250, "attack_max": 350, "defense": 155,
+        "hp": 1200, "hp_max": 1200, "attack_min": 370, "attack_max": 520, "defense": 160,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 8, "defense": 12, "passive": 19},
@@ -83,7 +83,7 @@ NPC_DEFINITIONS = {
     },
     "11": {
         "name": "🧊 Băng Thần Vĩnh Cửu", "class_id": "xola", "level": 30,
-        "hp": 1400, "hp_max": 1400, "attack_min": 280, "attack_max": 390, "defense": 180,
+        "hp": 1400, "hp_max": 1400, "attack_min": 420, "attack_max": 580, "defense": 190,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 3, "special": 9, "defense": 11, "passive": 14},
@@ -91,7 +91,7 @@ NPC_DEFINITIONS = {
     },
     "12": {
         "name": "🔥 Phượng Hoàng Lửa Thiêng", "class_id": "sieunhan", "level": 33,
-        "hp": 1600, "hp_max": 1600, "attack_min": 330, "attack_max": 450, "defense": 200,
+        "hp": 1600, "hp_max": 1600, "attack_min": 500, "attack_max": 680, "defense": 210,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 10, "passive": 15},
@@ -99,7 +99,7 @@ NPC_DEFINITIONS = {
     },
     "13": {
         "name": "🌌 Chúa Tể Hư Không", "class_id": "thaychua", "level": 36,
-        "hp": 1850, "hp_max": 1850, "attack_min": 380, "attack_max": 520, "defense": 230,
+        "hp": 1850, "hp_max": 1850, "attack_min": 570, "attack_max": 780, "defense": 240,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 7, "defense": 12, "passive": 17},
@@ -107,7 +107,7 @@ NPC_DEFINITIONS = {
     },
     "14": {
         "name": "👑 Vua Quỷ Tận Thế", "class_id": "trumcuoi", "level": 39,
-        "hp": 2100, "hp_max": 2100, "attack_min": 430, "attack_max": 600, "defense": 260,
+        "hp": 2100, "hp_max": 2100, "attack_min": 650, "attack_max": 900, "defense": 280,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
