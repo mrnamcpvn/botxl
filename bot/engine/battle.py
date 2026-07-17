@@ -14,14 +14,20 @@ def calc_class_stat(base: int, scale: int, level: int) -> int:
 def get_effective_stats(pdata: dict) -> dict:
     cls_def = CLASSES.get(pdata.get("class_id", "banxabong"), CLASSES["banxabong"])
     lvl = pdata.get("level", 1)
-    upgrade_hp = pdata.get("upgrade_hp", 0)
-    upgrade_atk = pdata.get("upgrade_atk", 0)
-    upgrade_def = pdata.get("upgrade_def", 0)
 
-    hp_max = calc_class_stat(cls_def["hp_base"], cls_def["hp_scale"], lvl) + upgrade_hp * 10
-    atk_min = calc_class_stat(cls_def["atk_base"], cls_def["atk_scale"], lvl) + upgrade_atk * 2
-    atk_max = atk_min + 5 + upgrade_atk
-    defense = calc_class_stat(cls_def["def_base"], cls_def["def_scale"], lvl) + upgrade_def * 2
+    if pdata.get("_npc_override"):
+        hp_max = pdata.get("hp_max", 100)
+        atk_min = pdata.get("attack_min", 10)
+        atk_max = pdata.get("attack_max", 20)
+        defense = pdata.get("defense", 5)
+    else:
+        upgrade_hp = pdata.get("upgrade_hp", 0)
+        upgrade_atk = pdata.get("upgrade_atk", 0)
+        upgrade_def = pdata.get("upgrade_def", 0)
+        hp_max = calc_class_stat(cls_def["hp_base"], cls_def["hp_scale"], lvl) + upgrade_hp * 10
+        atk_min = calc_class_stat(cls_def["atk_base"], cls_def["atk_scale"], lvl) + upgrade_atk * 2
+        atk_max = atk_min + 5 + upgrade_atk
+        defense = calc_class_stat(cls_def["def_base"], cls_def["def_scale"], lvl) + upgrade_def * 2
 
     spd = 0
     crit = 0

@@ -68,6 +68,7 @@ def generate_dungeon_npc(floor: int) -> dict:
         "class_id": random.choice(REAL_CLASSES),
         "cooldowns": {"attack_cd": 0, "special_cd": 0, "defense_cd": 0},
         "skill_equipped": skills,
+        "_npc_override": True,
     }
 
 

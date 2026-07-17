@@ -7,7 +7,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 10, "passive": 14},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "2": {
         "name": "🐍 Rắn Học Trò", "class_id": "sieunhan", "level": 3,
