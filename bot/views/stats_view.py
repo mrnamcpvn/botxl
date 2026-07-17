@@ -26,9 +26,9 @@ class StatsView(discord.ui.View):
 
         hp = pdata.get("hp", 0)
         hp_max = eff.get("hp_max", 100)
-        hp_bar = "🟩" * (hp // 10) + "⬜" * ((hp_max - hp) // 10)
-        if len(hp_bar) > 20:
-            hp_bar = hp_bar[:20]
+        bar_len = 10
+        pct = max(0, min(bar_len, int(hp / max(hp_max, 1) * bar_len)))
+        hp_bar = "🟩" * pct + "⬜" * (bar_len - pct)
         hp_line = f"`{hp}/{hp_max}`\n{hp_bar}"
         if hp < hp_max:
             hp_line += f"\n💤 Hồi **{HP_REGEN_RATE} HP**/{HP_REGEN_INTERVAL}s..."

@@ -434,12 +434,11 @@ class DungeonCog(commands.Cog):
         session["flags"] = flags
 
         eff = get_effective_stats(player)
-        hp1_bar = "🟩" * (min(player["hp"], 150) // 10) + "⬜" * ((max(eff["hp_max"], player["hp"]) - min(player["hp"], 150)) // 10)
-        hp2_bar = "🟩" * (min(npc["hp"], 150) // 10) + "⬜" * ((max(npc["hp_max"], npc["hp"]) - min(npc["hp"], 150)) // 10)
-        if len(hp1_bar) > 15:
-            hp1_bar = hp1_bar[:15]
-        if len(hp2_bar) > 15:
-            hp2_bar = hp2_bar[:15]
+        bar_len = 10
+        pct1 = max(0, min(bar_len, int(player["hp"] / max(eff["hp_max"], 1) * bar_len)))
+        hp1_bar = "🟩" * pct1 + "⬜" * (bar_len - pct1)
+        pct2 = max(0, min(bar_len, int(npc["hp"] / max(npc["hp_max"], 1) * bar_len)))
+        hp2_bar = "🟩" * pct2 + "⬜" * (bar_len - pct2)
 
         result_lines.append("\n━━━━━━━━━━━")
         result_lines.append(f"❤️ {session['player_name']}:`{player['hp']}/{eff['hp_max']}`{hp1_bar}")

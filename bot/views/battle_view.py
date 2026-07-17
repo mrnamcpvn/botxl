@@ -410,12 +410,11 @@ class BattleView(discord.ui.View):
             ssk = get_equipped_skill(next_pdata, "special")
             dsk = get_equipped_skill(next_pdata, "defense")
 
-            hp1_bar = "🟩" * (min(p1["hp"], 150) // 10) + "⬜" * ((max(eff1["hp_max"], p1["hp"]) - min(p1["hp"], 150)) // 10)
-            hp2_bar = "🟩" * (min(p2["hp"], 150) // 10) + "⬜" * ((max(eff2["hp_max"], p2["hp"]) - min(p2["hp"], 150)) // 10)
-            if len(hp1_bar) > 15:
-                hp1_bar = hp1_bar[:15]
-            if len(hp2_bar) > 15:
-                hp2_bar = hp2_bar[:15]
+            bar_len = 10
+            pct1 = max(0, min(bar_len, int(p1["hp"] / max(eff1["hp_max"], 1) * bar_len)))
+            hp1_bar = "🟩" * pct1 + "⬜" * (bar_len - pct1)
+            pct2 = max(0, min(bar_len, int(p2["hp"] / max(eff2["hp_max"], 1) * bar_len)))
+            hp2_bar = "🟩" * pct2 + "⬜" * (bar_len - pct2)
 
             result["log_messages"].append("\n━━━━━━━━━━━")
             result["log_messages"].append(f"❤️ {p1_m.display_name}:`{p1['hp']}/{eff1['hp_max']}`{hp1_bar}")
