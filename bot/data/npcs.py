@@ -15,7 +15,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 10, "passive": 15},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "3": {
         "name": "🦎 Kỳ Đà Cản Mũi", "class_id": "thaychua", "level": 5,
@@ -23,7 +23,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 2, "special": 7, "defense": 12, "passive": 17},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "4": {
         "name": "🐊 Cá Sấu Nước Đục", "class_id": "chodien", "level": 8,
@@ -31,7 +31,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 2, "special": 5, "defense": 10, "passive": 19},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "5": {
         "name": "🐉 Rồng Tem Bảo Hành", "class_id": "baque", "level": 12,
@@ -39,7 +39,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 2, "special": 7, "defense": 12, "passive": 20},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "6": {
         "name": "🦅 Đại Bàng Xỏ Lá", "class_id": "trumcuoi", "level": 15,
@@ -47,7 +47,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "7": {
         "name": "💀 Tử Thần Bóng Tối", "class_id": "muoi", "level": 18,
@@ -55,7 +55,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "8": {
         "name": "👹 Diêm Vương Địa Ngục", "class_id": "baque", "level": 21,
@@ -63,7 +63,7 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "9": {
         "name": "🐉 Hắc Long Hủy Diệt", "class_id": "trumcuoi", "level": 24,
@@ -71,23 +71,39 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
     "10": {
         "name": "⚡ Lôi Thần Sấm Sét", "class_id": "chodien", "level": 27,
         "hp": 4800, "hp_max": 4800, "attack_min": 1480, "attack_max": 2080, "defense": 760,
+        "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
+        "equipped": {},
+        "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
+        "role_mult": 1.0, "_npc_override": True,
     },
     "11": {
         "name": "🧊 Băng Thần Vĩnh Cửu", "class_id": "xola", "level": 30,
         "hp": 5600, "hp_max": 5600, "attack_min": 1680, "attack_max": 2320, "defense": 920,
+        "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
+        "equipped": {},
+        "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
+        "role_mult": 1.0, "_npc_override": True,
     },
     "12": {
         "name": "🔥 Phượng Hoàng Lửa Thiêng", "class_id": "sieunhan", "level": 33,
         "hp": 6400, "hp_max": 6400, "attack_min": 2000, "attack_max": 2720, "defense": 1040,
+        "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
+        "equipped": {},
+        "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
+        "role_mult": 1.0, "_npc_override": True,
     },
     "13": {
         "name": "🌌 Chúa Tể Hư Không", "class_id": "thaychua", "level": 36,
         "hp": 7400, "hp_max": 7400, "attack_min": 2280, "attack_max": 3120, "defense": 1160,
+        "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
+        "equipped": {},
+        "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
+        "role_mult": 1.0, "_npc_override": True,
     },
     "14": {
         "name": "👑 Vua Quỷ Tận Thế", "class_id": "trumcuoi", "level": 39,
@@ -95,6 +111,6 @@ NPC_DEFINITIONS = {
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
-        "role_mult": 1.0,
+        "role_mult": 1.0, "_npc_override": True,
     },
 }
