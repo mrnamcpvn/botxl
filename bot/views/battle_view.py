@@ -501,6 +501,10 @@ class BattleView(discord.ui.View):
         buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
         buff_row = await buff_cursor.fetchone()
         pdata["buffs"] = dict(buff_row) if buff_row else {}
+        art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (pid,))
+        art_row = await art_cursor.fetchone()
+        pdata["_artifact_star"] = art_row[0] if art_row else 0
+        pdata["_artifact_stones"] = art_row[1] if art_row else 0
         return pdata
 
     async def _get_player_data(self, db, pid: str) -> dict:

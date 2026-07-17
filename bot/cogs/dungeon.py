@@ -316,6 +316,11 @@ class DungeonCog(commands.Cog):
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
 
+            art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
+            art_row = await art_cursor.fetchone()
+            pdata["_artifact_star"] = art_row[0] if art_row else 0
+            pdata["_artifact_stones"] = art_row[1] if art_row else 0
+
             pdata["attack_cd"] = 0
             pdata["special_cd"] = 0
             pdata["defense_cd"] = 0
