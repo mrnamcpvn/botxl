@@ -168,21 +168,24 @@ async def init_db():
                 FROM player_equipment pe
                 JOIN _mig_numbers mn ON mn.n <= pe.quantity;
 
-                UPDATE player_equipment_new
-                SET equipped = 1
-                WHERE id IN (
-                    SELECT pen.id
-                    FROM player_equipment_new pen
-                    JOIN player_equip_slots pes
-                        ON pes.player_id = pen.player_id AND pes.item_id = pen.item_id
-                        AND pen.equipped = 0
-                );
-
                 DROP TABLE IF EXISTS player_equipment;
-                DROP TABLE IF EXISTS player_equip_slots;
-                DROP TABLE IF EXISTS _mig_numbers;
                 ALTER TABLE player_equipment_new RENAME TO player_equipment;
             """)
+            try:
+                await db.execute("""
+                    UPDATE player_equipment
+                    SET equipped = 1
+                    WHERE id IN (
+                        SELECT pe.id
+                        FROM player_equipment pe
+                        JOIN player_equip_slots pes
+                            ON pes.player_id = pe.player_id AND pes.item_id = pe.item_id
+                            AND pe.equipped = 0
+                    )
+                """)
+                await db.execute("DROP TABLE IF EXISTS player_equip_slots")
+            except:
+                pass
 
         # ── Enhancement stones table ──
         await db.execute("""

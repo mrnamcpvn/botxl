@@ -444,12 +444,7 @@ class LootDropView(discord.ui.View):
             if not await cursor.fetchone():
                 await interaction.response.send_message("🤷 Chưa đăng ký! `/register`", ephemeral=True)
                 return
-            eq_cursor = await db.execute("SELECT quantity FROM player_equipment WHERE player_id=? AND item_id=?", (uid, self.equip_id))
-            row = await eq_cursor.fetchone()
-            if row:
-                await db.execute("UPDATE player_equipment SET quantity=quantity+1 WHERE player_id=? AND item_id=?", (uid, self.equip_id))
-            else:
-                await db.execute("INSERT INTO player_equipment (player_id, item_id, quantity) VALUES (?, ?, 1)", (uid, self.equip_id))
+            await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (uid, self.equip_id))
             await db.commit()
 
             button.disabled = True
