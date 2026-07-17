@@ -59,13 +59,6 @@ async def init_db():
                 PRIMARY KEY (player_id, item_id)
             );
 
-            CREATE TABLE IF NOT EXISTS player_equip_slots (
-                player_id TEXT NOT NULL,
-                slot TEXT NOT NULL CHECK(slot IN ('weapon','armor','boots','gloves','belt','ring','accessory','crown')),
-                item_id INTEGER,
-                PRIMARY KEY (player_id, slot)
-            );
-
             CREATE TABLE IF NOT EXISTS inventory (
                 player_id TEXT NOT NULL,
                 item_id INTEGER NOT NULL,
@@ -152,22 +145,6 @@ async def init_db():
             await db.execute("ALTER TABLE players ADD COLUMN combat_power INTEGER DEFAULT 0")
         except:
             pass
-
-        # Migrate player_equip_slots to support new slots
-        try:
-            await db.execute("INSERT INTO player_equip_slots (player_id, slot, item_id) VALUES ('_mig_', 'boots', 0)")
-        except:
-            await db.executescript("""
-                CREATE TABLE IF NOT EXISTS player_equip_slots_new (
-                    player_id TEXT NOT NULL,
-                    slot TEXT NOT NULL CHECK(slot IN ('weapon','armor','boots','gloves','belt','ring','accessory','crown')),
-                    item_id INTEGER,
-                    PRIMARY KEY (player_id, slot)
-                );
-                INSERT OR IGNORE INTO player_equip_slots_new SELECT * FROM player_equip_slots;
-                DROP TABLE player_equip_slots;
-                ALTER TABLE player_equip_slots_new RENAME TO player_equip_slots;
-            """)
 
         # ── Migration: New per-instance equipment table ──
         try:
