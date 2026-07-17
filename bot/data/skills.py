@@ -11,7 +11,7 @@ SKILLS_DB = {
     8: {"name":"🌑 Tắt Điện Đột Ngột","desc":"2.5x dmg + choáng 1 turn","category":"special","type":"stun","multiplier":2.5,"cooldown":4,"price":5000,"rarity":"epic","icon":"🌑"},
     9: {"name":"⚡ Sét Đánh Ngang Tai","desc":"5x dmg, xuyên 50% DEF","category":"special","type":"pierce","multiplier":5.0,"pierce_pct":50,"cooldown":4,"price":15000,"rarity":"legendary","icon":"⚡"},
     # ═══════ DEFENSE SKILLS ═══════
-    10: {"name":"🛡️ Chống Xỏ Lá","desc":"×3 DEF + hồi 8% HP | CD:0","category":"defense","type":"defend","heal_pct":8,"cooldown":0,"price":0,"rarity":"common","icon":"🛡️"},
+    10: {"name":"🛡️ Chống Xỏ Lá","desc":"×3 DEF + hồi 8% HP | CD:2","category":"defense","type":"defend","heal_pct":8,"cooldown":2,"price":0,"rarity":"common","icon":"🛡️"},
     11: {"name":"🔄 Gậy Ông Đập Lưng Ông","desc":"Giảm 80% dmg + phản 20% dmg","category":"defense","type":"counter","multiplier":0.2,"cooldown":3,"price":2500,"rarity":"uncommon","icon":"🔄"},
     12: {"name":"💚 Uống Thuốc Dỏm","desc":"Hồi 40% HP + xóa debuff","category":"defense","type":"heal","heal_pct":40,"cooldown":3,"price":3000,"rarity":"rare","icon":"💚"},
     13: {"name":"🛡️ Khiên Nồi Cơm Điện","desc":"Khiên 35% HP + hồi khi vỡ","category":"defense","type":"shield","shield_pct":35,"shield_turns":2,"shield_pop_heal":15,"cooldown":3,"price":6000,"rarity":"rare","icon":"🛡️"},
