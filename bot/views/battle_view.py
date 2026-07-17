@@ -174,7 +174,7 @@ class BattleView(discord.ui.View):
         import json
         bs_cursor = await db.execute("SELECT key, value FROM battle_status WHERE battle_id=?",
                                       (self.battle_id,))
-        burn_key = "p1_burn" if is_p1 else "p2_burn"
+        burn_key = f"{sid}_burn"
         burn_data = None
         async for bs_row in bs_cursor:
             k = bs_row[0]
@@ -273,10 +273,10 @@ class BattleView(discord.ui.View):
             skill = get_equipped_skill(p1 if turn_player == 0 else p2, cat)
 
             flags = {
-                "p1_defending": bool(battle.get("p1_defending", 0)),
-                "p2_defending": bool(battle.get("p2_defending", 0)),
-                "p1_stunned": bool(battle.get("p1_stunned", 0)),
-                "p2_stunned": bool(battle.get("p2_stunned", 0)),
+                f"{p1_id}_defending": bool(battle.get("p1_defending", 0)),
+                f"{p2_id}_defending": bool(battle.get("p2_defending", 0)),
+                f"{p1_id}_stunned": bool(battle.get("p1_stunned", 0)),
+                f"{p2_id}_stunned": bool(battle.get("p2_stunned", 0)),
                 "turn_count": 0,
             }
 
@@ -381,23 +381,20 @@ class BattleView(discord.ui.View):
                 return
 
             await db.execute("DELETE FROM battle_status WHERE battle_id=?", (self.battle_id,))
-            dynamic_keys = {"p1_burn", "p2_burn", "p1_shield_hp", "p2_shield_hp",
-                            "p1_shield_pop_heal", "p2_shield_pop_heal",
-                            "p1_counter", "p2_counter", "p1_counter_immune", "p2_counter_immune",
-                            "p1_rage_dmg", "p2_rage_dmg", "p1_dodge_passive", "p2_dodge_passive", "turn_count"}
             for key, val in flags.items():
-                if key in dynamic_keys:
-                    pid = p1_id if key.startswith("p1") else (p2_id if key.startswith("p2") else p1_id)
-                    await db.execute("INSERT INTO battle_status (battle_id, player_id, key, value) VALUES (?, ?, ?, ?)",
-                                      (self.battle_id, pid, key, json.dumps(val)))
+                if key == "turn_count":
+                    continue
+                pid = key.split("_")[0]
+                await db.execute("INSERT INTO battle_status (battle_id, player_id, key, value) VALUES (?, ?, ?, ?)",
+                                  (self.battle_id, pid, key, json.dumps(val)))
 
             new_turn = p2_id if turn_player == 0 else p1_id
             await db.execute("""UPDATE active_battles SET turn=?, last_move=?,
                                  p1_defending=?, p2_defending=?, p1_stunned=?, p2_stunned=?
                                  WHERE id=?""",
                               (new_turn, time.time(),
-                               int(flags.get("p1_defending", 0)), int(flags.get("p2_defending", 0)),
-                               int(flags.get("p1_stunned", 0)), int(flags.get("p2_stunned", 0)),
+                               int(flags.get(f"{p1_id}_defending", 0)), int(flags.get(f"{p2_id}_defending", 0)),
+                               int(flags.get(f"{p1_id}_stunned", 0)), int(flags.get(f"{p2_id}_stunned", 0)),
                                self.battle_id))
             await db.commit()
 

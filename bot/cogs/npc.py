@@ -313,9 +313,9 @@ class NPCCog(commands.Cog):
             return
 
         # --- NPC action ---
-        npc_stunned = flags.get("p2_stunned", False)
+        npc_stunned = flags.get(f"{npc['id']}_stunned", False)
         if npc_stunned:
-            flags.pop("p2_stunned", None)
+            flags.pop(f"{npc['id']}_stunned", None)
             result_lines.append(f"\n🌑 **{npc['name']}** bị choáng, mất lượt!")
         else:
             for ck in ["attack_cd", "special_cd", "defense_cd"]:
@@ -345,7 +345,7 @@ class NPCCog(commands.Cog):
 
             npc_action = {"type": npc_move, "skill_id": npc_skill_id}
             flags["turn_count"] = flags.get("turn_count", 0) + 1
-            result = await execute_action(npc, player, 1, npc_action, flags)
+            result = await execute_action(npc, player, 0, npc_action, flags)
             npc = result["p1"]
             player = result["p2"]
             result_lines.extend(result["log_messages"])

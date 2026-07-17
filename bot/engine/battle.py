@@ -135,7 +135,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
     if cat == "defense":
         atk_eff = get_effective_stats(attacker)
         if skill["type"] == "defend":
-            flags["p1_defending" if is_p1_turn else "p2_defending"] = True
+            flags[f"{attacker['id']}_defending"] = True
             heal_pct = skill.get("heal_pct", 8)
             heal_amt = int(atk_eff["hp_max"] * heal_pct / 100)
             attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal_amt)
@@ -149,25 +149,25 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             attacker["hp"] = min(atk_eff["hp_max"], attacker["hp"] + heal_amt)
             for kb in ["_burn", "_def_reduced"]:
                 attacker.pop(kb, None)
-            if is_p1_turn:
-                flags["p1_stunned"] = False
-            else:
-                flags["p2_stunned"] = False
+            flags[f"{attacker['id']}_stunned"] = False
             result_lines.append(f"💚 **{skill['name']}** — h\u1ed3i **{attacker['hp'] - old} HP**!")
             attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
         elif skill["type"] == "shield":
             sh_pct = skill.get("shield_pct", 35)
             sh_amt = int(atk_eff["hp_max"] * sh_pct / 100)
-            flags[f"p{1 if is_p1_turn else 2}_shield_hp"] = sh_amt
-            flags[f"p{1 if is_p1_turn else 2}_shield_pop_heal"] = skill.get("shield_pop_heal", 15)
+            a_id = attacker["id"]
+            flags[f"{a_id}_shield_hp"] = sh_amt
+            flags[f"{a_id}_shield_pop_heal"] = skill.get("shield_pop_heal", 15)
             result_lines.append(f"🛡️ **{skill['name']}** — khi\u00ean {sh_amt}HP! (+{skill.get('shield_pop_heal', 15)}% khi v\u1ee1)")
             attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
         elif skill["type"] == "counter":
-            flags[f"p{1 if is_p1_turn else 2}_counter"] = skill.get("multiplier", 2.5)
-            flags[f"p{1 if is_p1_turn else 2}_counter_immune"] = True
-            result_lines.append(f"🔄 **{skill['name']}** — mi\u1ec5n dmg + ph\u1ea3n \u00d7{skill.get('multiplier', 2.5)}!")
+            c_mult = skill.get("multiplier", 1.0)
+            a_id = attacker["id"]
+            flags[f"{a_id}_counter"] = c_mult
+            flags[f"{a_id}_counter_immune"] = True
+            result_lines.append(f"🔄 **{skill['name']}** — mi\u1ec5n dmg + ph\u1ea3n \u00d7{c_mult}!")
             attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
     # ─── DAMAGE moves (attack + special) ───
@@ -228,7 +228,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             result_lines.append("⚡ Bùa Xỏ Lá +30%!")
 
         # Defense calculation
-        defending = flags.get("p1_defending" if not is_p1_turn else "p2_defending", False)
+        defending = flags.get(f"{defender['id']}_defending", False)
         eff_def = def_eff["defense"] * 2 if defending else def_eff["defense"]
         if def_buffs.get("defense_boost", 0) > 0:
             eff_def = int(eff_def * 1.50)
@@ -263,14 +263,15 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 result_lines.append(f"💎 GI\u00c1P B\u1ea4T T\u1eec! -{def_passive['dmg_reduce_pct']}% dmg!")
 
         # Counter immune — save original damage for reflect
+        d_id = defender["id"]
         original_damage = damage
-        immune_key = f"p{1 if not is_p1_turn else 2}_counter_immune"
+        immune_key = f"{d_id}_counter_immune"
         if flags.pop(immune_key, None):
             result_lines.append(f"🔄 {defender.get('name', '???')} MI\u1ec4N TO\u00c0N B\u1ed8 S\u00c1T TH\u01af\u01a0NG!")
             damage = 0
 
         # Shield
-        shield_key = f"p{1 if not is_p1_turn else 2}_shield_hp"
+        shield_key = f"{d_id}_shield_hp"
         shield_hp = flags.get(shield_key, 0)
         if shield_hp > 0:
             if damage <= shield_hp:
@@ -279,7 +280,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 damage = 0
             else:
                 flags.pop(shield_key, None)
-                pop_key = f"p{1 if not is_p1_turn else 2}_shield_pop_heal"
+                pop_key = f"{d_id}_shield_pop_heal"
                 pop_heal = flags.pop(pop_key, 15)
                 heal_amt = int(def_eff["hp_max"] * pop_heal / 100)
                 defender["hp"] = min(def_eff["hp_max"], defender.get("hp", 0) + heal_amt)
@@ -295,7 +296,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         # Rage (attacker passive)
         atk_passive = get_equipped_skill(attacker, "passive")
         if atk_passive["type"] == "rage":
-            rage_key = f"p{1 if is_p1_turn else 2}_rage_dmg"
+            rage_key = f"{attacker['id']}_rage_dmg"
             if flags.get(rage_key, 0) > 0:
                 rage_bonus = int(flags.pop(rage_key, 0) * atk_passive.get("rage_multiplier", 2.0))
                 damage += rage_bonus
@@ -316,11 +317,11 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             rage_pct = def_passive2.get("rage_pct", 50)
             if get_class_perk(def_class) == "rage_boost":
                 rage_pct = int(rage_pct * 1.25)
-            rage_accum_key = f"p{1 if not is_p1_turn else 2}_rage_dmg"
+            rage_accum_key = f"{defender['id']}_rage_dmg"
             flags[rage_accum_key] = flags.get(rage_accum_key, 0) + int(damage * rage_pct / 100)
 
         # Counter
-        counter_key = f"p{1 if not is_p1_turn else 2}_counter"
+        counter_key = f"{d_id}_counter"
         counter_mult = flags.pop(counter_key, None)
         if counter_mult:
             cd = int(original_damage * counter_mult)
@@ -340,21 +341,18 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
         # Burn
         if skill.get("type") == "burn":
-            burn_key = f"p{1 if not is_p1_turn else 2}_burn"
+            burn_key = f"{defender['id']}_burn"
             flags[burn_key] = {"pct": skill["burn_pct"], "turns": skill.get("burn_turns", 2)}
             result_lines.append(f"🔥 Thi\u00eau \u0111\u1ed1t {skill['burn_pct']}%/2t!")
 
         # Stun
         if skill.get("type") == "stun":
-            if is_p1_turn:
-                flags["p2_stunned"] = True
-            else:
-                flags["p1_stunned"] = True
+            flags[f"{defender['id']}_stunned"] = True
             result_lines.append(f"🌑 Cho\u00e1ng! {defender.get('name', '???')} m\u1ea5t l\u01b0\u1ee3t!")
 
-        # Clear defending flags
-        flags["p1_defending"] = False
-        flags["p2_defending"] = False
+        # Clear defending flags for both
+        for p in [p1, p2]:
+            flags.pop(f"{p['id']}_defending", None)
 
         attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
@@ -396,9 +394,9 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
 
         # Burn tick
-        for i, p in enumerate([p1, p2]):
+        for p in [p1, p2]:
             eff = get_effective_stats(p)
-            key = f"p{i+1}_burn"
+            key = f"{p['id']}_burn"
             burn = flags.get(key)
             if burn and burn.get("turns", 0) > 0:
                 bd = int(eff["hp_max"] * burn["pct"] / 100)

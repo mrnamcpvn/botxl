@@ -420,7 +420,7 @@ class DungeonCog(commands.Cog):
         result_lines.append(f"\n👾 {npc['name']} dùng **{npc_skill['icon']} {npc_skill['name']}**")
 
         flags["turn_count"] = flags.get("turn_count", 0) + 1
-        result = await execute_action(npc, player, 1, {"type": npc_move, "skill_id": npc_skill_id}, flags)
+        result = await execute_action(npc, player, 0, {"type": npc_move, "skill_id": npc_skill_id}, flags)
         npc = result["p1"]
         player = result["p2"]
         result_lines.extend(result["log_messages"])
