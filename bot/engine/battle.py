@@ -133,19 +133,20 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
     # ─── DEFENSE moves ───
     if cat == "defense":
+        atk_eff = get_effective_stats(attacker)
         if skill["type"] == "defend":
             flags["p1_defending" if is_p1_turn else "p2_defending"] = True
             heal_pct = skill.get("heal_pct", 8)
-            heal_amt = int(attacker.get("hp_max", 100) * heal_pct / 100)
-            attacker["hp"] = min(attacker.get("hp_max", 100), attacker.get("hp", 0) + heal_amt)
+            heal_amt = int(atk_eff["hp_max"] * heal_pct / 100)
+            attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal_amt)
             result_lines.append(f"🛡️ **{skill['name']}** — \u00d73 DEF + h\u1ed3i {heal_amt}HP! \u2602\ufe0f")
             attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
         elif skill["type"] == "heal":
             heal_pct = skill.get("heal_pct", 40)
-            heal_amt = int(attacker.get("hp_max", 100) * heal_pct / 100)
+            heal_amt = int(atk_eff["hp_max"] * heal_pct / 100)
             old = attacker.get("hp", 0)
-            attacker["hp"] = min(attacker.get("hp_max", 100), attacker["hp"] + heal_amt)
+            attacker["hp"] = min(atk_eff["hp_max"], attacker["hp"] + heal_amt)
             for kb in ["_burn", "_def_reduced"]:
                 attacker.pop(kb, None)
             if is_p1_turn:
@@ -157,7 +158,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
         elif skill["type"] == "shield":
             sh_pct = skill.get("shield_pct", 35)
-            sh_amt = int(attacker.get("hp_max", 100) * sh_pct / 100)
+            sh_amt = int(atk_eff["hp_max"] * sh_pct / 100)
             flags[f"p{1 if is_p1_turn else 2}_shield_hp"] = sh_amt
             flags[f"p{1 if is_p1_turn else 2}_shield_pop_heal"] = skill.get("shield_pop_heal", 15)
             result_lines.append(f"🛡️ **{skill['name']}** — khi\u00ean {sh_amt}HP! (+{skill.get('shield_pop_heal', 15)}% khi v\u1ee1)")
@@ -257,7 +258,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             threshold = def_passive.get("hp_threshold", 30)
             if get_class_perk(def_class) == "last_stand_boost":
                 threshold = 40
-            if defender.get("hp", 0) <= defender.get("hp_max", 100) * threshold / 100:
+            if defender.get("hp", 0) <= def_eff["hp_max"] * threshold / 100:
                 damage = int(damage * (100 - def_passive["dmg_reduce_pct"]) / 100)
                 result_lines.append(f"💎 GI\u00c1P B\u1ea4T T\u1eec! -{def_passive['dmg_reduce_pct']}% dmg!")
 
@@ -279,8 +280,8 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 flags.pop(shield_key, None)
                 pop_key = f"p{1 if not is_p1_turn else 2}_shield_pop_heal"
                 pop_heal = flags.pop(pop_key, 15)
-                heal_amt = int(defender.get("hp_max", 100) * pop_heal / 100)
-                defender["hp"] = min(defender.get("hp_max", 100), defender.get("hp", 0) + heal_amt)
+                heal_amt = int(def_eff["hp_max"] * pop_heal / 100)
+                defender["hp"] = min(def_eff["hp_max"], defender.get("hp", 0) + heal_amt)
                 result_lines.append(f"🛡️ Khi\u00ean v\u1ee1! Tr\u00e0n {damage - shield_hp}! +{heal_amt}HP h\u1ed3i!")
                 damage -= shield_hp
 
@@ -333,7 +334,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             if get_class_perk(attacker.get("class_id", "")) == "lifesteal_boost":
                 lifesteal_pct = int(lifesteal_pct * 1.2)
             heal = int(damage * lifesteal_pct / 100)
-            attacker["hp"] = min(attacker.get("hp_max", 100), attacker.get("hp", 0) + heal)
+            attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal)
             result_lines.append(f"🩡 H\u00fat {heal} HP!")
 
         # Burn
@@ -373,18 +374,20 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
     # Regen passive
     for p in [p1, p2]:
+        eff = get_effective_stats(p)
         pid = p.get("skill_equipped", {}).get("passive")
         pskill = SKILLS_DB.get(pid)
         if pskill and pskill.get("type") == "regen":
-            reg = int(p.get("hp_max", 100) * pskill["regen_pct"] / 100)
-            p["hp"] = min(p.get("hp_max", 100), p.get("hp", 0) + reg)
+            reg = int(eff["hp_max"] * pskill["regen_pct"] / 100)
+            p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
 
     # Burn tick
     for i, p in enumerate([p1, p2]):
+        eff = get_effective_stats(p)
         key = f"p{i+1}_burn"
         burn = flags.get(key)
         if burn and burn.get("turns", 0) > 0:
-            bd = int(p.get("hp_max", 100) * burn["pct"] / 100)
+            bd = int(eff["hp_max"] * burn["pct"] / 100)
             p["hp"] = max(0, p.get("hp", 0) - bd)
             burn["turns"] -= 1
             result_lines.append(f"🔥 B\u1ecfng! {p.get('name', '???')} -{bd}HP ({burn['turns']}t)")
