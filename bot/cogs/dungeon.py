@@ -391,7 +391,7 @@ class DungeonCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
-            await self._finish_dungeon_floor(interaction, session, view, True, result_lines)
+            await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
             return
 
         for ck in ["attack_cd", "special_cd", "defense_cd"]:
@@ -426,7 +426,7 @@ class DungeonCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
-            await self._finish_dungeon_floor(interaction, session, view, False, result_lines)
+            await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
             return
 
         session["player_pdata"] = player

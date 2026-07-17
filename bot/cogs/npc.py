@@ -309,7 +309,7 @@ class NPCCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
-            await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, True)
+            await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, npc["hp"] <= 0)
             return
 
         # --- NPC action ---
@@ -351,7 +351,7 @@ class NPCCog(commands.Cog):
             result_lines.extend(result["log_messages"])
 
             if result["finished"]:
-                await self._finish_npc_battle(interaction, session, view, False, result_lines)
+                await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, player["hp"] > 0)
                 return
 
         # --- WIFE ATTACKS ---
