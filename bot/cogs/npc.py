@@ -371,7 +371,7 @@ class NPCCog(commands.Cog):
 
         if npc["hp"] <= 0:
             result_lines.append(f"\n💕 **{npc['name']}** bị vợ hạ gục! 🎉")
-            await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, True)
+            await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, npc["hp"] <= 0)
             return
 
         session["player_pdata"] = player
