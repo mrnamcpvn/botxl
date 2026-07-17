@@ -441,7 +441,7 @@ class NPCCog(commands.Cog):
                         player["coins"] = player.get("coins", 0) + drop["amount"]
                     result_lines.append(f"\n{drop['text']}")
 
-                await db.execute("UPDATE player_buffs SET lucky=MAX(0, lucky-1) WHERE player_id=?", (sid,))
+                await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=?", (sid,))
             else:
                 w_coins, w_xp = 0, 0
                 player["losses"] = player.get("losses", 0) + 1

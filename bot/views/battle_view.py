@@ -360,7 +360,7 @@ class BattleView(discord.ui.View):
                 if drop:
                     await apply_drop(db, winner_id, drop)
 
-                await db.execute("UPDATE player_buffs SET lucky=MAX(0, lucky-1) WHERE player_id=? OR player_id=?", (p1_id, p2_id))
+                await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=? OR player_id=?", (p1_id, p2_id))
 
                 await db.commit()
                 await update_combat_power(p1_id)
@@ -599,7 +599,7 @@ class BattleView(discord.ui.View):
         if drop:
             await apply_drop(db, winner_id, drop)
 
-        await db.execute("UPDATE player_buffs SET lucky=MAX(0, lucky-1) WHERE player_id=? OR player_id=?", (winner_id, loser_sid))
+        await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=? OR player_id=?", (winner_id, loser_sid))
 
         await db.commit()
         await update_combat_power(winner_id)

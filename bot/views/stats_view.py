@@ -72,14 +72,17 @@ class StatsView(discord.ui.View):
         buff = pdata.get("buffs", {})
         if buff:
             bl = []
-            if buff.get("attack_boost"):
-                bl.append(f"⚡ +{buff['attack_boost']}% dmg")
-            if buff.get("defense_boost"):
-                bl.append(f"🛡️ +{buff['defense_boost']}% DEF")
-            if buff.get("lucky"):
-                bl.append(f"🎲 ×2 legendary — còn **{buff['lucky']}** trận")
+            ab = buff.get("attack_boost", 0)
+            db_val = buff.get("defense_boost", 0)
+            lk = buff.get("lucky", 0)
+            if ab > 0:
+                bl.append(f"⚡ +30% dmg — còn **{ab}** trận")
+            if db_val > 0:
+                bl.append(f"🛡️ +50% DEF — còn **{db_val}** trận")
+            if lk > 0:
+                bl.append(f"🎲 ×2 legendary — còn **{lk}** trận")
             if bl:
-                embed.add_field(name="🔮 Buff Trận Kế", value="\n".join(bl), inline=False)
+                embed.add_field(name="🔮 Buff Đang Có", value="\n".join(bl), inline=False)
 
         return embed
 

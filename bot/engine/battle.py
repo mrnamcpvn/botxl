@@ -221,23 +221,17 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         if atk_eff["damage_pct"] > 0:
             base_dmg = int(base_dmg * (1 + atk_eff["damage_pct"] / 100))
 
-        # Buff attack boost
-        if atk_buffs.get("attack_boost"):
-            boost = atk_buffs["attack_boost"]
-            base_dmg = int(base_dmg * (1 + boost / 100))
-            result_lines.append(f"⚡ B\u00f9a +{boost}%!")
-            atk_buffs.pop("attack_boost", None)
-            attacker["buffs"] = atk_buffs
+        # Buff attack boost (3 battles, 30% dmg)
+        if atk_buffs.get("attack_boost", 0) > 0:
+            base_dmg = int(base_dmg * 1.30)
+            result_lines.append("⚡ Bùa Xỏ Lá +30%!")
 
         # Defense calculation
         defending = flags.get("p1_defending" if not is_p1_turn else "p2_defending", False)
         eff_def = def_eff["defense"] * 2 if defending else def_eff["defense"]
-        if def_buffs.get("defense_boost"):
-            boost = def_buffs["defense_boost"]
-            eff_def = int(eff_def * (1 + boost / 100))
-            result_lines.append(f"🛡️ Gi\u00e1p Chu\u1ed1i +{boost}%!")
-            def_buffs.pop("defense_boost", None)
-            defender["buffs"] = def_buffs
+        if def_buffs.get("defense_boost", 0) > 0:
+            eff_def = int(eff_def * 1.50)
+            result_lines.append("🛡️ Giáp Chuối +50%!")
         if skill.get("def_reduce_pct"):
             eff_def = int(eff_def * (100 - skill["def_reduce_pct"]) / 100)
             result_lines.append(f"🌀 -{skill['def_reduce_pct']}% DEF!")

@@ -126,21 +126,20 @@ class ShopCog(commands.Cog):
                 await db.execute("UPDATE players SET hp=? WHERE id=?", (new_hp, uid))
                 msg_parts.append(f"❤️ Hồi {actual} HP")
             if "buff_attack_percent" in effect:
-                boost = effect["buff_attack_percent"]
-                await db.execute("INSERT OR REPLACE INTO player_buffs (player_id, attack_boost, defense_boost, lucky) VALUES (?, COALESCE((SELECT attack_boost FROM player_buffs WHERE player_id=?), 0) + ?, COALESCE((SELECT defense_boost FROM player_buffs WHERE player_id=?), 0), COALESCE((SELECT lucky FROM player_buffs WHERE player_id=?), 0))",
-                                 (uid, uid, boost, uid, uid))
-                msg_parts.append(f"⚡ +{boost}% dmg")
+                boost = 3
+                await db.execute("INSERT OR REPLACE INTO player_buffs (player_id, attack_boost, defense_boost, lucky) VALUES (?, ?, COALESCE((SELECT defense_boost FROM player_buffs WHERE player_id=?), 0), COALESCE((SELECT lucky FROM player_buffs WHERE player_id=?), 0))",
+                                 (uid, boost, uid, uid))
+                msg_parts.append(f"⚡ +30% dmg trong 3 trận!")
             if "buff_defense_percent" in effect:
-                boost = effect["buff_defense_percent"]
-                await db.execute("INSERT OR REPLACE INTO player_buffs (player_id, attack_boost, defense_boost, lucky) VALUES (?, COALESCE((SELECT attack_boost FROM player_buffs WHERE player_id=?), 0), COALESCE((SELECT defense_boost FROM player_buffs WHERE player_id=?), 0) + ?, COALESCE((SELECT lucky FROM player_buffs WHERE player_id=?), 0))",
-                                 (uid, uid, uid, boost, uid))
-                msg_parts.append(f"🛡️ +{boost}% DEF")
+                boost = 3
+                await db.execute("INSERT OR REPLACE INTO player_buffs (player_id, attack_boost, defense_boost, lucky) VALUES (?, COALESCE((SELECT attack_boost FROM player_buffs WHERE player_id=?), 0), ?, COALESCE((SELECT lucky FROM player_buffs WHERE player_id=?), 0))",
+                                 (uid, uid, boost, uid))
+                msg_parts.append(f"🛡️ +50% DEF trong 3 trận!")
             if "buff_lucky" in effect:
-                import random as _r
-                lr = _r.randint(3, 5)
+                lr = 3
                 await db.execute("INSERT OR REPLACE INTO player_buffs (player_id, attack_boost, defense_boost, lucky) VALUES (?, COALESCE((SELECT attack_boost FROM player_buffs WHERE player_id=?), 0), COALESCE((SELECT defense_boost FROM player_buffs WHERE player_id=?), 0), ?)",
                                   (uid, uid, uid, lr))
-                msg_parts.append(f"🎲 Lucky ×{lr} trận!")
+                msg_parts.append(f"🎲 Lucky ×3 trận!")
             new_qty = row[0] - 1
             if new_qty <= 0:
                 await db.execute("DELETE FROM inventory WHERE player_id=? AND item_id=?", (uid, iid))
