@@ -421,7 +421,9 @@ class Arena(commands.Cog):
                 await ctx.reply(f"💀 {member.display_name} chưa đăng ký!")
                 return
             pd = dict(pd_row)
+            await self._load_equipment(db, pd, sid)
             regen_hp(pd)
+            await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pd["hp"], pd.get("last_hp_update", time.time()), sid))
             if pd["hp"] <= 0:
                 await ctx.reply(f"💀 {member.display_name} 0 máu!")
                 return
@@ -431,7 +433,9 @@ class Arena(commands.Cog):
                 await ctx.reply("💀 Mày chưa đăng ký!")
                 return
             md = dict(md_row)
+            await self._load_equipment(db, md, sc)
             regen_hp(md)
+            await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (md["hp"], md.get("last_hp_update", time.time()), sc))
             if md["hp"] <= 0:
                 await ctx.reply("💀 Mày 0 máu!")
                 return
@@ -1195,6 +1199,29 @@ class Arena(commands.Cog):
         if not row:
             return {}
         return dict(row)
+
+    async def _load_equipment(self, db, pdata: dict, pid: str):
+        eq_cursor = await db.execute(
+            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
+        equipped = {}
+        equip_items = {}
+        equip_enhances = {}
+        async for r in eq_cursor:
+            eq_id = r[0]
+            eiid = r[1]
+            enh = r[2]
+            slot = None
+            if eiid in EQUIPMENT:
+                slot = EQUIPMENT[eiid]["slot"]
+            elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid].get("type") == "equipment":
+                slot = SHOP_ITEMS[eiid]["slot"]
+            if slot:
+                equipped[slot] = eq_id
+                equip_items[str(eq_id)] = eiid
+                equip_enhances[str(eq_id)] = enh
+        pdata["equipped"] = equipped
+        pdata["_equip_items"] = equip_items
+        pdata["_equip_enhances"] = equip_enhances
 
     async def _load_full_player(self, db, pid: str) -> dict:
         cursor = await db.execute("SELECT * FROM players WHERE id=?", (pid,))
