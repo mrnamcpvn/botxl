@@ -119,6 +119,11 @@ TABLES = [
         class_id TEXT NOT NULL DEFAULT 'banxabong',
         equipped INTEGER NOT NULL DEFAULT 0
     )""",
+    """CREATE TABLE IF NOT EXISTS player_artifact (
+        player_id TEXT PRIMARY KEY,
+        star INTEGER DEFAULT 0,
+        stone_count INTEGER DEFAULT 0
+    )""",
 ]
 
 MIGRATIONS = [
