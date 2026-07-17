@@ -157,6 +157,10 @@ class ChallengeView(discord.ui.View):
             else:
                 first = self.challenger_sid if random.random() < 0.5 else self.target_sid
 
+            # Reset cooldowns for both players at battle start
+            await db.execute("UPDATE players SET attack_cd=0, special_cd=0, defense_cd=0 WHERE id=? OR id=?",
+                             (self.challenger_sid, self.target_sid))
+
             ts = time.time()
             cursor = await db.execute("""INSERT INTO active_battles (player1_id, player2_id, turn, channel_id, last_move)
                                 VALUES (?, ?, ?, ?, ?)""",
