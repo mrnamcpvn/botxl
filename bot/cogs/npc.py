@@ -441,6 +441,15 @@ class NPCCog(commands.Cog):
                     result_lines.append(f"\n{drop['text']}")
 
                 await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=?", (sid,))
+
+                if npc.get("level", 0) >= 15:
+                    import random
+                    if random.random() < 0.05:
+                        await db.execute("""INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) 
+                            VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), 
+                            COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + 1)""",
+                            (sid, sid, sid))
+                        result_lines.append("💎 +1 Đá Thần Khí!")
             else:
                 w_coins, w_xp = 0, 0
                 player["losses"] = player.get("losses", 0) + 1
