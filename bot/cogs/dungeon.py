@@ -236,6 +236,17 @@ class DungeonCog(commands.Cog):
                 await db.execute("UPDATE dungeon_progress SET daily_entries=0, daily_tickets_bought=0, last_entry_date=? WHERE player_id=?",
                                  (today, sid))
 
+            import json
+            pending_rewards = dg.get("accumulated_rewards", "")
+            if pending_rewards:
+                try:
+                    saved = json.loads(pending_rewards)
+                    if saved.get("coins", 0) > 0 or saved.get("stones", {}).get("stone_basic", 0) > 0 or saved.get("stones", {}).get("stone_medium", 0) > 0 or saved.get("stones", {}).get("stone_advanced", 0) > 0 or saved.get("equipment", []):
+                        await self._apply_rewards(db, sid, saved)
+                        await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
+                except:
+                    pass
+
             free_used = dg["daily_entries"] >= DUNGEON_FREE_ENTRIES
             tickets_bought = dg.get("daily_tickets_bought", 0)
 
@@ -491,9 +502,10 @@ class DungeonCog(commands.Cog):
 
             db = await get_db()
             try:
+                import json
                 await db.execute(
-                    "UPDATE dungeon_progress SET checkpoint=MAX(checkpoint, ?) WHERE player_id=?",
-                    (floor, sid))
+                    "UPDATE dungeon_progress SET checkpoint=MAX(checkpoint, ?), accumulated_rewards=? WHERE player_id=?",
+                    (floor, json.dumps(acc), sid))
                 await db.commit()
             finally:
                 await db.close()
@@ -580,6 +592,7 @@ class DungeonCog(commands.Cog):
                     "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
                     (sid, eq["eid"]))
 
+            await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
             await db.commit()
 
             total_lines = []
@@ -599,6 +612,24 @@ class DungeonCog(commands.Cog):
         embed = discord.Embed(title="🏰 VỰC SÂU XỎ LÁ - NHẬN THƯỞNG",
                               description="\n".join(result_lines), color=0xffd700)
         await interaction.edit_original_response(embed=embed, view=None)
+
+    async def _apply_rewards(self, db, sid: str, acc: dict):
+        stone_cursor = await db.execute(
+            "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?", (sid,))
+        srow = await stone_cursor.fetchone()
+        if srow:
+            await db.execute("""UPDATE player_enhance_stones
+                SET stone_basic=stone_basic+?, stone_medium=stone_medium+?, stone_advanced=stone_advanced+?
+                WHERE player_id=?""",
+                (acc["stones"].get("stone_basic", 0), acc["stones"].get("stone_medium", 0),
+                 acc["stones"].get("stone_advanced", 0), sid))
+        else:
+            await db.execute("INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, ?, ?)",
+                (sid, acc["stones"].get("stone_basic", 0), acc["stones"].get("stone_medium", 0), acc["stones"].get("stone_advanced", 0)))
+        if acc.get("coins", 0) > 0:
+            await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
+        for eq in acc.get("equipment", []):
+            await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (sid, eq["eid"]))
 
     async def _reply(self, ctx_or_int, msg, ephemeral=False):
         if isinstance(ctx_or_int, commands.Context):
