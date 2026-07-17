@@ -403,8 +403,6 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
     if defender.get("hp", 0) <= 0:
         finished = True
         defender["hp"] = 0
-        attacker["wins"] = attacker.get("wins", 0) + 1
-        defender["losses"] = defender.get("losses", 0) + 1
         winner_id = attacker.get("id")
         result_lines.append(f"\n💀 **{defender.get('name', '???')}** b\u1ecb x\u1ecf l\u00e1 \u0111\u1ebfn ch\u1ebft!")
         result_lines.append(f"🏆 **{attacker.get('name', '???')}** CHI\u1ebeN TH\u1eaeNG! 🎉")
