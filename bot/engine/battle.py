@@ -373,17 +373,16 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         # Increment turn counter
         flags["turn_count"] = flags.get("turn_count", 0) + 1
 
-        # Reduce cooldowns
-        for p in [p1, p2]:
+        # Reduce cooldowns for current player only
+        for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
+            if attacker.get(cdkey, 0) > 0:
+                attacker[cdkey] -= 1
+        if get_class_perk(attacker.get("class_id", "")) == "cd_reduce":
             for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
-                if p.get(cdkey, 0) > 0:
-                    p[cdkey] -= 1
-            if get_class_perk(p.get("class_id", "")) == "cd_reduce":
-                for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
-                    if p.get(cdkey, 0) > 0:
-                        p[cdkey] -= 1
+                if attacker.get(cdkey, 0) > 0:
+                    attacker[cdkey] -= 1
 
-        # Regen passive
+        # Regen passive for both
         for p in [p1, p2]:
             eff = get_effective_stats(p)
             pid = p.get("skill_equipped", {}).get("passive")
