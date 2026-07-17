@@ -171,7 +171,8 @@ async def init_db():
 
         # ── Migration: New per-instance equipment table ──
         try:
-            await db.execute("INSERT INTO player_equipment_new (player_id, item_id, enhance, equipped) VALUES ('_mig_', 0, 0, 0)")
+            await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES ('_mig_check_', 0, 0, 0)")
+            await db.execute("DELETE FROM player_equipment WHERE player_id='_mig_check_'")
         except:
             await db.executescript("""
                 CREATE TABLE IF NOT EXISTS player_equipment_new (
