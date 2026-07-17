@@ -147,6 +147,26 @@ class AdminCog(commands.Cog):
             return
         await self._syncrole(ctx, member, "!")
 
+    @commands.command(name="giveart")
+    async def giveart_cmd(self, ctx, member: discord.Member = None, amount: str = None):
+        if not self._is_admin(str(ctx.author.id)):
+            await ctx.reply("🚫 Mày hông đủ quyền!"); return
+        if not member or not amount:
+            await ctx.reply("❌ !giveart @player <số>"); return
+        try: amt = int(amount.strip())
+        except: await ctx.reply("❌ Số không hợp lệ!"); return
+        sid = str(member.id)
+        db = await get_db()
+        try:
+            await db.execute("""INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) 
+                VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), 
+                COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + ?)""",
+                (sid, sid, sid, amt))
+            await db.commit()
+            await ctx.reply(f"💎 Cho {member.display_name} {amt} Đá Thần Khí!")
+        finally:
+            await db.close()
+
     async def _reply(self, ctx_or_int, msg):
         if isinstance(ctx_or_int, commands.Context):
             await ctx_or_int.reply(msg)
