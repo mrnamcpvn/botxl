@@ -60,8 +60,10 @@ def calc_combat_power(pdata: dict, wives_data: list = None) -> int:
 from bot.database import get_db
 
 
-async def update_combat_power(player_id: str, pdata: dict = None, wives_data: list = None):
-    db = await get_db()
+async def update_combat_power(player_id: str, pdata: dict = None, wives_data: list = None, db=None):
+    own_db = db is None
+    if own_db:
+        db = await get_db()
     try:
         if pdata is None:
             cursor = await db.execute("SELECT * FROM players WHERE id=?", (player_id,))
@@ -100,6 +102,8 @@ async def update_combat_power(player_id: str, pdata: dict = None, wives_data: li
             wives_data = [dict(r) async for r in w_cursor]
         cp = calc_combat_power(pdata, wives_data)
         await db.execute("UPDATE players SET combat_power=? WHERE id=?", (cp, player_id))
-        await db.commit()
+        if own_db:
+            await db.commit()
     finally:
-        await db.close()
+        if own_db:
+            await db.close()

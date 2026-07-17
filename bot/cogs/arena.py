@@ -307,7 +307,7 @@ class Arena(commands.Cog):
             wives_data = [dict(r) async for r in wife_cursor]
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
-            await update_combat_power(sid, pdata, wives_data)
+            await update_combat_power(sid, pdata, wives_data, db=db)
             await db.commit()
 
             view = StatsView(target, pdata, wives_data)
@@ -884,7 +884,7 @@ class Arena(commands.Cog):
             wives_data = [dict(r) async for r in wife_cursor]
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
-            await update_combat_power(sid, pdata, wives_data)
+            await update_combat_power(sid, pdata, wives_data, db=db)
             await db.commit()
             view = StatsView(target, pdata, wives_data)
             await interaction.response.send_message(embed=view.embed, view=view)
