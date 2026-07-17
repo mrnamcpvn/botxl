@@ -5,6 +5,7 @@ from bot.data.classes import CLASSES
 from bot.engine.battle import get_effective_stats, get_equipped_skill
 from bot.engine.combat_power import calc_combat_power
 from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL, MAX_ENHANCE
+from bot.data.artifacts import ARTIFACTS
 
 
 class StatsView(discord.ui.View):
@@ -180,12 +181,35 @@ class StatsView(discord.ui.View):
 
         return embed
 
+    def _tab4_embed(self) -> discord.Embed:
+        pdata = self.pdata
+        star = pdata.get("_artifact_star", 0)
+        a = ARTIFACTS.get(star, ARTIFACTS[0])
+        embed = discord.Embed(title=f"🔱 Thần Khí — {self.target.display_name}", color=a["color"])
+        embed.set_thumbnail(url=self.target.display_avatar.url)
+        if star == 0:
+            embed.description = "🔒 Chưa kích hoạt\nDùng `!thankhi` để mở khóa với 100,000🪙"
+        else:
+            boost = int(star * 15)
+            star_icons = "⭐" * star
+            name = f"{a.get('emoji','')} {a['name']}"
+            embed.description = (
+                f"**{name}** {star_icons}\n"
+                f"*{a['desc']}*\n\n"
+                f"⚡ Tăng **{boost}%** toàn bộ chỉ số\n"
+                f"💎 Đá thần khí: `{pdata.get('_artifact_stones', 0)}` viên"
+            )
+            if a.get("gif_url"):
+                embed.set_image(url=a["gif_url"])
+        return embed
+
     def _build_tab(self, tab: int):
         self.clear_items()
         labels = [
             ("📊", "Thuộc Tính", discord.ButtonStyle.primary),
             ("⚒️", "Trang Bị", discord.ButtonStyle.success),
             ("🔥", "Kỹ Năng", discord.ButtonStyle.danger),
+            ("🔱", "Thần Khí", discord.ButtonStyle.primary),
         ]
         for i, (emoji, label, style) in enumerate(labels):
             disabled = (i + 1 == tab)
@@ -193,7 +217,7 @@ class StatsView(discord.ui.View):
             btn.callback = self._make_tab_cb(i + 1)
             self.add_item(btn)
 
-        embeds = {1: self._tab1_embed, 2: self._tab2_embed, 3: self._tab3_embed}
+        embeds = {1: self._tab1_embed, 2: self._tab2_embed, 3: self._tab3_embed, 4: self._tab4_embed}
         self._current_embed = embeds[tab]()
 
     def _make_tab_cb(self, tab: int):

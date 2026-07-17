@@ -13,9 +13,12 @@ def thankhi_embed(star: int, display_name: str) -> discord.Embed:
         embed.description = "🔒 Chưa kích hoạt\nDùng nút bên dưới để mở khóa với 100,000🪙"
     else:
         boost = int(star * 15)
+        star_icons = "⭐" * star
+        name = f"{a.get('emoji','')} {a['name']}"
         embed.description = (
-            f"# {a['name']}\n"
-            f"⭐ ×{star}  |  ⚡ +{boost}% toàn bộ chỉ số\n"
+            f"# {name}\n"
+            f"# {star_icons}\n"
+            f"⚡ **+{boost}%** toàn bộ chỉ số\n"
             f"*{a['desc']}*"
         )
     if a.get("gif_url"):
