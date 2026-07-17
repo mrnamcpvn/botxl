@@ -306,7 +306,6 @@ class DungeonCog(commands.Cog):
             eff = get_effective_stats(pdata)
 
             npc_data = generate_dungeon_npc(floor)
-            npc_data["skill_equipped"] = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
             npc_data["_equip_enhances"] = {}
@@ -516,7 +515,6 @@ class DungeonCog(commands.Cog):
 
             player = session["player_pdata"]
             npc_data = generate_dungeon_npc(next_floor)
-            npc_data["skill_equipped"] = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
             npc_data["_equip_enhances"] = {}
