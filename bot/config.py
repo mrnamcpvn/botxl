@@ -1,0 +1,67 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+DB_PATH = os.path.join(DATA_DIR, "botxl.db")
+TOKEN = os.getenv("TOKEN") or "YOUR_BOT_TOKEN_HERE"
+
+HP_REGEN_RATE = 30
+HP_REGEN_INTERVAL = 30
+
+LEVEL_XP_BASE = 80
+STAT_POINTS_PER_LEVEL = 3
+
+DEFAULT_COINS = 0
+DEFAULT_ELO = 1000
+
+REWARD_WIN_COINS = 50
+REWARD_WIN_XP = 25
+
+BATTLE_TIMEOUT_SECONDS = 15
+CHALLENGE_TIMEOUT_SECONDS = 30
+CHALLENGE_PENALTY_COINS = 20
+STUCK_BATTLE_TIMEOUT = 30
+BATTLE_COOLDOWN_SECONDS = 120
+
+LEGENDARY_CHANCE = 0.05
+LEGENDARY_MULTIPLIER = 5.0
+LUCKY_LEGENDARY_MULTIPLIER = 2.0
+
+# Enhancement
+MAX_ENHANCE = 9
+ENHANCE_BONUS_PER_LEVEL = 0.08    # +8% per enhance star
+
+# Stone item IDs (mapped to inventory)
+STONE_BASIC_ID = 1001
+STONE_MEDIUM_ID = 1002
+STONE_ADVANCED_ID = 1003
+
+# Enhance costs: (target_star, stone_id, stone_qty, coin_cost)
+ENHANCE_COSTS = {
+    1: (STONE_BASIC_ID, 2, 200),
+    2: (STONE_BASIC_ID, 4, 200),
+    3: (STONE_BASIC_ID, 6, 200),
+    4: (STONE_MEDIUM_ID, 2, 500),
+    5: (STONE_MEDIUM_ID, 4, 500),
+    6: (STONE_MEDIUM_ID, 6, 500),
+    7: (STONE_ADVANCED_ID, 2, 1000),
+    8: (STONE_ADVANCED_ID, 4, 1000),
+    9: (STONE_ADVANCED_ID, 6, 1000),
+}
+
+# Enhance success rates: target_star -> probability
+ENHANCE_SUCCESS_RATES = {
+    1: 1.00, 2: 0.875, 3: 0.75,
+    4: 0.625, 5: 0.50, 6: 0.375,
+    7: 0.25, 8: 0.175, 9: 0.10,
+}
+
+# Dungeon
+DUNGEON_MAX_FLOOR = 100
+DUNGEON_REQUIRED_LEVEL = 7
+DUNGEON_FREE_ENTRIES = 1
+DUNGEON_MAX_TICKETS = 2
+DUNGEON_TICKET_COST_1 = 200
+DUNGEON_TICKET_COST_2 = 400
