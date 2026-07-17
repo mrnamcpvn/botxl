@@ -165,23 +165,13 @@ class ShopCog(commands.Cog):
         uid = str(user.id)
         db = await get_db()
         try:
-            cursor = await db.execute(
-                "SELECT id, item_id, enhance, equipped FROM player_equipment WHERE id=? AND player_id=?",
-                (iid, uid))
-            row = await cursor.fetchone()
-            if not row:
-                await self._reply(ctx_or_int, "📭 Không có trang bị này! Xem `/inv`")
-                return
-            eq = dict(row)
-            real_item_id = eq["item_id"]
-
-            if real_item_id in EQUIPMENT:
-                item_def = EQUIPMENT[real_item_id]
+            if iid in EQUIPMENT:
+                item_def = EQUIPMENT[iid]
                 slot = item_def["slot"]
                 slot_name = EQ_SLOT_NAMES.get(slot, slot)
                 name = item_def["name"]
-            elif real_item_id in SHOP_ITEMS and SHOP_ITEMS[real_item_id]["type"] == "equipment":
-                item_def = SHOP_ITEMS[real_item_id]
+            elif iid in SHOP_ITEMS and SHOP_ITEMS[iid].get("type") == "equipment":
+                item_def = SHOP_ITEMS[iid]
                 slot = item_def["slot"]
                 slot_name = EQUIP_SLOT_MAP.get(slot, slot)
                 name = item_def["name"]
@@ -189,14 +179,27 @@ class ShopCog(commands.Cog):
                 await self._reply(ctx_or_int, "❌ Item không phải trang bị!")
                 return
 
-            enhance = eq["enhance"]
-            enhance_str = f" +{enhance}" if enhance > 0 else ""
+            cursor = await db.execute(
+                "SELECT id, enhance, equipped FROM player_equipment WHERE player_id=? AND item_id=? ORDER BY equipped DESC, id ASC",
+                (uid, iid))
+            rows = await cursor.fetchall()
+            if not rows:
+                await self._reply(ctx_or_int, "📭 Không có trang bị này! Xem `/inv`")
+                return
 
-            if eq["equipped"]:
-                await db.execute("UPDATE player_equipment SET equipped=0 WHERE id=?", (iid,))
+            equipped_row = next((r for r in rows if r[2] == 1), None)
+            if equipped_row:
+                eq_id = equipped_row[0]
+                enhance = equipped_row[1]
+                enhance_str = f" +{enhance}" if enhance > 0 else ""
+                await db.execute("UPDATE player_equipment SET equipped=0 WHERE id=?", (eq_id,))
                 await db.commit()
                 await self._reply(ctx_or_int, f"✅ Tháo **{name}{enhance_str}** khỏi {slot_name}!")
             else:
+                eq_id = rows[0][0]
+                enhance = rows[0][1]
+                enhance_str = f" +{enhance}" if enhance > 0 else ""
+
                 equipped_cursor = await db.execute(
                     "SELECT pe.id, pe.item_id FROM player_equipment pe WHERE pe.player_id=? AND pe.equipped=1", (uid,))
                 async for erow in equipped_cursor:
@@ -205,12 +208,12 @@ class ShopCog(commands.Cog):
                     ee_slot = None
                     if ee_item_id in EQUIPMENT:
                         ee_slot = EQUIPMENT[ee_item_id]["slot"]
-                    elif ee_item_id in SHOP_ITEMS and SHOP_ITEMS[ee_item_id]["type"] == "equipment":
+                    elif ee_item_id in SHOP_ITEMS and SHOP_ITEMS[ee_item_id].get("type") == "equipment":
                         ee_slot = SHOP_ITEMS[ee_item_id]["slot"]
                     if ee_slot == slot:
                         await db.execute("UPDATE player_equipment SET equipped=0 WHERE id=?", (ee_id,))
 
-                await db.execute("UPDATE player_equipment SET equipped=1 WHERE id=?", (iid,))
+                await db.execute("UPDATE player_equipment SET equipped=1 WHERE id=?", (eq_id,))
                 await db.commit()
                 await self._reply(ctx_or_int, f"✅ Trang bị **{name}{enhance_str}** vào {slot_name}!")
         finally:
@@ -294,12 +297,12 @@ class ShopCog(commands.Cog):
                     ee = "✅" if er["equipped"] else "📦"
                     if eiid in SHOP_ITEMS:
                         item = SHOP_ITEMS[eiid]
-                        lines.append(f"`ID{er['id']}` {ee} {item['name']}{enh_str}")
+                        lines.append(f"`ID{eiid}` {ee} {item['name']}{enh_str}")
                     elif eiid in EQUIPMENT:
                         e = EQUIPMENT[eiid]
                         stars = STAR_LABELS.get(e["star"], "⭐")
                         slot = EQ_SLOT_NAMES.get(e["slot"], e["slot"])
-                        lines.append(f"`ID{er['id']}` {ee} {stars} {e['name']}{enh_str} ({slot})")
+                        lines.append(f"`ID{eiid}` {ee} {stars} {e['name']}{enh_str} ({slot})")
                 if stone_row and (stone_row[0] or stone_row[1] or stone_row[2]):
                     lines.append("")
                     lines.append(f"💎 Đá sơ cấp: {stone_row[0]} | 💎 Đá trung cấp: {stone_row[1]} | 💎 Đá cao cấp: {stone_row[2]}")
@@ -389,23 +392,31 @@ class ShopCog(commands.Cog):
         db = await get_db()
         try:
             cursor = await db.execute(
-                "SELECT id, item_id, enhance, equipped FROM player_equipment WHERE player_id=?", (uid,))
+                "SELECT DISTINCT item_id FROM player_equipment WHERE player_id=?", (uid,))
             choices = []
             async for r in cursor:
-                er = dict(r)
-                eiid = er["item_id"]
-                enh = er["enhance"]
-                enh_str = f" +{enh}" if enh > 0 else ""
+                eiid = r[0]
                 name = None
-                if eiid in SHOP_ITEMS and SHOP_ITEMS[eiid]["type"] == "equipment":
-                    name = SHOP_ITEMS[eiid]["name"]
-                elif eiid in EQUIPMENT:
+                if eiid in EQUIPMENT:
                     name = EQUIPMENT[eiid]["name"]
-                if name and (current.lower() in str(er["id"]) or current.lower() in name.lower()):
-                    status = "✅" if er["equipped"] else "📦"
+                elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid].get("type") == "equipment":
+                    name = SHOP_ITEMS[eiid]["name"]
+                if name and (current.lower() in str(eiid) or current.lower() in name.lower()):
+                    eq_cursor = await db.execute(
+                        "SELECT COUNT(*) as cnt, MAX(enhance) as max_enh FROM player_equipment WHERE player_id=? AND item_id=?",
+                        (uid, eiid))
+                    erow = await eq_cursor.fetchone()
+                    cnt = erow[0]
+                    max_enh = erow[1] or 0
+                    enh_str = f" +{max_enh}" if max_enh > 0 else ""
+                    eq_cursor2 = await db.execute(
+                        "SELECT 1 FROM player_equipment WHERE player_id=? AND item_id=? AND equipped=1",
+                        (uid, eiid))
+                    is_equipped = await eq_cursor2.fetchone()
+                    status = "✅" if is_equipped else "📦"
                     choices.append(app_commands.Choice(
-                        name=f"(ID{er['id']}) {status} {name}{enh_str}"[:100],
-                        value=str(er["id"])))
+                        name=f"({eiid}) {status} {name}{enh_str} ×{cnt}"[:100],
+                        value=str(eiid)))
             return choices[:25]
         finally:
             await db.close()

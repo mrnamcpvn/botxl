@@ -30,20 +30,24 @@ class EnhanceCog(commands.Cog):
         db = await get_db()
         try:
             cursor = await db.execute(
-                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND enhance < ?",
+                "SELECT DISTINCT item_id FROM player_equipment WHERE player_id=? AND enhance < ?",
                 (uid, MAX_ENHANCE))
             choices = []
             async for r in cursor:
-                er = dict(r)
-                eiid = er["item_id"]
-                enh = er["enhance"]
+                eiid = r[0]
                 name = None
                 if eiid in EQUIPMENT:
                     name = EQUIPMENT[eiid]["name"]
-                if name and (current.lower() in str(er["id"]) or current.lower() in name.lower()):
-                    choices.append(app_commands.Choice(
-                        name=f"(ID{er['id']}) {name} +{enh} → +{enh+1}"[:100],
-                        value=str(er["id"])))
+                if name and (current.lower() in str(eiid) or current.lower() in name.lower()):
+                    eqr = await db.execute(
+                        "SELECT id, enhance FROM player_equipment WHERE player_id=? AND item_id=? AND equipped=0 AND enhance < ? ORDER BY enhance DESC LIMIT 1",
+                        (uid, eiid, MAX_ENHANCE))
+                    erow = await eqr.fetchone()
+                    if erow:
+                        enh = erow[1]
+                        choices.append(app_commands.Choice(
+                            name=f"({eiid}) {name} +{enh} → +{enh+1}"[:100],
+                            value=str(erow[0])))
             return choices[:25]
         finally:
             await db.close()
