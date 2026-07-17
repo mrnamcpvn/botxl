@@ -1,10 +1,10 @@
 import discord
 from bot.data.skills import SKILLS_DB, RARITY_STARS
-from bot.data.equipment import EQUIPMENT, STAR_LABELS, SLOT_NAMES as EQ_SLOT_NAMES
+from bot.data.equipment import EQUIPMENT, STAR_LABELS, STAR_NAMES, STAR_COLORS, SLOT_NAMES as EQ_SLOT_NAMES
 from bot.data.classes import CLASSES
 from bot.engine.battle import get_effective_stats, get_equipped_skill
 from bot.engine.combat_power import calc_combat_power
-from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL
+from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL, MAX_ENHANCE
 
 
 class StatsView(discord.ui.View):
@@ -85,40 +85,70 @@ class StatsView(discord.ui.View):
 
     def _tab2_embed(self) -> discord.Embed:
         pdata = self.pdata
-        embed = discord.Embed(title=f"⚒️ Trang Bị — {self.target.display_name}", color=0x00ff88)
-        embed.set_thumbnail(url=self.target.display_avatar.url)
-
         eq = pdata.get("equipped", {})
         equip_items = pdata.get("_equip_items", {})
         equip_enhances = pdata.get("_equip_enhances", {})
+
+        best_star = 0
+        for slot in ["weapon", "armor", "boots", "gloves", "belt", "ring"]:
+            eq_id = eq.get(slot)
+            item_id = equip_items.get(str(eq_id)) if eq_id else None
+            if item_id and item_id in EQUIPMENT:
+                best_star = max(best_star, EQUIPMENT[item_id]["star"])
+
+        embed_color = STAR_COLORS.get(best_star, 0x00ff88)
+        embed = discord.Embed(title=f"⚒️ Trang Bị — {self.target.display_name}", color=embed_color)
+        embed.set_thumbnail(url=self.target.display_avatar.url)
+
         lines = []
         for slot in ["weapon", "armor", "boots", "gloves", "belt", "ring"]:
             eq_id = eq.get(slot)
             item_id = equip_items.get(str(eq_id)) if eq_id else None
             if item_id and item_id in EQUIPMENT:
                 e = EQUIPMENT[item_id]
+                star = e["star"]
                 enhance = equip_enhances.get(str(eq_id), 0)
                 mult = 1 + enhance * ENHANCE_BONUS_PER_LEVEL
-                stars = STAR_LABELS.get(e["star"], "⭐")
-                enhance_str = f" +{enhance}" if enhance > 0 else ""
+                stars = STAR_LABELS.get(star, "⭐")
+
+                if enhance >= MAX_ENHANCE:
+                    enhance_str = " 🌟MAX🌟"
+                elif enhance > 0:
+                    enhance_str = f" ✦+{enhance}"
+                else:
+                    enhance_str = ""
+
+                name = e["name"]
+                if star == 6:
+                    name = f"**[Thần Thoại]** {name}"
+
                 stat_texts = []
-                atk_min = None
-                atk_max = None
-                for k, v in e["stats"].items():
+                stats = e["stats"]
+                atk_min_raw = stats.get("attack_min", 0)
+                atk_max_raw = stats.get("attack_max", 0)
+                if atk_min_raw or atk_max_raw:
+                    bar_len = 10
+                    ratio = 0.3 + (star / 6) * 0.4 + (enhance / MAX_ENHANCE) * 0.3 if MAX_ENHANCE > 0 else 0.5
+                    filled = max(1, int(bar_len * ratio))
+                    bar = "█" * filled + "░" * (bar_len - filled)
+                    stat_texts.append(f"⚔️+{int(atk_min_raw * mult)}~{int(atk_max_raw * mult)} {bar}")
+
+                for k, v in stats.items():
+                    if k in ("attack_min", "attack_max"):
+                        continue
                     val = int(v * mult)
-                    if k == "attack_min": atk_min = val
-                    elif k == "attack_max": atk_max = val
-                    elif k == "defense": stat_texts.append(f"🛡️+{val}")
-                    elif k == "hp": stat_texts.append(f"❤️+{val}")
-                    elif k == "spd": stat_texts.append(f"💨+{val}")
+                    if k == "defense": stat_texts.append(f"🛡️{val}")
+                    elif k == "hp": stat_texts.append(f"❤️{val}")
+                    elif k == "spd": stat_texts.append(f"💨{val}")
                     elif k == "crit": stat_texts.append(f"💥{val}%")
                     elif k == "pierce": stat_texts.append(f"🔱{val}%")
                     elif k == "dodge": stat_texts.append(f"🍀{val}%")
                     elif k == "reflect": stat_texts.append(f"🔄{val}%")
                     elif k == "regen": stat_texts.append(f"💚{val}%/t")
-                if atk_min is not None and atk_max is not None:
-                    stat_texts.insert(0, f"⚔️+{atk_min}~{atk_max}")
-                lines.append(f"{EQ_SLOT_NAMES.get(slot, slot)}: {stars} **{e['name']}**{enhance_str} ({', '.join(stat_texts)})")
+
+                lines.append(f"{EQ_SLOT_NAMES.get(slot, slot)}: {stars} {name}{enhance_str}")
+                if stat_texts:
+                    lines.append(f"   └ {'  '.join(stat_texts)}")
             else:
                 lines.append(f"{EQ_SLOT_NAMES.get(slot, slot)}: ❌ Trống")
         embed.add_field(name="Đang Mặc", value="\n".join(lines), inline=False)

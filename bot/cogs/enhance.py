@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import random
 from bot.database import get_db
-from bot.data.equipment import EQUIPMENT, STAR_LABELS
+from bot.data.equipment import EQUIPMENT, STAR_LABELS, STAR_COLORS
 from bot.config import (
     MAX_ENHANCE, ENHANCE_SUCCESS_RATES, ENHANCE_COSTS,
     STONE_BASIC_ID, STONE_MEDIUM_ID, STONE_ADVANCED_ID,
@@ -123,7 +123,12 @@ class EnhanceCog(commands.Cog):
             success = roll < success_rate
 
             equip_name = EQUIPMENT[eiid]["name"]
-            stars = STAR_LABELS.get(EQUIPMENT[eiid]["star"], "⭐")
+            equip_star = EQUIPMENT[eiid]["star"]
+            stars = STAR_LABELS.get(equip_star, "⭐")
+            embed_color = STAR_COLORS.get(equip_star, 0x00ff00)
+
+            if equip_star == 6:
+                equip_name = f"[Thần Thoại] {equip_name}"
 
             await db.execute(f"UPDATE player_enhance_stones SET {stone_key}={stone_key}-? WHERE player_id=?",
                              (stone_qty, sid))
@@ -132,22 +137,28 @@ class EnhanceCog(commands.Cog):
             if success:
                 await db.execute("UPDATE player_equipment SET enhance=? WHERE id=?", (target, eid))
                 await db.commit()
+                if target >= MAX_ENHANCE:
+                    next_str = "🌟 MAX 🌟"
+                else:
+                    next_str = f"✦+{target}"
+                cur_str = f"✦+{current}" if current > 0 else "+0"
                 embed = discord.Embed(
                     title="🔨 CƯỜNG HÓA THÀNH CÔNG!",
                     description=(
                         f"{stars} **{equip_name}**\n"
-                        f"⭐ **+{current}** → **+{target}** ✨\n"
+                        f"⭐ **{cur_str}** → **{next_str}** ✨\n"
                         f"🎯 Tỉ lệ: **{int(success_rate*100)}%** — Roll: **{int(roll*100)}** ✅\n"
                         f"💎 Tốn: {stone_qty} đá | 💰 {coin_cost}🪙"
                     ),
-                    color=0x00ff00)
+                    color=embed_color)
             else:
                 await db.commit()
+                cur_str = f"✦+{current}" if current > 0 else "+0"
                 embed = discord.Embed(
                     title="💥 CƯỜNG HÓA THẤT BẠI!",
                     description=(
                         f"{stars} **{equip_name}**\n"
-                        f"⭐ Vẫn giữ **+{current}**\n"
+                        f"⭐ Vẫn giữ **{cur_str}**\n"
                         f"🎯 Tỉ lệ: **{int(success_rate*100)}%** — Roll: **{int(roll*100)}** ❌\n"
                         f"💎 Mất: {stone_qty} đá | 💰 Mất {coin_cost}🪙"
                     ),

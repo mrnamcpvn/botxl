@@ -4,7 +4,7 @@ from discord.ext import commands
 from bot.database import get_db
 from bot.data.shop_items import SHOP_ITEMS
 from bot.engine.combat_power import update_combat_power
-from bot.data.equipment import EQUIPMENT, STAR_LABELS, SLOT_NAMES as EQ_SLOT_NAMES
+from bot.data.equipment import EQUIPMENT, STAR_LABELS, STAR_NAMES, STAR_COLORS, SLOT_NAMES as EQ_SLOT_NAMES
 from bot.data.skills import SKILLS_DB, RARITY_STARS
 from bot.engine.rewards import calc_level
 
@@ -260,7 +260,12 @@ class ShopCog(commands.Cog):
             async for r in slot_skill_cursor:
                 equipped_skills[r[0]] = r[1]
             level, xp_in_level = calc_level(pdata.get("xp", 0))
-            embed = discord.Embed(title=f"🎒 Túi Đồ {user.display_name}", color=0x00ff88,
+            best_star = 0
+            for er in eq_rows:
+                if er["item_id"] in EQUIPMENT and er["equipped"]:
+                    best_star = max(best_star, EQUIPMENT[er["item_id"]]["star"])
+            embed_color = STAR_COLORS.get(best_star, 0x00ff88)
+            embed = discord.Embed(title=f"🎒 Túi Đồ {user.display_name}", color=embed_color,
                                   description=f"Lv.{level} | 💰 {pdata.get('coins', 0)}🪙")
             if consumables:
                 lines = []
@@ -280,20 +285,33 @@ class ShopCog(commands.Cog):
                         if er:
                             eiid = er["item_id"]
                             enh = er["enhance"]
-                            enh_str = f" +{enh}" if enh > 0 else ""
+                            if enh >= 9:
+                                enh_str = " 🌟MAX🌟"
+                            elif enh > 0:
+                                enh_str = f" ✦+{enh}"
+                            else:
+                                enh_str = ""
                             if eiid in SHOP_ITEMS:
                                 lines.append(f"✅ **{slot_name}**: {SHOP_ITEMS[eiid]['name']}{enh_str}")
                             elif eiid in EQUIPMENT:
                                 e = EQUIPMENT[eiid]
                                 stars = STAR_LABELS.get(e["star"], "⭐")
-                                lines.append(f"✅ **{slot_name}**: {stars} {e['name']}{enh_str}")
+                                name = e["name"]
+                                if e["star"] == 6:
+                                    name = f"**[Thần Thoại]** {name}"
+                                lines.append(f"✅ **{slot_name}**: {stars} {name}{enh_str}")
                     else:
                         lines.append(f"⬜ {slot_name}: (trống)")
                 lines.append("")
                 for er in eq_rows:
                     eiid = er["item_id"]
                     enh = er["enhance"]
-                    enh_str = f" +{enh}" if enh > 0 else ""
+                    if enh >= 9:
+                        enh_str = " 🌟MAX🌟"
+                    elif enh > 0:
+                        enh_str = f" ✦+{enh}"
+                    else:
+                        enh_str = ""
                     ee = "✅" if er["equipped"] else "📦"
                     if eiid in SHOP_ITEMS:
                         item = SHOP_ITEMS[eiid]
@@ -302,7 +320,10 @@ class ShopCog(commands.Cog):
                         e = EQUIPMENT[eiid]
                         stars = STAR_LABELS.get(e["star"], "⭐")
                         slot = EQ_SLOT_NAMES.get(e["slot"], e["slot"])
-                        lines.append(f"`ID{eiid}` {ee} {stars} {e['name']}{enh_str} ({slot})")
+                        name = e["name"]
+                        if e["star"] == 6:
+                            name = f"**[Thần Thoại]** {name}"
+                        lines.append(f"`ID{eiid}` {ee} {stars} {name}{enh_str} ({slot})")
                 if stone_row and (stone_row[0] or stone_row[1] or stone_row[2]):
                     lines.append("")
                     lines.append(f"💎 Đá sơ cấp: {stone_row[0]} | 💎 Đá trung cấp: {stone_row[1]} | 💎 Đá cao cấp: {stone_row[2]}")
@@ -524,15 +545,21 @@ class EquipCatalogView(discord.ui.View):
 
 
 def _catalog_embed(slot_filter: str = "weapon") -> discord.Embed:
-    embed = discord.Embed(title=f"📋 TRANG BỊ — {EQ_SLOT_NAMES.get(slot_filter, slot_filter)}", color=0x00aaff)
     items = [(eid, e) for eid, e in EQUIPMENT.items() if e["slot"] == slot_filter]
     items.sort(key=lambda x: x[1]["star"], reverse=True)
+    best_star = items[0][1]["star"] if items else 0
+    embed_color = STAR_COLORS.get(best_star, 0x00aaff)
+    embed = discord.Embed(title=f"📋 TRANG BỊ — {EQ_SLOT_NAMES.get(slot_filter, slot_filter)}", color=embed_color)
     if not items:
         embed.description = "Trống!"
         return embed
     lines = []
     for eid, e in items:
-        stars = STAR_LABELS.get(e["star"], "⭐")
+        star = e["star"]
+        stars = STAR_LABELS.get(star, "⭐")
+        name = e["name"]
+        if star == 6:
+            name = f"**[Thần Thoại]** {name}"
         stat_parts = []
         atk_min, atk_max = None, None
         for k, v in e["stats"].items():
