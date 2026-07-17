@@ -161,8 +161,9 @@ class BattleView(discord.ui.View):
 
         result_lines.append(f"🌑 **{an}** bị choáng, mất lượt!")
 
-        # Reduce cooldowns
-        for pid in [p1_id, p2_id]:
+        # Reduce cooldowns only for the non-stunned player
+        other_id = p2_id if is_p1 else p1_id
+        for pid in [other_id]:
             pdat = await self._get_player_data(db, pid)
             for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
                 if pdat.get(cdkey, 0) > 0:
