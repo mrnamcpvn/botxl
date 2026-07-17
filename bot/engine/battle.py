@@ -163,11 +163,11 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
         elif skill["type"] == "counter":
-            c_mult = skill.get("multiplier", 1.0)
+            c_mult = skill.get("multiplier", 0.2)
             a_id = attacker["id"]
             flags[f"{a_id}_counter"] = c_mult
-            flags[f"{a_id}_counter_immune"] = True
-            result_lines.append(f"🔄 **{skill['name']}** — mi\u1ec5n dmg + ph\u1ea3n \u00d7{c_mult}!")
+            flags[f"{a_id}_counter_active"] = True
+            result_lines.append(f"🔄 **{skill['name']}** — gi\u1ea3m 80% dmg + ph\u1ea3n {int(c_mult*100)}%!")
             attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
 
     # ─── DAMAGE moves (attack + special) ───
@@ -262,13 +262,12 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 damage = int(damage * (100 - def_passive["dmg_reduce_pct"]) / 100)
                 result_lines.append(f"💎 GI\u00c1P B\u1ea4T T\u1eec! -{def_passive['dmg_reduce_pct']}% dmg!")
 
-        # Counter immune — save original damage for reflect
+        # Counter — 80% damage reduction
         d_id = defender["id"]
         original_damage = damage
-        immune_key = f"{d_id}_counter_immune"
-        if flags.pop(immune_key, None):
-            result_lines.append(f"🔄 {defender.get('name', '???')} MI\u1ec4N TO\u00c0N B\u1ed8 S\u00c1T TH\u01af\u01a0NG!")
-            damage = 0
+        if flags.pop(f"{d_id}_counter_active", None):
+            damage = max(1, int(damage * 0.2))
+            result_lines.append(f"🔄 {defender.get('name', '???')} GI\u1ea2M 80% S\u00c1T TH\u01af\u01a0NG!")
 
         # Shield
         shield_key = f"{d_id}_shield_hp"
@@ -328,7 +327,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             attacker["hp"] = max(0, attacker.get("hp", 0) - cd)
             attacker["damage_taken"] = attacker.get("damage_taken", 0) + cd
             defender["damage_dealt"] = defender.get("damage_dealt", 0) + cd
-            result_lines.append(f"🔄 PH\u1ea2N \u0110\u00d2N! {cd} dmg!")
+            result_lines.append(f"🔄 PH\u1ea2N \u0110\u00d2N {int(counter_mult*100)}%! {cd} dmg!")
 
         # Lifesteal
         if skill.get("type") == "lifesteal":
