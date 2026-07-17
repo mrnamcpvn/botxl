@@ -318,10 +318,6 @@ class NPCCog(commands.Cog):
             flags.pop(f"{npc['id']}_stunned", None)
             result_lines.append(f"\n🌑 **{npc['name']}** bị choáng, mất lượt!")
         else:
-            for ck in ["attack_cd", "special_cd", "defense_cd"]:
-                if npc.get(ck, 0) > 0:
-                    npc[ck] -= 1
-
             npc_move = self._npc_ai_move(npc)
             npc_cat = "defense" if npc_move == "defense" else npc_move
             npc_cd_key = f"{npc_cat}_cd"
