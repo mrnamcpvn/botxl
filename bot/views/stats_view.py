@@ -4,7 +4,7 @@ from bot.data.equipment import EQUIPMENT, STAR_LABELS, SLOT_NAMES as EQ_SLOT_NAM
 from bot.data.classes import CLASSES
 from bot.engine.battle import get_effective_stats, get_equipped_skill
 from bot.engine.combat_power import calc_combat_power
-from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL
+from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL
 
 
 class StatsView(discord.ui.View):
@@ -98,22 +98,24 @@ class StatsView(discord.ui.View):
             if item_id and item_id in EQUIPMENT:
                 e = EQUIPMENT[item_id]
                 enhance = equip_enhances.get(str(eq_id), 0)
+                mult = 1 + enhance * ENHANCE_BONUS_PER_LEVEL
                 stars = STAR_LABELS.get(e["star"], "⭐")
                 enhance_str = f" +{enhance}" if enhance > 0 else ""
                 stat_texts = []
                 atk_min = None
                 atk_max = None
                 for k, v in e["stats"].items():
-                    if k == "attack_min": atk_min = v
-                    elif k == "attack_max": atk_max = v
-                    elif k == "defense": stat_texts.append(f"🛡️+{v}")
-                    elif k == "hp": stat_texts.append(f"❤️+{v}")
-                    elif k == "spd": stat_texts.append(f"💨+{v}")
-                    elif k == "crit": stat_texts.append(f"💥{v}%")
-                    elif k == "pierce": stat_texts.append(f"🔱{v}%")
-                    elif k == "dodge": stat_texts.append(f"🍀{v}%")
-                    elif k == "reflect": stat_texts.append(f"🔄{v}%")
-                    elif k == "regen": stat_texts.append(f"💚{v}%/t")
+                    val = int(v * mult)
+                    if k == "attack_min": atk_min = val
+                    elif k == "attack_max": atk_max = val
+                    elif k == "defense": stat_texts.append(f"🛡️+{val}")
+                    elif k == "hp": stat_texts.append(f"❤️+{val}")
+                    elif k == "spd": stat_texts.append(f"💨+{val}")
+                    elif k == "crit": stat_texts.append(f"💥{val}%")
+                    elif k == "pierce": stat_texts.append(f"🔱{val}%")
+                    elif k == "dodge": stat_texts.append(f"🍀{val}%")
+                    elif k == "reflect": stat_texts.append(f"🔄{val}%")
+                    elif k == "regen": stat_texts.append(f"💚{val}%/t")
                 if atk_min is not None and atk_max is not None:
                     stat_texts.insert(0, f"⚔️+{atk_min}~{atk_max}")
                 lines.append(f"{EQ_SLOT_NAMES.get(slot, slot)}: {stars} **{e['name']}**{enhance_str} ({', '.join(stat_texts)})")
