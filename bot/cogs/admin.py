@@ -74,17 +74,23 @@ class AdminCog(commands.Cog):
 
     async def _auto_drop_loop(self):
         await self.bot.wait_until_ready()
+        logger.info(f"[DROP] Auto-drop loop started, channel={DROP_CHANNEL_ID}")
         while True:
             try:
                 delay = random.randint(600, 3540)
+                mins = delay // 60
+                secs = delay % 60
+                logger.info(f"[DROP] Next drop in {mins}p{secs}s")
                 await asyncio.sleep(delay)
                 ch = self.bot.get_channel(DROP_CHANNEL_ID)
                 if ch:
                     await self._do_drop(ch)
+                else:
+                    logger.error(f"[DROP] Channel {DROP_CHANNEL_ID} not found!")
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"[DROP] {e}")
+                logger.error(f"[DROP] {e}", exc_info=True)
 
     @commands.command(name="reset")
     async def reset_cmd(self, ctx, member: discord.Member = None):
