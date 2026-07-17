@@ -74,7 +74,7 @@ def generate_dungeon_npc(floor: int) -> dict:
 
 def calc_dungeon_rewards(floor: int) -> dict:
     rewards = {
-        "stones": {"stone_basic": 0, "stone_medium": 0, "stone_advanced": 0},
+        "stones": {"stone_basic": 0, "stone_medium": 0, "stone_advanced": 0, "artifact": 0},
         "coins": 0,
         "equipment": [],
     }
@@ -102,6 +102,11 @@ def calc_dungeon_rewards(floor: int) -> dict:
             chosen = random.choice(items)
             eid = [k for k, v in EQUIPMENT.items() if v == chosen][0]
             rewards["equipment"].append({"eid": eid, "name": chosen["name"], "star": star})
+
+    if floor >= 50:
+        import random
+        if random.random() < 0.03:
+            rewards["stones"]["artifact"] = 1
 
     return rewards
 
@@ -578,8 +583,16 @@ class DungeonCog(commands.Cog):
             else:
                 await db.execute("""INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced)
                     VALUES (?, ?, ?, ?)""",
-                    (sid, acc["stones"]["stone_basic"], acc["stones"]["stone_medium"],
-                     acc["stones"]["stone_advanced"]))
+                     (sid, acc["stones"]["stone_basic"], acc["stones"]["stone_medium"],
+                      acc["stones"]["stone_advanced"]))
+
+            if acc["stones"].get("artifact", 0) > 0:
+                art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
+                art_row = await art_cursor.fetchone()
+                if art_row:
+                    await db.execute("UPDATE player_artifact SET stone_count=stone_count+? WHERE player_id=?", (acc["stones"]["artifact"], sid))
+                else:
+                    await db.execute("INSERT INTO player_artifact (player_id, star, stone_count) VALUES (?, 0, ?)", (sid, acc["stones"]["artifact"]))
 
             if acc["coins"] > 0:
                 await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
@@ -598,6 +611,8 @@ class DungeonCog(commands.Cog):
             for k, label in [("stone_basic", "Đá sơ cấp"), ("stone_medium", "Đá trung cấp"), ("stone_advanced", "Đá cao cấp")]:
                 if acc["stones"].get(k, 0) > 0:
                     total_lines.append(f"💎 {label}: +{acc['stones'][k]}")
+            if acc["stones"].get("artifact", 0) > 0:
+                total_lines.append(f"💎 Đá thần khí: +{acc['stones']['artifact']}")
             if acc["equipment"]:
                 total_lines.append(f"⚒️ Trang bị: {len(acc['equipment'])} món")
             if total_lines:
