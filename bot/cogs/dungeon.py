@@ -16,11 +16,14 @@ from bot.config import (
 )
 
 
+REAL_CLASSES = ["banxabong", "xola", "sieunhan", "thaychua", "muoi", "chodien", "baque"]
+
+
 def generate_dungeon_npc(floor: int) -> dict:
     npc_level = floor + 5
-    hp = 80 + npc_level * 15
-    atk = 8 + npc_level * 3
-    defense = 4 + npc_level * 2
+    hp = 100 + npc_level * 25
+    atk = 10 + npc_level * 5
+    defense = 5 + npc_level * 3
     names = [
         "Quái Vật Bóng Tối", "Thú Dữ Vực Sâu", "Linh Hồn Lạc Lối",
         "Xác Sống Vô Hồn", "Quỷ Dữ Bóng Đêm", "Rồng Đen Hắc Ám",
@@ -44,6 +47,15 @@ def generate_dungeon_npc(floor: int) -> dict:
         atk = int(atk * 1.5)
         defense = int(defense * 1.3)
 
+    if floor <= 20:
+        skills = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
+    elif floor <= 50:
+        skills = {"attack": 2, "special": 6, "defense": 11, "passive": 17}
+    elif floor <= 80:
+        skills = {"attack": 3, "special": 7, "defense": 12, "passive": 19}
+    else:
+        skills = {"attack": 4, "special": 9, "defense": 13, "passive": 20}
+
     return {
         "id": f"dungeon_{floor}",
         "name": name,
@@ -53,8 +65,9 @@ def generate_dungeon_npc(floor: int) -> dict:
         "attack_max": atk + 5,
         "defense": defense,
         "level": npc_level,
-        "class_id": random.choice(["satthu", "phapsu", "dauxe", "bancung", "chemgio", "bongtoi", "thienthan", "banxabong"]),
+        "class_id": random.choice(REAL_CLASSES),
         "cooldowns": {"attack_cd": 0, "special_cd": 0, "defense_cd": 0},
+        "skill_equipped": skills,
     }
 
 
