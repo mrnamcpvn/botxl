@@ -262,7 +262,8 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 damage = int(damage * (100 - def_passive["dmg_reduce_pct"]) / 100)
                 result_lines.append(f"💎 GI\u00c1P B\u1ea4T T\u1eec! -{def_passive['dmg_reduce_pct']}% dmg!")
 
-        # Counter immune
+        # Counter immune — save original damage for reflect
+        original_damage = damage
         immune_key = f"p{1 if not is_p1_turn else 2}_counter_immune"
         if flags.pop(immune_key, None):
             result_lines.append(f"🔄 {defender.get('name', '???')} MI\u1ec4N TO\u00c0N B\u1ed8 S\u00c1T TH\u01af\u01a0NG!")
@@ -322,7 +323,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         counter_key = f"p{1 if not is_p1_turn else 2}_counter"
         counter_mult = flags.pop(counter_key, None)
         if counter_mult:
-            cd = int(damage * counter_mult)
+            cd = int(original_damage * counter_mult)
             attacker["hp"] = max(0, attacker.get("hp", 0) - cd)
             attacker["damage_taken"] = attacker.get("damage_taken", 0) + cd
             defender["damage_dealt"] = defender.get("damage_dealt", 0) + cd
