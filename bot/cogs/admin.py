@@ -76,7 +76,7 @@ class AdminCog(commands.Cog):
         await self.bot.wait_until_ready()
         while True:
             try:
-                delay = random.randint(3600, 7200)
+                delay = random.randint(600, 3540)
                 await asyncio.sleep(delay)
                 ch = self.bot.get_channel(DROP_CHANNEL_ID)
                 if ch:
