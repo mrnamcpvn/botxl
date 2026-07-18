@@ -280,14 +280,16 @@ class Arena(commands.Cog):
                 slots[r[0]] = r[1]
             pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
+                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
             equipped = {}
             equip_items = {}
             equip_enhances = {}
+            equip_hidden = {}
             async for r in eq_cursor:
                 eq_id = r[0]
                 eiid = r[1]
                 enh = r[2]
+                hidden = r[3] if r[3] else ""
                 slot = None
                 if eiid in EQUIPMENT:
                     slot = EQUIPMENT[eiid]["slot"]
@@ -297,9 +299,11 @@ class Arena(commands.Cog):
                     equipped[slot] = eq_id
                     equip_items[str(eq_id)] = eiid
                     equip_enhances[str(eq_id)] = enh
+                    equip_hidden[str(eq_id)] = hidden
             pdata["equipped"] = equipped
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
+            pdata["_equip_hidden"] = equip_hidden
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}
@@ -861,14 +865,16 @@ class Arena(commands.Cog):
                 slots[r[0]] = r[1]
             pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
+                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
             equipped = {}
             equip_items = {}
             equip_enhances = {}
+            equip_hidden = {}
             async for r in eq_cursor:
                 eq_id = r[0]
                 eiid = r[1]
                 enh = r[2]
+                hidden = r[3] if r[3] else ""
                 slot = None
                 if eiid in EQUIPMENT:
                     slot = EQUIPMENT[eiid]["slot"]
@@ -878,9 +884,11 @@ class Arena(commands.Cog):
                     equipped[slot] = eq_id
                     equip_items[str(eq_id)] = eiid
                     equip_enhances[str(eq_id)] = enh
+                    equip_hidden[str(eq_id)] = hidden
             pdata["equipped"] = equipped
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
+            pdata["_equip_hidden"] = equip_hidden
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}
@@ -1201,27 +1209,31 @@ class Arena(commands.Cog):
         return dict(row)
 
     async def _load_equipment(self, db, pdata: dict, pid: str):
-        eq_cursor = await db.execute(
-            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
-        equipped = {}
-        equip_items = {}
-        equip_enhances = {}
-        async for r in eq_cursor:
-            eq_id = r[0]
-            eiid = r[1]
-            enh = r[2]
-            slot = None
-            if eiid in EQUIPMENT:
-                slot = EQUIPMENT[eiid]["slot"]
-            elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid].get("type") == "equipment":
-                slot = SHOP_ITEMS[eiid]["slot"]
-            if slot:
-                equipped[slot] = eq_id
-                equip_items[str(eq_id)] = eiid
-                equip_enhances[str(eq_id)] = enh
-        pdata["equipped"] = equipped
-        pdata["_equip_items"] = equip_items
-        pdata["_equip_enhances"] = equip_enhances
+            eq_cursor = await db.execute(
+                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
+            equipped = {}
+            equip_items = {}
+            equip_enhances = {}
+            equip_hidden = {}
+            async for r in eq_cursor:
+                eq_id = r[0]
+                eiid = r[1]
+                enh = r[2]
+                hidden = r[3] if len(r) > 3 and r[3] else ""
+                slot = None
+                if eiid in EQUIPMENT:
+                    slot = EQUIPMENT[eiid]["slot"]
+                elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid]["type"] == "equipment":
+                    slot = SHOP_ITEMS[eiid]["slot"]
+                if slot:
+                    equipped[slot] = eq_id
+                    equip_items[str(eq_id)] = eiid
+                    equip_enhances[str(eq_id)] = enh
+                    equip_hidden[str(eq_id)] = hidden
+            pdata["equipped"] = equipped
+            pdata["_equip_items"] = equip_items
+            pdata["_equip_enhances"] = equip_enhances
+            pdata["_equip_hidden"] = equip_hidden
 
     async def _load_full_player(self, db, pid: str) -> dict:
         cursor = await db.execute("SELECT * FROM players WHERE id=?", (pid,))
@@ -1236,14 +1248,16 @@ class Arena(commands.Cog):
             slots[srow[0]] = srow[1]
         pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
         eq_cursor = await db.execute(
-            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
+            "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
         equipped = {}
         equip_items = {}
         equip_enhances = {}
+        equip_hidden = {}
         async for erow in eq_cursor:
             eq_id = erow[0]
             eiid = erow[1]
             enh = erow[2]
+            hidden = erow[3] if erow[3] else ""
             slot = None
             if eiid in EQUIPMENT:
                 slot = EQUIPMENT[eiid]["slot"]
@@ -1253,9 +1267,11 @@ class Arena(commands.Cog):
                 equipped[slot] = eq_id
                 equip_items[str(eq_id)] = eiid
                 equip_enhances[str(eq_id)] = enh
+                equip_hidden[str(eq_id)] = hidden
         pdata["equipped"] = equipped
         pdata["_equip_items"] = equip_items
         pdata["_equip_enhances"] = equip_enhances
+        pdata["_equip_hidden"] = equip_hidden
         buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
         buff_row = await buff_cursor.fetchone()
         pdata["buffs"] = dict(buff_row) if buff_row else {}
