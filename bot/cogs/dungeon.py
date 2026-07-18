@@ -198,6 +198,22 @@ class DungeonCog(commands.Cog):
                 await self._reply(ctx_or_int, f"🤷 Chưa đăng ký! `{prefix}register`")
                 return
             pdata = dict(prow)
+
+            # Sync role_mult from Discord roles
+            if isinstance(ctx_or_int, commands.Context):
+                guild = ctx_or_int.guild
+            else:
+                guild = ctx_or_int.guild
+            if guild:
+                member = guild.get_member(int(sid))
+                if member:
+                    from bot.cogs.admin import sync_role_mult
+                    await sync_role_mult(db, sid, [r.name for r in member.roles])
+                    pc = await db.execute("SELECT role_mult FROM players WHERE id=?", (sid,))
+                    pr = await pc.fetchone()
+                    if pr:
+                        pdata["role_mult"] = pr[0]
+
             if pdata["level"] < DUNGEON_REQUIRED_LEVEL:
                 await self._reply(ctx_or_int,
                     f"🔒 Cần level **{DUNGEON_REQUIRED_LEVEL}**! Mày Lv.{pdata['level']}")
