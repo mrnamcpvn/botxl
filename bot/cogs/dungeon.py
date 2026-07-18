@@ -104,7 +104,6 @@ def calc_dungeon_rewards(floor: int) -> dict:
             rewards["equipment"].append({"eid": eid, "name": chosen["name"], "star": star})
 
     if floor >= 50:
-        import random
         if random.random() < 0.03:
             rewards["stones"]["artifact"] = 1
 
