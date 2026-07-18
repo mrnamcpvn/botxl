@@ -139,21 +139,27 @@ class DungeonView(discord.ui.View):
         btn_stop.callback = self._stop_callback
         self.add_item(btn_stop)
 
+        btn_basic = discord.ui.Button(
+            emoji="👊", label="Cú Đấm Ba Que",
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_basic", row=1)
+        btn_basic.callback = self._make_move_callback("basic")
+        self.add_item(btn_basic)
+
         btn_atk = discord.ui.Button(
             emoji=atk.get("icon", "💥"), label=atk.get("name", "Tấn Công")[:80],
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_atk", row=1)
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_atk", row=2)
         btn_atk.callback = self._make_move_callback("attack")
         self.add_item(btn_atk)
 
         btn_spc = discord.ui.Button(
             emoji=spc.get("icon", "🔥"), label=spc.get("name", "Đặc Biệt")[:80],
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_spc", row=1)
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_spc", row=2)
         btn_spc.callback = self._make_move_callback("special")
         self.add_item(btn_spc)
 
         btn_def = discord.ui.Button(
             emoji="🛡️", label="Chống Xỏ Lá",
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_def", row=1)
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_def", row=2)
         btn_def.callback = self._make_move_callback("defense")
         self.add_item(btn_def)
 
@@ -414,25 +420,24 @@ class DungeonCog(commands.Cog):
         flags = session["flags"]
         result_lines = []
 
-        cat = "defense" if player_move_type == "defense" else player_move_type
-        cd_key = f"{cat}_cd"
-        skill = get_equipped_skill(player, cat)
-        skill_id = None
-        for sid2, s in SKILLS_DB.items():
-            if s["name"] == skill["name"]:
-                skill_id = sid2
-                break
-        if skill_id is None:
+        if player_move_type == "basic":
             skill_id = 1
-
-        if player.get(cd_key, 0) > 0:
-            if cat == "attack":
-                skill_id = 1
-                result_lines.append(f"⏳ **{skill['name']}** CD, dùng 👊 Cú Đấm Ba Que!")
-            else:
+        else:
+            cat = "defense" if player_move_type == "defense" else player_move_type
+            cd_key = f"{cat}_cd"
+            if player.get(cd_key, 0) > 0:
+                sk = get_equipped_skill(player, cat)
                 await interaction.followup.send(
-                    f"⏳ **{skill['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
+                    f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
                 return
+            skill = get_equipped_skill(player, cat)
+            skill_id = None
+            for sid2, s in SKILLS_DB.items():
+                if s["name"] == skill["name"]:
+                    skill_id = sid2
+                    break
+            if skill_id is None:
+                skill_id = 1
 
         result = await execute_action(player, npc, 0, {"type": player_move_type, "skill_id": skill_id}, flags)
         player = result["p1"]
