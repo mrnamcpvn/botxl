@@ -3,7 +3,7 @@ import random
 from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, DROP_WEIGHTS
 
-DROP_CHANCE = 0.05
+DROP_CHANCE = 0.08
 
 
 def calc_drop(role_mult: float = 1.0) -> dict | None:

@@ -298,7 +298,17 @@ class AdminCog(commands.Cog):
         await self._do_drop(interaction.channel)
 
     async def _do_drop(self, channel):
-        items = [(eid, e) for eid, e in EQUIPMENT.items()]
+        from bot.data.equipment import DROP_WEIGHTS
+        total = sum(DROP_WEIGHTS.values())
+        roll = random.randint(1, total)
+        cumulative = 0
+        star = 1
+        for s, w in DROP_WEIGHTS.items():
+            cumulative += w
+            if roll <= cumulative:
+                star = s
+                break
+        items = [(eid, e) for eid, e in EQUIPMENT.items() if e["star"] == star]
         if not items:
             return
         eid, equip = random.choice(items)
