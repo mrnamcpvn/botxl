@@ -35,7 +35,7 @@ def get_skill_list():
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"request": request})
+    return templates.TemplateResponse(request, "login.html", {"request": request, "is_admin": False})
 
 @router.post("/login", response_class=HTMLResponse)
 async def login(request: Request, password: str = Form(...)):
@@ -57,7 +57,7 @@ async def admin_page(request: Request, msg: str = "", error: str = ""):
     equips = get_equip_list()
     skills = get_skill_list()
     return templates.TemplateResponse(request, "admin.html", {
-        "request": request, "players": players, "equips": equips, "skills": skills, "msg": msg, "error": error
+        "request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg, "error": error
     })
 
 @router.post("/admin/coins", response_class=HTMLResponse)
@@ -72,7 +72,7 @@ async def admin_coins(request: Request, player_id: str = Form(...), amount: int 
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/dungeon", response_class=HTMLResponse)
 async def admin_dungeon(request: Request, player_id: str = Form(...)):
@@ -87,7 +87,7 @@ async def admin_dungeon(request: Request, player_id: str = Form(...)):
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/equip", response_class=HTMLResponse)
 async def admin_equip(request: Request, player_id: str = Form(...), equip_id: int = Form(...)):
@@ -101,7 +101,7 @@ async def admin_equip(request: Request, player_id: str = Form(...), equip_id: in
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/stones", response_class=HTMLResponse)
 async def admin_stones(request: Request, player_id: str = Form(...), stone_type: str = Form(...), amount: int = Form(...)):
@@ -123,7 +123,7 @@ async def admin_stones(request: Request, player_id: str = Form(...), stone_type:
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/skill", response_class=HTMLResponse)
 async def admin_skill(request: Request, player_id: str = Form(...), skill_id: int = Form(...)):
@@ -139,7 +139,7 @@ async def admin_skill(request: Request, player_id: str = Form(...), skill_id: in
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/artifact", response_class=HTMLResponse)
 async def admin_artifact(request: Request, player_id: str = Form(...), star: int = Form(...)):
@@ -154,7 +154,7 @@ async def admin_artifact(request: Request, player_id: str = Form(...), star: int
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/resetcd", response_class=HTMLResponse)
 async def admin_resetcd(request: Request, player_id: str = Form(...)):
@@ -168,4 +168,4 @@ async def admin_resetcd(request: Request, player_id: str = Form(...)):
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})

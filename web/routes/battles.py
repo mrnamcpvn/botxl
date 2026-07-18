@@ -22,5 +22,6 @@ async def battle_detail(request: Request, bid: int):
     if not battle:
         return HTMLResponse("Battle not found", status_code=404)
     rounds = json.loads(battle["rounds"])
+    is_admin = request.session.get("admin", False)
     return templates.TemplateResponse(request, "battle_replay.html", {
-        "request": request, "battle": battle, "rounds": rounds})
+        "request": request, "is_admin": is_admin, "battle": battle, "rounds": rounds})

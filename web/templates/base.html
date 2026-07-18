@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    {% if session and session.get("admin") %}
+    {% if is_admin %}
     <div class="layout">
         <aside class="sidebar">
             <div class="sidebar-brand">⚔️ Bot-XL</div>
