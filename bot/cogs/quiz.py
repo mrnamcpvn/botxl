@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import random
 import asyncio
@@ -106,6 +107,12 @@ class QuizCog(commands.Cog):
     async def quiz_cmd(self, ctx):
         await self._post_question()
         await ctx.message.delete()
+
+    @app_commands.command(name="quiz", description="🎮 Tạo câu hỏi mini game (Admin)")
+    @app_commands.default_permissions(administrator=True)
+    async def slash_quiz(self, interaction: discord.Interaction):
+        await interaction.response.send_message("✅ Đang tạo câu hỏi...", ephemeral=True)
+        await self._post_question()
 
     @commands.Cog.listener()
     async def on_message(self, message):

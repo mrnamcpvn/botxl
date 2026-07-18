@@ -186,7 +186,7 @@ class DungeonCog(commands.Cog):
 
         db = await get_db()
         try:
-            player_cursor = await db.execute("SELECT level, coins, hp FROM players WHERE id=?", (sid,))
+            player_cursor = await db.execute("SELECT level, coins, hp, role_mult FROM players WHERE id=?", (sid,))
             prow = await player_cursor.fetchone()
             if not prow:
                 await self._reply(ctx_or_int, f"🤷 Chưa đăng ký! `{prefix}register`")
@@ -225,14 +225,15 @@ class DungeonCog(commands.Cog):
 
             free_used = dg["daily_entries"] >= DUNGEON_FREE_ENTRIES
             tickets_bought = dg.get("daily_tickets_bought", 0)
+            is_dragon = pdata.get("role_mult", 1.0) >= 3.0
 
-            if free_used and tickets_bought >= DUNGEON_MAX_TICKETS:
+            if not is_dragon and free_used and tickets_bought >= DUNGEON_MAX_TICKETS:
                 await self._reply(ctx_or_int,
                     f"🏰 Hết lượt hôm nay! (Free: đã dùng, Vé: {tickets_bought}/{DUNGEON_MAX_TICKETS})\n⏰ Reset sau 0h!")
                 return
 
             ticket_msg = ""
-            if free_used:
+            if free_used and not is_dragon:
                 cost = DUNGEON_TICKET_COST_1 if tickets_bought == 0 else DUNGEON_TICKET_COST_2
                 if pdata["coins"] < cost:
                     await self._reply(ctx_or_int,
@@ -242,7 +243,8 @@ class DungeonCog(commands.Cog):
                 await db.execute("UPDATE dungeon_progress SET daily_tickets_bought=daily_tickets_bought+1 WHERE player_id=?", (sid,))
                 ticket_msg = f"\n🎫 Mua vé: -{cost}🪙"
 
-            await db.execute("UPDATE dungeon_progress SET daily_entries=daily_entries+1 WHERE player_id=?", (sid,))
+            if not is_dragon:
+                await db.execute("UPDATE dungeon_progress SET daily_entries=daily_entries+1 WHERE player_id=?", (sid,))
             await db.commit()
 
             next_floor = dg["checkpoint"] + 1
