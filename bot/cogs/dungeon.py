@@ -382,8 +382,7 @@ class DungeonCog(commands.Cog):
         if not session or view.finished:
             await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
             return
-        npc_move = self._npc_ai_move(session["npc_pdata"])
-        await self._execute_dungeon_turn(interaction, session, view, npc_move)
+        await self._execute_dungeon_turn(interaction, session, view, "attack")
 
     async def _handle_dungeon_move(self, interaction: discord.Interaction,
                                     view: DungeonView, move_type: str):
