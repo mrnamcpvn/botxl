@@ -538,6 +538,9 @@ class DungeonCog(commands.Cog):
                                   color=0x00ff00)
 
             player = session["player_pdata"]
+            player["attack_cd"] = 0
+            player["special_cd"] = 0
+            player["defense_cd"] = 0
             npc_data = generate_dungeon_npc(next_floor)
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
