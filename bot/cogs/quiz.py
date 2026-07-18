@@ -9,14 +9,15 @@ from bot.data.quiz import QUIZ_QUESTIONS
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, DROP_WEIGHTS
 from bot.data.shop_items import SHOP_ITEMS
 
-QUIZ_CHANNEL_ID = None  # Auto-detect first text channel
+QUIZ_CHANNEL_ID = 1040459995319373864
 REWARD_COINS = (50, 200)
 
 
 async def seed_questions(db):
     cursor = await db.execute("SELECT COUNT(*) FROM quiz_questions")
     count = (await cursor.fetchone())[0]
-    if count == 0:
+    if count < len(QUIZ_QUESTIONS):
+        await db.execute("DELETE FROM quiz_questions")
         for q in QUIZ_QUESTIONS:
             await db.execute("INSERT INTO quiz_questions (question, answer, category) VALUES (?, ?, ?)",
                              (q["q"], q["a"], q["cat"]))
@@ -90,17 +91,7 @@ class QuizCog(commands.Cog):
             await db.close()
 
     def _get_channel(self):
-        global QUIZ_CHANNEL_ID
-        if QUIZ_CHANNEL_ID:
-            ch = self.bot.get_channel(QUIZ_CHANNEL_ID)
-            if ch:
-                return ch
-        for guild in self.bot.guilds:
-            for ch in guild.text_channels:
-                if ch.permissions_for(guild.me).send_messages:
-                    QUIZ_CHANNEL_ID = ch.id
-                    return ch
-        return None
+        return self.bot.get_channel(QUIZ_CHANNEL_ID)
 
     @commands.command(name="quiz")
     @commands.has_permissions(administrator=True)
