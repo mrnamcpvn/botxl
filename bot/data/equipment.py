@@ -6,7 +6,7 @@ SLOT_NAMES = {
     "weapon": "🗡️ Vũ Khí", "armor": "🛡️ Áo Giáp", "boots": "👢 Giày",
     "gloves": "🧤 Bao Tay", "belt": "🎗️ Dây Lưng", "ring": "💍 Nhẫn"
 }
-DROP_WEIGHTS = {1: 550, 2: 300, 3: 110, 4: 30, 5: 8, 6: 2}
+DROP_WEIGHTS = {1: 500, 2: 300, 3: 159, 4: 30, 5: 10, 6: 1}
 
 EQUIPMENT = {
     # ═══════ ⭐1 🔵 VŨ KHÍ (ATK) ═══════
