@@ -123,3 +123,21 @@ async def admin_artifact(request: Request, password: str = Form(...), player_id:
     finally:
         conn.close()
     return templates.TemplateResponse(request, "admin.html", {"request": request, "msg": msg, "error": error})
+
+@router.post("/admin/skill", response_class=HTMLResponse)
+async def admin_skill(request: Request, password: str = Form(...), player_id: str = Form(...), skill_id: int = Form(...)):
+    if password != ADMIN_PASSWORD:
+        return templates.TemplateResponse(request, "admin.html", {"request": request, "error": "Sai mật khẩu!"})
+    conn = get_db()
+    try:
+        conn.execute("INSERT OR IGNORE INTO player_skills (player_id, skill_id) VALUES (?, ?)", (player_id, skill_id))
+        conn.commit()
+        from bot.data.skills import SKILLS_DB
+        skill_name = SKILLS_DB.get(skill_id, {}).get("name", f"Skill {skill_id}")
+        msg = f"✅ Tặng {skill_name} cho {player_id}"
+    except Exception as e:
+        msg = ""
+        error = str(e)
+    finally:
+        conn.close()
+    return templates.TemplateResponse(request, "admin.html", {"request": request, "msg": msg, "error": error})
