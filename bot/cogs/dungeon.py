@@ -379,8 +379,11 @@ class DungeonCog(commands.Cog):
     async def _handle_dungeon_fight(self, interaction: discord.Interaction, view: DungeonView):
         sid = view.player_id
         session = self.sessions.get(sid)
-        if not session or view.finished:
-            await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
+        if not session:
+            await interaction.followup.send("🤷 Mất session!", ephemeral=True)
+            return
+        if view.finished:
+            await interaction.followup.send("🤷 View finished!", ephemeral=True)
             return
         await self._execute_dungeon_turn(interaction, session, view, "attack")
 
@@ -388,8 +391,11 @@ class DungeonCog(commands.Cog):
                                     view: DungeonView, move_type: str):
         sid = view.player_id
         session = self.sessions.get(sid)
-        if not session or view.finished:
-            await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
+        if not session:
+            await interaction.followup.send("🤷 Mất session!", ephemeral=True)
+            return
+        if view.finished:
+            await interaction.followup.send("🤷 View finished!", ephemeral=True)
             return
         await self._execute_dungeon_turn(interaction, session, view, move_type)
 
@@ -485,7 +491,6 @@ class DungeonCog(commands.Cog):
     async def _finish_dungeon_floor(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
                                      player_wins: bool, result_lines: list):
-        view.finished = True
         sid = view.player_id
 
         if player_wins:
@@ -519,6 +524,7 @@ class DungeonCog(commands.Cog):
             next_floor = floor + 1
             if next_floor > DUNGEON_MAX_FLOOR:
                 result_lines.append(f"\n🎉 HOÀN THÀNH 100 TẦNG! Nhận hết thưởng!")
+                view.finished = True
                 await self._collect_rewards(interaction, session, sid, result_lines)
                 self.sessions.pop(sid, None)
                 return
@@ -547,6 +553,7 @@ class DungeonCog(commands.Cog):
                                    session["player_name"], acc)
             await interaction.edit_original_response(embed=embed, view=new_view)
         else:
+            view.finished = True
             result_lines.append(f"\n💀 Thua! Nhận thưởng đã tích lũy...")
             await self._collect_rewards(interaction, session, sid, result_lines)
             self.sessions.pop(sid, None)
