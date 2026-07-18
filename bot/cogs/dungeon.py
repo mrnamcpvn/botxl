@@ -258,7 +258,6 @@ class DungeonCog(commands.Cog):
             cursor = await db.execute("SELECT * FROM players WHERE id=?", (sid,))
             row = await cursor.fetchone()
             pdata = dict(row)
-            regen_hp(pdata)
 
             slots_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (sid,))
             slots = {}
@@ -285,6 +284,8 @@ class DungeonCog(commands.Cog):
             pdata["equipped"] = equipped
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
+
+            regen_hp(pdata)
 
             pdata["attack_cd"] = 0
             pdata["special_cd"] = 0
