@@ -196,14 +196,16 @@ class NPCCog(commands.Cog):
                 slots[r[0]] = r[1]
             pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
+                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
             equipped = {}
             equip_items = {}
             equip_enhances = {}
+            equip_hidden = {}
             async for r in eq_cursor:
                 eq_id = r[0]
                 eiid = r[1]
                 enh = r[2]
+                hidden = r[3] if len(r) > 3 and r[3] else ""
                 slot = None
                 if eiid in EQUIPMENT:
                     slot = EQUIPMENT[eiid]["slot"]
@@ -213,9 +215,11 @@ class NPCCog(commands.Cog):
                     equipped[slot] = eq_id
                     equip_items[str(eq_id)] = eiid
                     equip_enhances[str(eq_id)] = enh
+                    equip_hidden[str(eq_id)] = hidden
             pdata["equipped"] = equipped
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
+            pdata["_equip_hidden"] = equip_hidden
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}

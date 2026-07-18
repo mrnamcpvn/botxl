@@ -6,6 +6,7 @@ from bot.engine.battle import get_effective_stats, get_equipped_skill
 from bot.engine.combat_power import calc_combat_power
 from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL, MAX_ENHANCE
 from bot.data.artifacts import ARTIFACTS
+from bot.cogs.enhance import HIDDEN_STAT_POOLS
 
 
 class StatsView(discord.ui.View):
@@ -153,6 +154,19 @@ class StatsView(discord.ui.View):
                 lines.append(f"{EQ_SLOT_NAMES.get(slot, slot)}: {stars} {name}{enhance_str}")
                 if stat_texts:
                     lines.append(f"   └ {'  '.join(stat_texts)}")
+                equip_hidden = pdata.get("_equip_hidden", {})
+                hidden_json = equip_hidden.get(str(eq_id), "")
+                if hidden_json:
+                    import json
+                    try:
+                        hs = json.loads(hidden_json)
+                        hidden_parts = []
+                        for k, v in hs.items():
+                            pool = HIDDEN_STAT_POOLS.get(k, {})
+                            hidden_parts.append(f"{pool.get('icon','')}+{v} {pool.get('label',k)}")
+                        lines.append(f"   🌟 Ẩn: {'  '.join(hidden_parts)}")
+                    except:
+                        pass
             else:
                 lines.append(f"{EQ_SLOT_NAMES.get(slot, slot)}: ❌ Trống")
         embed.add_field(name="Đang Mặc", value="\n".join(lines), inline=False)

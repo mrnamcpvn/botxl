@@ -151,7 +151,8 @@ async def _run_migrations(db):
                 player_id TEXT NOT NULL,
                 item_id INTEGER NOT NULL,
                 enhance INTEGER DEFAULT 0,
-                equipped INTEGER DEFAULT 0
+                equipped INTEGER DEFAULT 0,
+                hidden_stats TEXT DEFAULT ''
             )""")
             await db.execute("""CREATE TABLE IF NOT EXISTS _mig_numbers (n INTEGER PRIMARY KEY)""")
             values = ",".join(f"({i})" for i in range(1, 101))
@@ -195,7 +196,7 @@ async def _run_migrations(db):
         accumulated_rewards TEXT DEFAULT ''
     )""")
     try:
-        await db.execute("ALTER TABLE dungeon_progress ADD COLUMN accumulated_rewards TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE player_equipment ADD COLUMN hidden_stats TEXT DEFAULT ''")
     except:
         pass
 

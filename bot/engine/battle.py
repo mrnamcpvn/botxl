@@ -65,6 +65,27 @@ def get_effective_stats(pdata: dict) -> dict:
                 elif k == "reflect": reflect += val
                 elif k == "regen": regen += val
 
+    equip_hidden = pdata.get("_equip_hidden", {})
+    for slot, eq_id in eq.items():
+        hidden_json = equip_hidden.get(str(eq_id), "")
+        if hidden_json:
+            import json
+            try:
+                hs = json.loads(hidden_json)
+                for k, v in hs.items():
+                    if k == "hp" or k == "hp_max": hp_max += v
+                    elif k == "attack_min": atk_min += v
+                    elif k == "attack_max": atk_max += v
+                    elif k == "defense": defense += v
+                    elif k == "spd": spd += v
+                    elif k == "crit": crit += v
+                    elif k == "pierce": pierce += v
+                    elif k == "dodge": dodge += v
+                    elif k == "reflect": reflect += v
+                    elif k == "regen": regen += v
+            except:
+                pass
+
     damage_pct = 0
     passive_id = pdata.get("skill_equipped", {}).get("passive")
     skill = SKILLS_DB.get(passive_id)

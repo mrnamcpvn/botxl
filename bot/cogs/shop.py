@@ -227,10 +227,11 @@ class ShopCog(commands.Cog):
             return
         pdata = dict(row)
         eq_cursor = await db.execute(
-            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (uid,))
+            "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (uid,))
         equipped = {}
         equip_items = {}
         equip_enhances = {}
+            equip_hidden = {}
         async for r in eq_cursor:
             eq_id = r[0]
             eiid = r[1]
@@ -504,7 +505,7 @@ class ShopCog(commands.Cog):
         db = await get_db()
         try:
             cursor = await db.execute(
-                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (uid,))
+                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (uid,))
             found = None
             async for r in cursor:
                 eiid = r[1]

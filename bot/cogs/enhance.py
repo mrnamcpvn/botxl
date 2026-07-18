@@ -9,6 +9,34 @@ from bot.config import (
     STONE_BASIC_ID, STONE_MEDIUM_ID, STONE_ADVANCED_ID,
 )
 
+MILESTONES = {4, 7, 9}
+
+HIDDEN_STAT_POOLS = {
+    "atk_min": {"icon": "⚔️", "label": "Tấn Công Tối Thiểu", "val": lambda s: 2 + s * 3},
+    "atk_max": {"icon": "⚔️", "label": "Tấn Công Tối Đa", "val": lambda s: 3 + s * 4},
+    "hp": {"icon": "❤️", "label": "HP", "val": lambda s: 20 + s * 15},
+    "defense": {"icon": "🛡️", "label": "Phòng Thủ", "val": lambda s: 3 + s * 2},
+    "spd": {"icon": "💨", "label": "Tốc Độ", "val": lambda s: 2 + s},
+    "crit": {"icon": "💥", "label": "Chí Mạng", "val": lambda s: 2 + s},
+    "pierce": {"icon": "🔱", "label": "Xuyên Giáp", "val": lambda s: 2 + s},
+    "dodge": {"icon": "🍀", "label": "Né Đòn", "val": lambda s: 1 + s},
+    "reflect": {"icon": "🔄", "label": "Phản Đòn", "val": lambda s: 1 + s},
+    "regen": {"icon": "💚", "label": "Hồi Phục", "val": lambda s: 1 + s // 2},
+}
+
+def generate_hidden_stat(star: int, milestone: int) -> str:
+    import random, json
+    existing = {}
+    stat_keys = list(HIDDEN_STAT_POOLS.keys())
+    random.shuffle(stat_keys)
+    selected = stat_keys[:2]
+    for k in selected:
+        pool = HIDDEN_STAT_POOLS[k]
+        mult = 1.0 + (milestone / 9) * 1.5
+        val = int(pool["val"](star) * mult)
+        existing[k] = val
+    return json.dumps(existing)
+
 
 class EnhanceCog(commands.Cog):
     def __init__(self, bot):
@@ -136,6 +164,17 @@ class EnhanceCog(commands.Cog):
 
             if success:
                 await db.execute("UPDATE player_equipment SET enhance=? WHERE id=?", (target, eid))
+                hidden_msg = ""
+                if target in MILESTONES:
+                    hidden = generate_hidden_stat(equip_star, target)
+                    await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (hidden, eid))
+                    import json
+                    hs = json.loads(hidden)
+                    parts = []
+                    for k, v in hs.items():
+                        pool = HIDDEN_STAT_POOLS.get(k, {})
+                        parts.append(f"{pool.get('icon','')} +{v} {pool.get('label',k)}")
+                    hidden_msg = f"\n🌟 MỞ KHÓA THUỘC TÍNH ẨN!\n" + "\n".join(parts)
                 await db.commit()
                 if target >= MAX_ENHANCE:
                     next_str = "🌟 MAX 🌟"
@@ -149,6 +188,7 @@ class EnhanceCog(commands.Cog):
                         f"⭐ **{cur_str}** → **{next_str}** ✨\n"
                         f"🎯 Tỉ lệ: **{int(success_rate*100)}%** — Roll: **{int(roll*100)}** ✅\n"
                         f"💎 Tốn: {stone_qty} đá | 💰 {coin_cost}🪙"
+                        f"{hidden_msg}"
                     ),
                     color=embed_color)
             else:

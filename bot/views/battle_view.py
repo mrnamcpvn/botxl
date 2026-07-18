@@ -485,10 +485,11 @@ class BattleView(discord.ui.View):
         pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
         # Equipment
         eq_cursor = await db.execute(
-            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
+            "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
         equipped = {}
         equip_items = {}
         equip_enhances = {}
+            equip_hidden = {}
         async for erow in eq_cursor:
             eq_id = erow[0]
             eiid = erow[1]

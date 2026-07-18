@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="player-header">
+        <div class="player-avatar">{{ cls.icon }}</div>
+        <div>
+            <h1>{{ player.name or '???' }}</h1>
+            <div class="player-class">{{ cls.icon }} {{ cls.name }}</div>
+        </div>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">❤️ HP</div>
+            <div class="stat-value">{{ player.hp }}/{{ player.hp_max }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">⚔️ ATK</div>
+            <div class="stat-value">{{ player.attack_min }}-{{ player.attack_max }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">🛡️ DEF</div>
+            <div class="stat-value">{{ player.defense }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">🏆 ELO</div>
+            <div class="stat-value elo">{{ player.elo }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">📊 Cấp</div>
+            <div class="stat-value">{{ player.level }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">💰 Xu</div>
+            <div class="stat-value">{{ player.coins }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">🎭 Hệ số</div>
+            <div class="stat-value">{{ "%.1f"|format(player.role_mult|float) }}×</div>
+        </div>
+    </div>
+    <div class="record">
+        <span class="wins">🏆 {{ player.wins }} thắng</span>
+        <span class="losses">💀 {{ player.losses }} thua</span>
+    </div>
+    {% if history %}
+    <h2>Lịch Sử Trận</h2>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Đấu</th><th>Kết quả</th><th>Ngày</th></tr>
+            </thead>
+            <tbody>
+                {% for h in history %}
+                <tr>
+                    <td><a href="/battle/{{ h.id }}">#{{ h.id }}</a></td>
+                    <td>{{ h.p1_name }} vs {{ h.p2_name }}</td>
+                    <td>{{ '🏆' if h.winner_id == player.id else '💀' }}</td>
+                    <td>{{ h.fought_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

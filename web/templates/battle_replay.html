@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1>⚔️ Trận #{{ battle.id }}</h1>
+    <div class="battle-info">
+        <span>{{ battle.p1_name }}</span>
+        <span>vs</span>
+        <span>{{ battle.p2_name }}</span>
+    </div>
+    <div class="battle-winner">🏆 {{ battle.winner_id }}</div>
+    <div class="rounds-timeline">
+        {% for round in rounds %}
+        <div class="round">
+            <div class="round-header">Vòng {{ round.r }}</div>
+            <div class="round-detail">{{ round.skill }}</div>
+            <div class="round-damage">💥 {{ round.damage }} dmg</div>
+            <div class="round-hp">
+                <div class="hp-bar">
+                    <div class="hp-fill p1" style="width:{{ round.hp1 }}%"></div>
+                </div>
+                <div class="hp-bar">
+                    <div class="hp-fill p2" style="width:{{ round.hp2 }}%"></div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

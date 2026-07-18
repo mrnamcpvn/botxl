@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1>🏆 Bảng Xếp Hạng</h1>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tên</th>
+                    <th>ELO</th>
+                    <th>Cấp</th>
+                    <th>Thắng/Thua</th>
+                    <th>Tỉ lệ</th>
+                    <th>Xu</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in players %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><a href="/player/{{ p.id }}">{{ p.name or '???' }}</a></td>
+                    <td class="elo">{{ p.elo }}</td>
+                    <td>{{ p.level }}</td>
+                    <td>{{ p.wins }}W / {{ p.losses }}L</td>
+                    <td>{{ "%.0f"|format(p.wins/(p.wins+p.losses)*100 if (p.wins+p.losses) > 0 else 0) }}%</td>
+                    <td>{{ p.coins }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
