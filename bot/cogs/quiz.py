@@ -101,6 +101,12 @@ class QuizCog(commands.Cog):
                     return ch
         return None
 
+    @commands.command(name="quiz")
+    @commands.has_permissions(administrator=True)
+    async def quiz_cmd(self, ctx):
+        await self._post_question()
+        await ctx.message.delete()
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot or not self.active_question or self.answered:
