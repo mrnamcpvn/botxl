@@ -289,12 +289,6 @@ class NPCCog(commands.Cog):
 
         cat = "defense" if move_type == "defense" else move_type
         cd_key = f"{cat}_cd"
-        if player.get(cd_key, 0) > 0:
-            sk = get_equipped_skill(player, cat)
-            await interaction.followup.send(
-                f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
-            return
-
         skill = get_equipped_skill(player, cat)
         skill_id = None
         for sid2, s in SKILLS_DB.items():
@@ -303,6 +297,15 @@ class NPCCog(commands.Cog):
                 break
         if skill_id is None:
             skill_id = 1
+
+        if player.get(cd_key, 0) > 0:
+            if cat == "attack":
+                skill_id = 1
+                result_lines.append(f"⏳ **{skill['name']}** CD, dùng 👊 Cú Đấm Ba Que!")
+            else:
+                await interaction.followup.send(
+                    f"⏳ **{skill['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
+                return
 
         # --- Player action ---
         flags["turn_count"] = flags.get("turn_count", 0)

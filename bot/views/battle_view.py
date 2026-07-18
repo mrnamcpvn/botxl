@@ -131,10 +131,15 @@ class BattleView(discord.ui.View):
             pdata = await self._get_player_data(db, sid)
             cd_key = f"{cat}_cd"
             if pdata.get(cd_key, 0) > 0:
-                sk = get_equipped_skill(pdata, cat)
-                await interaction.followup.send(
-                    f"⏳ **{sk['name']}** đang hồi! Còn **{pdata[cd_key]}** turn!", ephemeral=True)
-                return
+                if cat == "attack":
+                    self.stop()
+                    await self._execute_battle_turn(db, battle, guild, sid, move_type, interaction, force_skill_id=1)
+                    return
+                else:
+                    sk = get_equipped_skill(pdata, cat)
+                    await interaction.followup.send(
+                        f"⏳ **{sk['name']}** đang hồi! Còn **{pdata[cd_key]}** turn!", ephemeral=True)
+                    return
 
             is_p1 = sid == battle["player1_id"]
             stunned = bool(battle.get("p1_stunned", 0)) if is_p1 else bool(battle.get("p2_stunned", 0))
@@ -249,7 +254,7 @@ class BattleView(discord.ui.View):
         await interaction.edit_original_response(embed=embed, view=view)
         view.start_countdown()
 
-    async def _execute_battle_turn(self, db, battle, guild, sid, move_type, interaction):
+    async def _execute_battle_turn(self, db, battle, guild, sid, move_type, interaction, force_skill_id=None):
         p1_id = battle["player1_id"]
         p2_id = battle["player2_id"]
 
@@ -271,7 +276,9 @@ class BattleView(discord.ui.View):
             turn_player = 0 if sid == p1_id else 1
             cat = "defense" if move_type == "defense" else move_type
             skill = get_equipped_skill(p1 if turn_player == 0 else p2, cat)
-
+            if force_skill_id:
+                skill = SKILLS_DB.get(1, skill)
+            
             flags = {
                 f"{p1_id}_defending": bool(battle.get("p1_defending", 0)),
                 f"{p2_id}_defending": bool(battle.get("p2_defending", 0)),
@@ -287,7 +294,7 @@ class BattleView(discord.ui.View):
 
             result = await execute_action(
                 p1, p2, turn_player,
-                {"type": move_type, "skill_id": skill.get("id", action_skill_id(p1 if turn_player == 0 else p2, move_type))},
+                {"type": move_type, "skill_id": force_skill_id if force_skill_id else skill.get("id", action_skill_id(p1 if turn_player == 0 else p2, move_type))},
                 flags
             )
 
