@@ -7,7 +7,7 @@ import sqlite3, os, json
 router = APIRouter()
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
 DB_PATH = os.path.join(DATA_DIR, "botxl.db")
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = "khanhHUY@300525#"
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
