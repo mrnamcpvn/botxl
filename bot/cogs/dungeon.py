@@ -205,7 +205,7 @@ class DungeonCog(commands.Cog):
 
         db = await get_db()
         try:
-            player_cursor = await db.execute("SELECT level, coins, hp FROM players WHERE id=?", (sid,))
+            player_cursor = await db.execute("SELECT level, coins, hp, role_mult FROM players WHERE id=?", (sid,))
             prow = await player_cursor.fetchone()
             if not prow:
                 await self._reply(ctx_or_int, f"🤷 Chưa đăng ký! `{prefix}register`")
