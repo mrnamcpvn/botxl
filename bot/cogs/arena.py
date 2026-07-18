@@ -1322,12 +1322,7 @@ class Arena(commands.Cog):
                 cls = CLASSES["banxabong"]
                 await db.execute("""UPDATE players SET class_id=?, hp=?, hp_max=?, attack_min=?, attack_max=?, defense=? WHERE id=?""",
                                   ("banxabong", cls["hp_base"], cls["hp_base"], cls["atk_base"], cls["atk_base"] + 5, cls["def_base"], sid))
-                await db.execute("DELETE FROM player_skills WHERE player_id=?", (sid,))
-                await db.execute("DELETE FROM player_skill_slots WHERE player_id=?", (sid,))
-                for sk_id in DEFAULT_SKILLS["banxabong"]:
-                    await db.execute("INSERT OR IGNORE INTO player_skills (player_id, skill_id) VALUES (?, ?)", (sid, sk_id))
-                for slot, sk_id in DEFAULT_SKILL_SLOTS["banxabong"].items():
-                    await db.execute("INSERT OR REPLACE INTO player_skill_slots (player_id, slot, skill_id) VALUES (?, ?, ?)", (sid, slot, sk_id))
+
 
 
 class SkillFilterView(discord.ui.View):
