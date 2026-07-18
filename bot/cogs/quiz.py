@@ -67,7 +67,7 @@ class QuizCog(commands.Cog):
             self.active_question = q["answer"]
             self.answered = False
 
-            cat_icon = "🎮" if q["category"] == "game" else "🧠"
+            cat_icon = {"game": "🎮", "general": "🧠", "dev": "💻"}.get(q["category"], "❓")
             embed = discord.Embed(
                 title=f"{cat_icon} CÂU HỎI NHANH!",
                 description=f"**{q['question']}**\n\nTrả lời đúng đầu tiên sẽ nhận thưởng! 💰",
