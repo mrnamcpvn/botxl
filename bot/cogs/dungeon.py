@@ -440,43 +440,44 @@ class DungeonCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
-            await self._finish_dungeon_floor(interaction, session, view, True, result_lines)
+            await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
             return
 
-        for ck in ["attack_cd", "special_cd", "defense_cd"]:
-            if npc.get(ck, 0) > 0:
-                npc[ck] -= 1
+        npc_stunned = flags.get(f"{npc['id']}_stunned", False)
+        if npc_stunned:
+            flags.pop(f"{npc['id']}_stunned", None)
+            result_lines.append(f"\n🌑 **{npc['name']}** bị choáng, mất lượt!")
+        else:
+            npc_move = self._npc_ai_move(npc)
+            npc_cat = "defense" if npc_move == "defense" else npc_move
+            npc_cd_key = f"{npc_cat}_cd"
+            if npc.get(npc_cd_key, 0) > 0:
+                npc_move = "attack"
+                npc_cat = "attack"
+                if npc.get("attack_cd", 0) > 0:
+                    npc_move = "defense"
+                    npc_cat = "defense"
 
-        npc_move = self._npc_ai_move(npc)
-        npc_cat = "defense" if npc_move == "defense" else npc_move
-        npc_cd_key = f"{npc_cat}_cd"
-        if npc.get(npc_cd_key, 0) > 0:
-            npc_move = "attack"
-            npc_cat = "attack"
-            if npc.get("attack_cd", 0) > 0:
-                npc_move = "defense"
-                npc_cat = "defense"
+            npc_skill = get_equipped_skill(npc, npc_cat)
+            npc_skill_id = None
+            for sid2, s in SKILLS_DB.items():
+                if s["name"] == npc_skill["name"]:
+                    npc_skill_id = sid2
+                    break
+            if npc_skill_id is None:
+                npc_skill_id = 1
 
-        npc_skill = get_equipped_skill(npc, npc_cat)
-        npc_skill_id = None
-        for sid2, s in SKILLS_DB.items():
-            if s["name"] == npc_skill["name"]:
-                npc_skill_id = sid2
-                break
-        if npc_skill_id is None:
-            npc_skill_id = 1
+            result_lines.append(f"\n👾 {npc['name']} dùng **{npc_skill['icon']} {npc_skill['name']}**")
 
-        result_lines.append(f"\n👾 {npc['name']} dùng **{npc_skill['icon']} {npc_skill['name']}**")
+            flags["turn_count"] = flags.get("turn_count", 0) + 1
+            result = await execute_action(npc, player, 0, {"type": npc_move, "skill_id": npc_skill_id}, flags)
+            npc = result["p1"]
+            player = result["p2"]
+            result_lines.extend(result["log_messages"])
 
-        flags["turn_count"] = flags.get("turn_count", 0) + 1
-        result = await execute_action(npc, player, 0, {"type": npc_move, "skill_id": npc_skill_id}, flags)
-        npc = result["p1"]
-        player = result["p2"]
-        result_lines.extend(result["log_messages"])
-
-        if result["finished"]:
-            await self._finish_dungeon_floor(interaction, session, view, False, result_lines)
-            return
+            if result["finished"]:
+                await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
+                return
 
         session["player_pdata"] = player
         session["npc_pdata"] = npc
