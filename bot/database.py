@@ -191,9 +191,13 @@ async def _run_migrations(db):
         daily_entries INTEGER DEFAULT 0,
         daily_tickets_bought INTEGER DEFAULT 0,
         last_entry_date TEXT DEFAULT '',
-        last_week_reset TEXT DEFAULT ''
-    )"""),
-    "ALTER TABLE dungeon_progress ADD COLUMN accumulated_rewards TEXT DEFAULT ''",
+        last_week_reset TEXT DEFAULT '',
+        accumulated_rewards TEXT DEFAULT ''
+    )""")
+    try:
+        await db.execute("ALTER TABLE dungeon_progress ADD COLUMN accumulated_rewards TEXT DEFAULT ''")
+    except:
+        pass
 
 
 async def init_db():
