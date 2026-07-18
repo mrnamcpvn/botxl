@@ -224,6 +224,11 @@ class DungeonCog(commands.Cog):
                 guild = ctx_or_int.guild
             if guild:
                 member = guild.get_member(int(sid))
+                if not member:
+                    try:
+                        member = await guild.fetch_member(int(sid))
+                    except:
+                        pass
                 if member:
                     from bot.cogs.admin import sync_role_mult
                     await sync_role_mult(db, sid, [r.name for r in member.roles])
