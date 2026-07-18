@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot-XL Login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+    <div class="login-box">
+        <h1>⚔️ Bot-XL Admin</h1>
+        {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+        <form method="post" action="/login">
+            <input name="password" type="password" placeholder="Admin Password" required autofocus>
+            <button type="submit">Đăng Nhập</button>
+        </form>
+    </div>
+</body>
+</html>

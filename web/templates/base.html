@@ -4,21 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bot-XL Dashboard</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <nav>
-        <div class="nav-container">
-            <a href="/" class="nav-brand">⚔️ Bot-XL</a>
-            <div class="nav-links">
-                <a href="/leaderboard">🏆 Bảng Xếp Hạng</a>
-                <a href="/admin">🛠️ Admin</a>
+    {% if session and session.get("admin") %}
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-brand">⚔️ Bot-XL</div>
+            <nav>
+                <a href="/leaderboard" class="nav-item">🏆 Bảng Xếp Hạng</a>
+                <a href="/admin" class="nav-item active">🛠️ Admin Panel</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/logout" class="btn-logout">🚪 Logout</a>
             </div>
-        </div>
-    </nav>
+        </aside>
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    {% else %}
     <main>
         {% block content %}{% endblock %}
     </main>
+    {% endif %}
 </body>
 </html>
