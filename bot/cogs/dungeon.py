@@ -16,14 +16,11 @@ from bot.config import (
 )
 
 
-REAL_CLASSES = ["banxabong", "xola", "sieunhan", "thaychua", "muoi", "chodien", "baque"]
-
-
 def generate_dungeon_npc(floor: int) -> dict:
     npc_level = floor + 5
-    hp = 100 + npc_level * 25
-    atk = 10 + npc_level * 5
-    defense = 5 + npc_level * 3
+    hp = 80 + npc_level * 15
+    atk = 8 + npc_level * 3
+    defense = 4 + npc_level * 2
     names = [
         "Quái Vật Bóng Tối", "Thú Dữ Vực Sâu", "Linh Hồn Lạc Lối",
         "Xác Sống Vô Hồn", "Quỷ Dữ Bóng Đêm", "Rồng Đen Hắc Ám",
@@ -47,15 +44,6 @@ def generate_dungeon_npc(floor: int) -> dict:
         atk = int(atk * 1.5)
         defense = int(defense * 1.3)
 
-    if floor <= 20:
-        skills = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
-    elif floor <= 50:
-        skills = {"attack": 2, "special": 6, "defense": 11, "passive": 17}
-    elif floor <= 80:
-        skills = {"attack": 3, "special": 7, "defense": 12, "passive": 19}
-    else:
-        skills = {"attack": 4, "special": 9, "defense": 13, "passive": 20}
-
     return {
         "id": f"dungeon_{floor}",
         "name": name,
@@ -65,16 +53,14 @@ def generate_dungeon_npc(floor: int) -> dict:
         "attack_max": atk + 5,
         "defense": defense,
         "level": npc_level,
-        "class_id": random.choice(REAL_CLASSES),
+        "class_id": random.choice(["satthu", "phapsu", "dauxe", "bancung", "chemgio", "bongtoi", "thienthan", "banxabong"]),
         "cooldowns": {"attack_cd": 0, "special_cd": 0, "defense_cd": 0},
-        "skill_equipped": skills,
-        "_npc_override": True,
     }
 
 
 def calc_dungeon_rewards(floor: int) -> dict:
     rewards = {
-        "stones": {"stone_basic": 0, "stone_medium": 0, "stone_advanced": 0, "artifact": 0},
+        "stones": {"stone_basic": 0, "stone_medium": 0, "stone_advanced": 0},
         "coins": 0,
         "equipment": [],
     }
@@ -102,10 +88,6 @@ def calc_dungeon_rewards(floor: int) -> dict:
             chosen = random.choice(items)
             eid = [k for k, v in EQUIPMENT.items() if v == chosen][0]
             rewards["equipment"].append({"eid": eid, "name": chosen["name"], "star": star})
-
-    if floor >= 50:
-        if random.random() < 0.03:
-            rewards["stones"]["artifact"] = 1
 
     return rewards
 
@@ -139,27 +121,21 @@ class DungeonView(discord.ui.View):
         btn_stop.callback = self._stop_callback
         self.add_item(btn_stop)
 
-        btn_basic = discord.ui.Button(
-            emoji="👊", label="Cú Đấm Ba Que",
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_basic", row=1)
-        btn_basic.callback = self._make_move_callback("basic")
-        self.add_item(btn_basic)
-
         btn_atk = discord.ui.Button(
             emoji=atk.get("icon", "💥"), label=atk.get("name", "Tấn Công")[:80],
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_atk", row=2)
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_atk", row=1)
         btn_atk.callback = self._make_move_callback("attack")
         self.add_item(btn_atk)
 
         btn_spc = discord.ui.Button(
             emoji=spc.get("icon", "🔥"), label=spc.get("name", "Đặc Biệt")[:80],
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_spc", row=2)
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_spc", row=1)
         btn_spc.callback = self._make_move_callback("special")
         self.add_item(btn_spc)
 
         btn_def = discord.ui.Button(
             emoji="🛡️", label="Chống Xỏ Lá",
-            style=discord.ButtonStyle.secondary, custom_id="dungeon_def", row=2)
+            style=discord.ButtonStyle.secondary, custom_id="dungeon_def", row=1)
         btn_def.callback = self._make_move_callback("defense")
         self.add_item(btn_def)
 
@@ -210,7 +186,7 @@ class DungeonCog(commands.Cog):
 
         db = await get_db()
         try:
-            player_cursor = await db.execute("SELECT level, coins, hp, role_mult FROM players WHERE id=?", (sid,))
+            player_cursor = await db.execute("SELECT level, coins, hp FROM players WHERE id=?", (sid,))
             prow = await player_cursor.fetchone()
             if not prow:
                 await self._reply(ctx_or_int, f"🤷 Chưa đăng ký! `{prefix}register`")
@@ -247,28 +223,16 @@ class DungeonCog(commands.Cog):
                 await db.execute("UPDATE dungeon_progress SET daily_entries=0, daily_tickets_bought=0, last_entry_date=? WHERE player_id=?",
                                  (today, sid))
 
-            import json
-            pending_rewards = dg.get("accumulated_rewards", "")
-            if pending_rewards:
-                try:
-                    saved = json.loads(pending_rewards)
-                    if saved.get("coins", 0) > 0 or saved.get("stones", {}).get("stone_basic", 0) > 0 or saved.get("stones", {}).get("stone_medium", 0) > 0 or saved.get("stones", {}).get("stone_advanced", 0) > 0 or saved.get("equipment", []):
-                        await self._apply_rewards(db, sid, saved)
-                        await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
-                except:
-                    pass
-
             free_used = dg["daily_entries"] >= DUNGEON_FREE_ENTRIES
             tickets_bought = dg.get("daily_tickets_bought", 0)
-            is_dragon = pdata.get("role_mult", 1.0) >= 3.0
 
-            if not is_dragon and free_used and tickets_bought >= DUNGEON_MAX_TICKETS:
+            if free_used and tickets_bought >= DUNGEON_MAX_TICKETS:
                 await self._reply(ctx_or_int,
                     f"🏰 Hết lượt hôm nay! (Free: đã dùng, Vé: {tickets_bought}/{DUNGEON_MAX_TICKETS})\n⏰ Reset sau 0h!")
                 return
 
             ticket_msg = ""
-            if free_used and not is_dragon:
+            if free_used:
                 cost = DUNGEON_TICKET_COST_1 if tickets_bought == 0 else DUNGEON_TICKET_COST_2
                 if pdata["coins"] < cost:
                     await self._reply(ctx_or_int,
@@ -278,8 +242,7 @@ class DungeonCog(commands.Cog):
                 await db.execute("UPDATE dungeon_progress SET daily_tickets_bought=daily_tickets_bought+1 WHERE player_id=?", (sid,))
                 ticket_msg = f"\n🎫 Mua vé: -{cost}🪙"
 
-            if not is_dragon:
-                await db.execute("UPDATE dungeon_progress SET daily_entries=daily_entries+1 WHERE player_id=?", (sid,))
+            await db.execute("UPDATE dungeon_progress SET daily_entries=daily_entries+1 WHERE player_id=?", (sid,))
             await db.commit()
 
             next_floor = dg["checkpoint"] + 1
@@ -304,16 +267,14 @@ class DungeonCog(commands.Cog):
             pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
 
             eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
+                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
             equipped = {}
             equip_items = {}
             equip_enhances = {}
-            equip_hidden = {}
             async for r in eq_cursor:
                 eq_id = r[0]
                 eiid = r[1]
                 enh = r[2]
-                hidden = r[3] if len(r) > 3 and r[3] else ""
                 slot = None
                 if eiid in EQUIPMENT:
                     slot = EQUIPMENT[eiid]["slot"]
@@ -325,11 +286,6 @@ class DungeonCog(commands.Cog):
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
 
-            art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
-            art_row = await art_cursor.fetchone()
-            pdata["_artifact_star"] = art_row[0] if art_row else 0
-            pdata["_artifact_stones"] = art_row[1] if art_row else 0
-
             pdata["attack_cd"] = 0
             pdata["special_cd"] = 0
             pdata["defense_cd"] = 0
@@ -337,6 +293,7 @@ class DungeonCog(commands.Cog):
             eff = get_effective_stats(pdata)
 
             npc_data = generate_dungeon_npc(floor)
+            npc_data["skill_equipped"] = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
             npc_data["_equip_enhances"] = {}
@@ -388,31 +345,20 @@ class DungeonCog(commands.Cog):
     async def _handle_dungeon_fight(self, interaction: discord.Interaction, view: DungeonView):
         sid = view.player_id
         session = self.sessions.get(sid)
-        if not session:
-            await interaction.followup.send("🤷 Mất session!", ephemeral=True)
+        if not session or view.finished:
+            await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
             return
-        if view.finished:
-            await interaction.followup.send("🤷 View finished!", ephemeral=True)
-            return
-        try:
-            await self._execute_dungeon_turn(interaction, session, view, "attack")
-        except Exception as e:
-            await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
+        npc_move = self._npc_ai_move(session["npc_pdata"])
+        await self._execute_dungeon_turn(interaction, session, view, npc_move)
 
     async def _handle_dungeon_move(self, interaction: discord.Interaction,
                                     view: DungeonView, move_type: str):
         sid = view.player_id
         session = self.sessions.get(sid)
-        if not session:
-            await interaction.followup.send("🤷 Mất session!", ephemeral=True)
+        if not session or view.finished:
+            await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
             return
-        if view.finished:
-            await interaction.followup.send("🤷 View finished!", ephemeral=True)
-            return
-        try:
-            await self._execute_dungeon_turn(interaction, session, view, move_type)
-        except Exception as e:
-            await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
+        await self._execute_dungeon_turn(interaction, session, view, move_type)
 
     async def _execute_dungeon_turn(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
@@ -422,24 +368,22 @@ class DungeonCog(commands.Cog):
         flags = session["flags"]
         result_lines = []
 
-        if player_move_type == "basic":
+        cat = "defense" if player_move_type == "defense" else player_move_type
+        cd_key = f"{cat}_cd"
+        if player.get(cd_key, 0) > 0:
+            sk = get_equipped_skill(player, cat)
+            await interaction.followup.send(
+                f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
+            return
+
+        skill = get_equipped_skill(player, cat)
+        skill_id = None
+        for sid2, s in SKILLS_DB.items():
+            if s["name"] == skill["name"]:
+                skill_id = sid2
+                break
+        if skill_id is None:
             skill_id = 1
-        else:
-            cat = "defense" if player_move_type == "defense" else player_move_type
-            cd_key = f"{cat}_cd"
-            if player.get(cd_key, 0) > 0:
-                sk = get_equipped_skill(player, cat)
-                await interaction.followup.send(
-                    f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
-                return
-            skill = get_equipped_skill(player, cat)
-            skill_id = None
-            for sid2, s in SKILLS_DB.items():
-                if s["name"] == skill["name"]:
-                    skill_id = sid2
-                    break
-            if skill_id is None:
-                skill_id = 1
 
         result = await execute_action(player, npc, 0, {"type": player_move_type, "skill_id": skill_id}, flags)
         player = result["p1"]
@@ -447,8 +391,12 @@ class DungeonCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
-            await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
+            await self._finish_dungeon_floor(interaction, session, view, True, result_lines)
             return
+
+        for ck in ["attack_cd", "special_cd", "defense_cd"]:
+            if npc.get(ck, 0) > 0:
+                npc[ck] -= 1
 
         npc_move = self._npc_ai_move(npc)
         npc_cat = "defense" if npc_move == "defense" else npc_move
@@ -478,7 +426,7 @@ class DungeonCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
-            await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
+            await self._finish_dungeon_floor(interaction, session, view, False, result_lines)
             return
 
         session["player_pdata"] = player
@@ -508,6 +456,7 @@ class DungeonCog(commands.Cog):
     async def _finish_dungeon_floor(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
                                      player_wins: bool, result_lines: list):
+        view.finished = True
         sid = view.player_id
 
         if player_wins:
@@ -530,10 +479,9 @@ class DungeonCog(commands.Cog):
 
             db = await get_db()
             try:
-                import json
                 await db.execute(
-                    "UPDATE dungeon_progress SET checkpoint=MAX(checkpoint, ?), accumulated_rewards=? WHERE player_id=?",
-                    (floor, json.dumps(acc), sid))
+                    "UPDATE dungeon_progress SET checkpoint=MAX(checkpoint, ?) WHERE player_id=?",
+                    (floor, sid))
                 await db.commit()
             finally:
                 await db.close()
@@ -541,7 +489,6 @@ class DungeonCog(commands.Cog):
             next_floor = floor + 1
             if next_floor > DUNGEON_MAX_FLOOR:
                 result_lines.append(f"\n🎉 HOÀN THÀNH 100 TẦNG! Nhận hết thưởng!")
-                view.finished = True
                 await self._collect_rewards(interaction, session, sid, result_lines)
                 self.sessions.pop(sid, None)
                 return
@@ -555,10 +502,8 @@ class DungeonCog(commands.Cog):
                                   color=0x00ff00)
 
             player = session["player_pdata"]
-            player["attack_cd"] = 0
-            player["special_cd"] = 0
-            player["defense_cd"] = 0
             npc_data = generate_dungeon_npc(next_floor)
+            npc_data["skill_equipped"] = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
             npc_data["_equip_enhances"] = {}
@@ -573,7 +518,6 @@ class DungeonCog(commands.Cog):
                                    session["player_name"], acc)
             await interaction.edit_original_response(embed=embed, view=new_view)
         else:
-            view.finished = True
             result_lines.append(f"\n💀 Thua! Nhận thưởng đã tích lũy...")
             await self._collect_rewards(interaction, session, sid, result_lines)
             self.sessions.pop(sid, None)
@@ -614,16 +558,8 @@ class DungeonCog(commands.Cog):
             else:
                 await db.execute("""INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced)
                     VALUES (?, ?, ?, ?)""",
-                     (sid, acc["stones"]["stone_basic"], acc["stones"]["stone_medium"],
-                      acc["stones"]["stone_advanced"]))
-
-            if acc["stones"].get("artifact", 0) > 0:
-                art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
-                art_row = await art_cursor.fetchone()
-                if art_row:
-                    await db.execute("UPDATE player_artifact SET stone_count=stone_count+? WHERE player_id=?", (acc["stones"]["artifact"], sid))
-                else:
-                    await db.execute("INSERT INTO player_artifact (player_id, star, stone_count) VALUES (?, 0, ?)", (sid, acc["stones"]["artifact"]))
+                    (sid, acc["stones"]["stone_basic"], acc["stones"]["stone_medium"],
+                     acc["stones"]["stone_advanced"]))
 
             if acc["coins"] > 0:
                 await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
@@ -633,7 +569,6 @@ class DungeonCog(commands.Cog):
                     "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
                     (sid, eq["eid"]))
 
-            await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
             await db.commit()
 
             total_lines = []
@@ -642,8 +577,6 @@ class DungeonCog(commands.Cog):
             for k, label in [("stone_basic", "Đá sơ cấp"), ("stone_medium", "Đá trung cấp"), ("stone_advanced", "Đá cao cấp")]:
                 if acc["stones"].get(k, 0) > 0:
                     total_lines.append(f"💎 {label}: +{acc['stones'][k]}")
-            if acc["stones"].get("artifact", 0) > 0:
-                total_lines.append(f"💎 Đá thần khí: +{acc['stones']['artifact']}")
             if acc["equipment"]:
                 total_lines.append(f"⚒️ Trang bị: {len(acc['equipment'])} món")
             if total_lines:
@@ -655,24 +588,6 @@ class DungeonCog(commands.Cog):
         embed = discord.Embed(title="🏰 VỰC SÂU XỎ LÁ - NHẬN THƯỞNG",
                               description="\n".join(result_lines), color=0xffd700)
         await interaction.edit_original_response(embed=embed, view=None)
-
-    async def _apply_rewards(self, db, sid: str, acc: dict):
-        stone_cursor = await db.execute(
-            "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?", (sid,))
-        srow = await stone_cursor.fetchone()
-        if srow:
-            await db.execute("""UPDATE player_enhance_stones
-                SET stone_basic=stone_basic+?, stone_medium=stone_medium+?, stone_advanced=stone_advanced+?
-                WHERE player_id=?""",
-                (acc["stones"].get("stone_basic", 0), acc["stones"].get("stone_medium", 0),
-                 acc["stones"].get("stone_advanced", 0), sid))
-        else:
-            await db.execute("INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, ?, ?)",
-                (sid, acc["stones"].get("stone_basic", 0), acc["stones"].get("stone_medium", 0), acc["stones"].get("stone_advanced", 0)))
-        if acc.get("coins", 0) > 0:
-            await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
-        for eq in acc.get("equipment", []):
-            await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (sid, eq["eid"]))
 
     async def _reply(self, ctx_or_int, msg, ephemeral=False):
         if isinstance(ctx_or_int, commands.Context):

@@ -97,11 +97,10 @@ class ChallengeView(discord.ui.View):
                     slots[row[0]] = row[1]
                 pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
                 eq_cursor = await db.execute(
-                    "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
+                    "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
                 equipped = {}
                 equip_items = {}
                 equip_enhances = {}
-            equip_hidden = {}
                 async for erow in eq_cursor:
                     eq_id = erow[0]
                     eiid = erow[1]
@@ -121,10 +120,6 @@ class ChallengeView(discord.ui.View):
                 buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
                 buff_row = await buff_cursor.fetchone()
                 pdata["buffs"] = dict(buff_row) if buff_row else {}
-                art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (pid,))
-                art_row = await art_cursor.fetchone()
-                pdata["_artifact_star"] = art_row[0] if art_row else 0
-                pdata["_artifact_stones"] = art_row[1] if art_row else 0
                 pdata["damage_dealt"] = pdata.get("damage_dealt", 0)
                 pdata["damage_taken"] = pdata.get("damage_taken", 0)
 

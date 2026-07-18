@@ -34,19 +34,15 @@ class BattleView(discord.ui.View):
         spc = labels.get("special", {"icon": "🔥", "name": "Đặc Biệt"})
         dfs = labels.get("defense", {"icon": "🛡️", "name": "Chống Xỏ Lá"})
 
-        btn_basic = discord.ui.Button(emoji="👊", label="Cú Đấm Ba Que", style=discord.ButtonStyle.secondary, custom_id="battle_basic", row=0)
-        btn_basic.callback = self._make_callback("basic")
-        self.add_item(btn_basic)
-
-        btn_atk = discord.ui.Button(emoji=atk["icon"], label=atk["name"], style=discord.ButtonStyle.danger, custom_id="battle_attack", row=1)
+        btn_atk = discord.ui.Button(emoji=atk["icon"], label=atk["name"], style=discord.ButtonStyle.danger, custom_id="battle_attack", row=0)
         btn_atk.callback = self._make_callback("attack")
         self.add_item(btn_atk)
 
-        btn_spc = discord.ui.Button(emoji=spc["icon"], label=spc["name"], style=discord.ButtonStyle.primary, custom_id="battle_special", row=1)
+        btn_spc = discord.ui.Button(emoji=spc["icon"], label=spc["name"], style=discord.ButtonStyle.primary, custom_id="battle_special", row=0)
         btn_spc.callback = self._make_callback("special")
         self.add_item(btn_spc)
 
-        btn_def = discord.ui.Button(emoji=dfs["icon"], label=dfs["name"], style=discord.ButtonStyle.success, custom_id="battle_defense", row=1)
+        btn_def = discord.ui.Button(emoji=dfs["icon"], label=dfs["name"], style=discord.ButtonStyle.success, custom_id="battle_defense", row=0)
         btn_def.callback = self._make_callback("defense")
         self.add_item(btn_def)
 
@@ -131,15 +127,14 @@ class BattleView(discord.ui.View):
                 await interaction.followup.send("⏳ Chưa tới lượt!", ephemeral=True)
                 return
 
-            if move_type != "basic":
-                cat = "defense" if move_type == "defense" else move_type
-                pdata = await self._get_player_data(db, sid)
-                cd_key = f"{cat}_cd"
-                if pdata.get(cd_key, 0) > 0:
-                    sk = get_equipped_skill(pdata, cat)
-                    await interaction.followup.send(
-                        f"⏳ **{sk['name']}** đang hồi! Còn **{pdata[cd_key]}** turn!", ephemeral=True)
-                    return
+            cat = "defense" if move_type == "defense" else move_type
+            pdata = await self._get_player_data(db, sid)
+            cd_key = f"{cat}_cd"
+            if pdata.get(cd_key, 0) > 0:
+                sk = get_equipped_skill(pdata, cat)
+                await interaction.followup.send(
+                    f"⏳ **{sk['name']}** đang hồi! Còn **{pdata[cd_key]}** turn!", ephemeral=True)
+                return
 
             is_p1 = sid == battle["player1_id"]
             stunned = bool(battle.get("p1_stunned", 0)) if is_p1 else bool(battle.get("p2_stunned", 0))
@@ -179,7 +174,7 @@ class BattleView(discord.ui.View):
         import json
         bs_cursor = await db.execute("SELECT key, value FROM battle_status WHERE battle_id=?",
                                       (self.battle_id,))
-        burn_key = f"{sid}_burn"
+        burn_key = "p1_burn" if is_p1 else "p2_burn"
         burn_data = None
         async for bs_row in bs_cursor:
             k = bs_row[0]
@@ -275,16 +270,13 @@ class BattleView(discord.ui.View):
 
             turn_player = 0 if sid == p1_id else 1
             cat = "defense" if move_type == "defense" else move_type
-            if move_type == "basic":
-                skill = SKILLS_DB.get(1, SKILLS_DB[1])
-            else:
-                skill = get_equipped_skill(p1 if turn_player == 0 else p2, cat)
-            
+            skill = get_equipped_skill(p1 if turn_player == 0 else p2, cat)
+
             flags = {
-                f"{p1_id}_defending": bool(battle.get("p1_defending", 0)),
-                f"{p2_id}_defending": bool(battle.get("p2_defending", 0)),
-                f"{p1_id}_stunned": bool(battle.get("p1_stunned", 0)),
-                f"{p2_id}_stunned": bool(battle.get("p2_stunned", 0)),
+                "p1_defending": bool(battle.get("p1_defending", 0)),
+                "p2_defending": bool(battle.get("p2_defending", 0)),
+                "p1_stunned": bool(battle.get("p1_stunned", 0)),
+                "p2_stunned": bool(battle.get("p2_stunned", 0)),
                 "turn_count": 0,
             }
 
@@ -389,20 +381,23 @@ class BattleView(discord.ui.View):
                 return
 
             await db.execute("DELETE FROM battle_status WHERE battle_id=?", (self.battle_id,))
+            dynamic_keys = {"p1_burn", "p2_burn", "p1_shield_hp", "p2_shield_hp",
+                            "p1_shield_pop_heal", "p2_shield_pop_heal",
+                            "p1_counter", "p2_counter", "p1_counter_immune", "p2_counter_immune",
+                            "p1_rage_dmg", "p2_rage_dmg", "p1_dodge_passive", "p2_dodge_passive", "turn_count"}
             for key, val in flags.items():
-                if key == "turn_count":
-                    continue
-                pid = key.split("_")[0]
-                await db.execute("INSERT INTO battle_status (battle_id, player_id, key, value) VALUES (?, ?, ?, ?)",
-                                  (self.battle_id, pid, key, json.dumps(val)))
+                if key in dynamic_keys:
+                    pid = p1_id if key.startswith("p1") else (p2_id if key.startswith("p2") else p1_id)
+                    await db.execute("INSERT INTO battle_status (battle_id, player_id, key, value) VALUES (?, ?, ?, ?)",
+                                      (self.battle_id, pid, key, json.dumps(val)))
 
             new_turn = p2_id if turn_player == 0 else p1_id
             await db.execute("""UPDATE active_battles SET turn=?, last_move=?,
                                  p1_defending=?, p2_defending=?, p1_stunned=?, p2_stunned=?
                                  WHERE id=?""",
                               (new_turn, time.time(),
-                               int(flags.get(f"{p1_id}_defending", 0)), int(flags.get(f"{p2_id}_defending", 0)),
-                               int(flags.get(f"{p1_id}_stunned", 0)), int(flags.get(f"{p2_id}_stunned", 0)),
+                               int(flags.get("p1_defending", 0)), int(flags.get("p2_defending", 0)),
+                               int(flags.get("p1_stunned", 0)), int(flags.get("p2_stunned", 0)),
                                self.battle_id))
             await db.commit()
 
@@ -485,11 +480,10 @@ class BattleView(discord.ui.View):
         pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
         # Equipment
         eq_cursor = await db.execute(
-            "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
+            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
         equipped = {}
         equip_items = {}
         equip_enhances = {}
-            equip_hidden = {}
         async for erow in eq_cursor:
             eq_id = erow[0]
             eiid = erow[1]
@@ -510,10 +504,6 @@ class BattleView(discord.ui.View):
         buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
         buff_row = await buff_cursor.fetchone()
         pdata["buffs"] = dict(buff_row) if buff_row else {}
-        art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (pid,))
-        art_row = await art_cursor.fetchone()
-        pdata["_artifact_star"] = art_row[0] if art_row else 0
-        pdata["_artifact_stones"] = art_row[1] if art_row else 0
         return pdata
 
     async def _get_player_data(self, db, pid: str) -> dict:
