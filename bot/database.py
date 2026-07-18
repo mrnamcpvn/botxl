@@ -124,6 +124,12 @@ TABLES = [
         star INTEGER DEFAULT 0,
         stone_count INTEGER DEFAULT 0
     )""",
+    """CREATE TABLE IF NOT EXISTS quiz_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        category TEXT DEFAULT 'general'
+    )""",
 ]
 
 MIGRATIONS = [
