@@ -387,7 +387,10 @@ class DungeonCog(commands.Cog):
         if view.finished:
             await interaction.followup.send("🤷 View finished!", ephemeral=True)
             return
-        await self._execute_dungeon_turn(interaction, session, view, "attack")
+        try:
+            await self._execute_dungeon_turn(interaction, session, view, "attack")
+        except Exception as e:
+            await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
 
     async def _handle_dungeon_move(self, interaction: discord.Interaction,
                                     view: DungeonView, move_type: str):
@@ -399,7 +402,10 @@ class DungeonCog(commands.Cog):
         if view.finished:
             await interaction.followup.send("🤷 View finished!", ephemeral=True)
             return
-        await self._execute_dungeon_turn(interaction, session, view, move_type)
+        try:
+            await self._execute_dungeon_turn(interaction, session, view, move_type)
+        except Exception as e:
+            await interaction.followup.send(f"❌ Lỗi: {e}", ephemeral=True)
 
     async def _execute_dungeon_turn(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
