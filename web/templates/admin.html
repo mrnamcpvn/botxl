@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="admin-container">
+    <h1>🛠️ Admin Dashboard</h1>
+    {% if msg %}<div class="msg success">{{ msg }}</div>{% endif %}
+    {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+
+    <div class="card">
+        <h2>💰 Tặng Coin</h2>
+        <form method="post" action="/admin/coins">
+            <input name="password" placeholder="Admin Password" type="password" required>
+            <input name="player_id" placeholder="Discord User ID" required>
+            <input name="amount" placeholder="Số coin" type="number" required>
+            <button type="submit">Tặng</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>🏰 Thêm Lượt Bí Cảnh</h2>
+        <form method="post" action="/admin/dungeon">
+            <input name="password" placeholder="Admin Password" type="password" required>
+            <input name="player_id" placeholder="Discord User ID" required>
+            <button type="submit">Reset Lượt</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>⚒️ Tặng Trang Bị</h2>
+        <form method="post" action="/admin/equip">
+            <input name="password" placeholder="Admin Password" type="password" required>
+            <input name="player_id" placeholder="Discord User ID" required>
+            <input name="equip_id" placeholder="Equipment ID (vd: 401)" type="number" required>
+            <button type="submit">Tặng</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>💎 Tặng Đá Cường Hóa / Thần Khí</h2>
+        <form method="post" action="/admin/stones">
+            <input name="password" placeholder="Admin Password" type="password" required>
+            <input name="player_id" placeholder="Discord User ID" required>
+            <select name="stone_type" required>
+                <option value="stone_basic">Đá Sơ Cấp</option>
+                <option value="stone_medium">Đá Trung Cấp</option>
+                <option value="stone_advanced">Đá Cao Cấp</option>
+                <option value="artifact">Đá Thần Khí</option>
+            </select>
+            <input name="amount" placeholder="Số lượng" type="number" required>
+            <button type="submit">Tặng</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>⚡ Reset Cooldown</h2>
+        <form method="post" action="/admin/resetcd">
+            <input name="password" placeholder="Admin Password" type="password" required>
+            <input name="player_id" placeholder="Discord User ID" required>
+            <button type="submit">Reset CD</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>🔱 Set Thần Khí</h2>
+        <form method="post" action="/admin/artifact">
+            <input name="password" placeholder="Admin Password" type="password" required>
+            <input name="player_id" placeholder="Discord User ID" required>
+            <input name="star" placeholder="Sao (1-10)" type="number" min="0" max="10" required>
+            <button type="submit">Set</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.admin-container { max-width: 600px; margin: 20px auto; }
+.card {
+    background: #1a1a2e; border-radius: 8px; padding: 16px; margin: 12px 0;
+    border: 1px solid #333;
+}
+.card h2 { margin: 0 0 10px 0; font-size: 16px; color: #ffaa00; }
+.card form { display: flex; flex-wrap: wrap; gap: 8px; }
+.card input, .card select {
+    padding: 8px; border-radius: 4px; border: 1px solid #444;
+    background: #0d0d1a; color: #fff; flex: 1; min-width: 120px;
+}
+.card button {
+    padding: 8px 16px; border-radius: 4px; border: none;
+    background: #ff6600; color: #fff; cursor: pointer; font-weight: bold;
+}
+.card button:hover { background: #ff8800; }
+.msg { padding: 10px; border-radius: 4px; margin: 10px 0; }
+.success { background: #003300; color: #00ff00; border: 1px solid #00ff00; }
+.error { background: #330000; color: #ff4444; border: 1px solid #ff4444; }
+</style>
+{% endblock %}
