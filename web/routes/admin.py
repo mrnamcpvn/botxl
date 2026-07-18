@@ -75,15 +75,15 @@ async def admin_coins(request: Request, player_id: str = Form(...), amount: int 
     return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
 
 @router.post("/admin/dungeon", response_class=HTMLResponse)
-async def admin_dungeon(request: Request, player_id: str = Form(...)):
+async def admin_dungeon(request: Request, player_id: str = Form(...), entries: int = Form(...)):
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
     try:
-        conn.execute("UPDATE dungeon_progress SET daily_entries=MAX(0, daily_entries-1), daily_tickets_bought=MAX(0, daily_tickets_bought-1) WHERE player_id=?", (player_id,))
         conn.execute("INSERT OR IGNORE INTO dungeon_progress (player_id, checkpoint, daily_entries, daily_tickets_bought, last_entry_date, last_week_reset) VALUES (?, 0, 0, 0, '', '')", (player_id,))
+        conn.execute("UPDATE dungeon_progress SET daily_entries=daily_entries-?, daily_tickets_bought=MAX(0, daily_tickets_bought-?) WHERE player_id=?", (entries, entries, player_id))
         conn.commit()
-        msg = f"✅ Reset lượt bí cảnh cho <@{player_id}>"
+        msg = f"✅ Tặng {entries} lượt bí cảnh cho <@{player_id}>"
     except Exception as e:
         msg, error = "", str(e)
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()

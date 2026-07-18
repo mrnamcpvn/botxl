@@ -20,7 +20,7 @@
     </div>
 
     <div class="card">
-        <h2>🏰 Thêm Lượt Bí Cảnh</h2>
+        <h2>🏰 Tặng Lượt Bí Cảnh</h2>
         <form method="post" action="/admin/dungeon">
             <select name="player_id" required>
                 <option value="">-- Chọn người chơi --</option>
@@ -28,7 +28,8 @@
                 <option value="{{ p.id }}">{{ p.name }} (Lv.{{ p.level }})</option>
                 {% endfor %}
             </select>
-            <button type="submit">Reset Lượt</button>
+            <input name="entries" placeholder="Số lượt tặng" type="number" value="1" min="1" required>
+            <button type="submit">Tặng</button>
         </form>
     </div>
 
