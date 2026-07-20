@@ -166,9 +166,9 @@ def regen_hp(pdata: dict, now: float = None) -> bool:
     if elapsed < HP_REGEN_INTERVAL:
         return False
     ticks = int(elapsed // HP_REGEN_INTERVAL)
+    eff_max = get_effective_stats(pdata).get("hp_max", 100)
     hp_gain = ticks * eff_max * HP_REGEN_PCT // 100
     old = pdata.get("hp", 0)
-    eff_max = get_effective_stats(pdata).get("hp_max", 100)
     pdata["hp"] = min(eff_max, pdata["hp"] + hp_gain)
     pdata["hp"] = max(0, pdata["hp"])
     pdata["last_hp_update"] = now
