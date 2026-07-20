@@ -274,6 +274,8 @@ class BattleView(discord.ui.View):
             l_coins, l_xp = calc_rewards(False)
             apply_rewards(wdata, w_coins, w_xp)
             apply_rewards(sd, l_coins, l_xp)
+            from bot.cogs.quest import update_progress
+            await update_progress(db, winner_id, 2)
             p1_battles = wdata.get("wins", 0) + wdata.get("losses", 0)
             w_elo, l_elo = calculate_elo(wdata.get("elo", 1000), sd.get("elo", 1000), 1, p1_battles)
             wdata["elo"] = w_elo
@@ -401,6 +403,8 @@ class BattleView(discord.ui.View):
                 l_coins, l_xp = calc_rewards(False)
                 apply_rewards(winner, w_coins, w_xp)
                 apply_rewards(loser, l_coins, l_xp)
+                from bot.cogs.quest import update_progress
+                await update_progress(db, winner_id, 2)
                 wife_lines = await self._level_wives(db, winner_id, w_xp)
                 p1_battles = p1.get("wins", 0) + p1.get("losses", 0)
                 new_elo_p1, new_elo_p2 = calculate_elo(
@@ -533,6 +537,8 @@ class BattleView(discord.ui.View):
         l_coins, l_xp = calc_rewards(False)
         apply_rewards(wdata, w_coins, w_xp)
         apply_rewards(ldata, l_coins, l_xp)
+        from bot.cogs.quest import update_progress
+        await update_progress(db, winner_id, 2)
         wife_lines = await self._level_wives(db, winner_id, w_xp)
         p1_battles = wdata.get("wins", 0) + wdata.get("losses", 0)
         w_elo, l_elo = calculate_elo(
