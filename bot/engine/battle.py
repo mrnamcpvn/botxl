@@ -52,7 +52,10 @@ def get_effective_stats(pdata: dict) -> dict:
                 elif k == "defense": defense += v
         elif item_id and item_id in EQUIPMENT:
             enhance = equip_enhances.get(str(eq_id), 0)
-            mult = 1 + enhance * ENHANCE_BONUS_PER_LEVEL
+            enhance_bonus = ENHANCE_BONUS_PER_LEVEL
+            if EQUIPMENT[item_id]["star"] == 6:
+                enhance_bonus = 0.15
+            mult = 1 + enhance * enhance_bonus
             for k, v in EQUIPMENT[item_id]["stats"].items():
                 val = int(v * mult)
                 if k == "hp" or k == "hp_max": hp_max += val

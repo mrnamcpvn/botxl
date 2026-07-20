@@ -46,9 +46,9 @@ EQUIPMENT = {
     503: {"name":"🔱 Đinh Ba Hải Thần","slot":"weapon","star":5,"stats":{"attack_min":22,"attack_max":45,"crit":8}},
 
     # ⭐6 💗 THẦN THOẠI VŨ KHÍ
-    601: {"name":"🗡️ Gậy Thần Thor","slot":"weapon","star":6,"stats":{"attack_min":35,"attack_max":58,"crit":10}},
-    602: {"name":"⚔️ Excalibur Ba Que","slot":"weapon","star":6,"stats":{"attack_min":40,"attack_max":50,"pierce":15}},
-    603: {"name":"🔪 Huyết Kiếm Long Thần","slot":"weapon","star":6,"stats":{"attack_min":38,"attack_max":55,"spd":8,"crit":5}},
+    601: {"name":"🗡️ Gậy Thần Thor","slot":"weapon","star":6,"stats":{"attack_min":105,"attack_max":174,"crit":30}},
+    602: {"name":"⚔️ Excalibur Ba Que","slot":"weapon","star":6,"stats":{"attack_min":120,"attack_max":150,"pierce":45}},
+    603: {"name":"🔪 Huyết Kiếm Long Thần","slot":"weapon","star":6,"stats":{"attack_min":114,"attack_max":165,"spd":24,"crit":15}},
 
     # ═══════ ⭐1 🔵 ÁO GIÁP (DEF+HP) ═══════
     110: {"name":"Áo Mưa Rách","slot":"armor","star":1,"stats":{"defense":3,"hp":10}},
@@ -75,8 +75,8 @@ EQUIPMENT = {
     511: {"name":"🛡️ Hộ Giáp Rồng Thiêng","slot":"armor","star":5,"stats":{"defense":35,"hp":120,"reflect":5}},
 
     # ⭐6 💗 THẦN THOẠI ÁO GIÁP
-    610: {"name":"🛡️ Khiên Aegis","slot":"armor","star":6,"stats":{"defense":42,"hp":200,"reflect":5}},
-    611: {"name":"🛡️ Áo Giáp Thần Thánh","slot":"armor","star":6,"stats":{"defense":48,"hp":180,"regen":8}},
+    610: {"name":"🛡️ Khiên Aegis","slot":"armor","star":6,"stats":{"defense":126,"hp":600,"reflect":15}},
+    611: {"name":"🛡️ Áo Giáp Thần Thánh","slot":"armor","star":6,"stats":{"defense":144,"hp":540,"regen":24}},
 
     # ═══════ ⭐1 🔵 GIÀY (SPD) ═══════
     120: {"name":"Dép Tổ Ong","slot":"boots","star":1,"stats":{"spd":2}},
@@ -101,8 +101,8 @@ EQUIPMENT = {
     521: {"name":"👟 Phong Hỏa Luân","slot":"boots","star":5,"stats":{"spd":18,"defense":10}},
 
     # ⭐6 💗 THẦN THOẠI GIÀY
-    620: {"name":"👟 Lôi Thần Tốc","slot":"boots","star":6,"stats":{"spd":22,"dodge":5}},
-    621: {"name":"👢 Hư Không Chi Nộ","slot":"boots","star":6,"stats":{"spd":20,"dodge":8,"hp":30}},
+    620: {"name":"👟 Lôi Thần Tốc","slot":"boots","star":6,"stats":{"spd":66,"dodge":15}},
+    621: {"name":"👢 Hư Không Chi Nộ","slot":"boots","star":6,"stats":{"spd":60,"dodge":24,"hp":90}},
 
     # ═══════ ⭐1 🔵 BAO TAY (ATK+crit) ═══════
     130: {"name":"Bao Tay Vải","slot":"gloves","star":1,"stats":{"attack_min":2,"attack_max":3}},
@@ -127,8 +127,8 @@ EQUIPMENT = {
     531: {"name":"✊ Thần Quyền Vô Ảnh","slot":"gloves","star":5,"stats":{"attack_min":25,"attack_max":30,"crit":10}},
 
     # ⭐6 💗 THẦN THOẠI BAO TAY
-    630: {"name":"✋ Thiên Ma Thủ","slot":"gloves","star":6,"stats":{"attack_min":30,"attack_max":48,"crit":12}},
-    631: {"name":"🤛 Diệt Thần Quyền","slot":"gloves","star":6,"stats":{"attack_min":35,"attack_max":42,"pierce":15,"crit":8}},
+    630: {"name":"✋ Thiên Ma Thủ","slot":"gloves","star":6,"stats":{"attack_min":90,"attack_max":144,"crit":36}},
+    631: {"name":"🤛 Diệt Thần Quyền","slot":"gloves","star":6,"stats":{"attack_min":105,"attack_max":126,"pierce":45,"crit":24}},
 
     # ═══════ ⭐1 🔵 DÂY LƯNG (HP) ═══════
     140: {"name":"Dây Lưng Vải","slot":"belt","star":1,"stats":{"hp":20}},
@@ -152,8 +152,8 @@ EQUIPMENT = {
         541: {"name":"🎗️ Thiên Thạch Đới","slot":"belt","star":5,"stats":{"hp":170,"defense":18,"regen":5}},
 
     # ⭐6 💗 THẦN THOẠI DÂY LƯNG
-    640: {"name":"🔗 Kim Long Tỏa","slot":"belt","star":6,"stats":{"hp":300,"defense":18,"regen":5}},
-    641: {"name":"🔗 Phong Ấn Chi Liên","slot":"belt","star":6,"stats":{"hp":260,"defense":25,"reflect":8}},
+    640: {"name":"🔗 Kim Long Tỏa","slot":"belt","star":6,"stats":{"hp":900,"defense":54,"regen":15}},
+    641: {"name":"🔗 Phong Ấn Chi Liên","slot":"belt","star":6,"stats":{"hp":780,"defense":75,"reflect":24}},
 
     # ═══════ ⭐1 🔵 NHẪN (random all) ═══════
     150: {"name":"Nhẫn Đồng","slot":"ring","star":1,"stats":{"attack_min":1,"attack_max":2,"hp":5}},
@@ -177,8 +177,8 @@ EQUIPMENT = {
     551: {"name":"💍 Nhẫn Phượng Hoàng","slot":"ring","star":5,"stats":{"attack_min":18,"attack_max":20,"hp":50,"crit":10,"spd":5}},
 
     # ⭐6 💗 THẦN THOẠI NHẪN
-    650: {"name":"💎 Nhẫn Vũ Trụ","slot":"ring","star":6,"stats":{"attack_min":22,"attack_max":32,"defense":10,"hp":80,"spd":5,"crit":8}},
-    651: {"name":"💎 Nhẫn Hủy Diệt","slot":"ring","star":6,"stats":{"attack_min":28,"attack_max":28,"hp":60,"pierce":20,"dodge":10}},
+    650: {"name":"💎 Nhẫn Vũ Trụ","slot":"ring","star":6,"stats":{"attack_min":66,"attack_max":96,"defense":30,"hp":240,"spd":15,"crit":24}},
+    651: {"name":"💎 Nhẫn Hủy Diệt","slot":"ring","star":6,"stats":{"attack_min":84,"attack_max":84,"hp":180,"pierce":60,"dodge":30}},
 }
 
 
