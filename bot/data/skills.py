@@ -1,15 +1,15 @@
 SKILLS_DB = {
     # ═══════ ATTACK SKILLS ═══════
     1: {"name":"👊 Cú Đấm Ba Que","desc":"Đòn cơ bản, CD thấp","category":"attack","type":"damage","multiplier":1.0,"cooldown":0,"price":0,"rarity":"common","icon":"👊"},
-     2: {"name":"⚔️ Chém Treo Đầu Dê","desc":"2 đòn × 1.15x dmg","category":"attack","type":"multi_hit","hits":2,"multiplier":1.15,"cooldown":1,"price":2000,"rarity":"uncommon","icon":"⚔️"},
-    3: {"name":"💀 Nổi Điên Bán Thịt Chó","desc":"3x dmg, tự mất 10% HP","category":"attack","type":"damage","multiplier":3.0,"self_dmg_pct":10,"cooldown":2,"price":3500,"rarity":"rare","icon":"💀"},
-    4: {"name":"🌀 Đạp Bay Nón Bảo Hiểm","desc":"3 đòn × 1.15x, -30% DEF địch","category":"attack","type":"multi_hit","hits":3,"multiplier":1.15,"def_reduce_pct":30,"cooldown":2,"price":8000,"rarity":"epic","icon":"🌀"},
+     2: {"name":"⚔️ Chém Treo Đầu Dê","desc":"2 đòn × 1.0x dmg","category":"attack","type":"multi_hit","hits":2,"multiplier":1.0,"cooldown":1,"price":2000,"rarity":"uncommon","icon":"⚔️"},
+    3: {"name":"💀 Nổi Điên Bán Thịt Chó","desc":"2.5x dmg, tự mất 10% HP","category":"attack","type":"damage","multiplier":2.5,"self_dmg_pct":10,"cooldown":2,"price":3500,"rarity":"rare","icon":"💀"},
+    4: {"name":"🌀 Đạp Bay Nón Bảo Hiểm","desc":"3 đòn × 1.0x, -30% DEF địch","category":"attack","type":"multi_hit","hits":3,"multiplier":1.0,"def_reduce_pct":30,"cooldown":2,"price":8000,"rarity":"epic","icon":"🌀"},
     # ═══════ SPECIAL SKILLS ═══════
-    5: {"name":"🔥 Chọc Gậy Bánh Xe","desc":"2x dmg, 5% legendary 5x","category":"special","type":"damage","multiplier":2.0,"legendary_chance":5,"legendary_mult":5.0,"cooldown":3,"price":0,"rarity":"common","icon":"🔥"},
-    6: {"name":"🩸 Hút Máu Bán Muỗi","desc":"2x dmg + hồi 50% dmg","category":"special","type":"lifesteal","multiplier":2.0,"lifesteal_pct":50,"cooldown":3,"price":3500,"rarity":"rare","icon":"🩸"},
-    7: {"name":"🔥 Đốt Nhà Hàng Xóm","desc":"2x dmg + đốt 15%/2 turn","category":"special","type":"burn","multiplier":2.0,"burn_pct":15,"burn_turns":2,"cooldown":3,"price":3500,"rarity":"rare","icon":"🔥"},
-    8: {"name":"🌑 Tắt Điện Đột Ngột","desc":"2.5x dmg + choáng 1 turn","category":"special","type":"stun","multiplier":2.5,"cooldown":4,"price":5000,"rarity":"epic","icon":"🌑"},
-    9: {"name":"⚡ Sét Đánh Ngang Tai","desc":"5x dmg, xuyên 50% DEF","category":"special","type":"pierce","multiplier":5.0,"pierce_pct":50,"cooldown":4,"price":15000,"rarity":"legendary","icon":"⚡"},
+    5: {"name":"🔥 Chọc Gậy Bánh Xe","desc":"1.8x dmg, 5% legendary 5x","category":"special","type":"damage","multiplier":1.8,"legendary_chance":5,"legendary_mult":5.0,"cooldown":3,"price":0,"rarity":"common","icon":"🔥"},
+    6: {"name":"🩸 Hút Máu Bán Muỗi","desc":"1.8x dmg + hồi 50% dmg","category":"special","type":"lifesteal","multiplier":1.8,"lifesteal_pct":50,"cooldown":3,"price":3500,"rarity":"rare","icon":"🩸"},
+    7: {"name":"🔥 Đốt Nhà Hàng Xóm","desc":"1.8x dmg + đốt 15%/2 turn","category":"special","type":"burn","multiplier":1.8,"burn_pct":15,"burn_turns":2,"cooldown":3,"price":3500,"rarity":"rare","icon":"🔥"},
+    8: {"name":"🌑 Tắt Điện Đột Ngột","desc":"2.0x dmg + choáng 1 turn","category":"special","type":"stun","multiplier":2.0,"cooldown":4,"price":5000,"rarity":"epic","icon":"🌑"},
+    9: {"name":"⚡ Sét Đánh Ngang Tai","desc":"3.5x dmg, xuyên 50% DEF","category":"special","type":"pierce","multiplier":3.5,"pierce_pct":50,"cooldown":4,"price":15000,"rarity":"legendary","icon":"⚡"},
     # ═══════ DEFENSE SKILLS ═══════
     10: {"name":"🛡️ Chống Xỏ Lá","desc":"×3 DEF + hồi 8% HP | CD:2","category":"defense","type":"defend","heal_pct":8,"cooldown":2,"price":0,"rarity":"common","icon":"🛡️"},
     11: {"name":"🔄 Gậy Ông Đập Lưng Ông","desc":"Giảm 80% dmg + phản 10% dmg","category":"defense","type":"counter","multiplier":0.1,"cooldown":5,"price":2500,"rarity":"uncommon","icon":"🔄"},
