@@ -378,6 +378,8 @@ class Arena(commands.Cog):
                                  (sp - 1, sid))
                 sn = "🛡️ DEF"
             await db.commit()
+            from bot.cogs.quest import update_progress
+            await update_progress(db, sid, 12)
             await update_combat_power(sid)
             await ctx.send(embed=discord.Embed(title="⬆️ NÂNG THÀNH CÔNG!", color=0x00ff88,
                                                 description=f"**{sn}** đã tăng! Còn **{sp - 1} điểm**."))
@@ -767,6 +769,8 @@ class Arena(commands.Cog):
             for slot, sk_id in DEFAULT_SKILL_SLOTS.get(class_id, {"attack": 1, "special": 5, "defense": 10, "passive": 14}).items():
                 await db.execute("INSERT OR REPLACE INTO player_skill_slots (player_id, slot, skill_id) VALUES (?, ?, ?)", (sid, slot, sk_id))
             await db.commit()
+            from bot.cogs.quest import update_progress
+            await update_progress(db, sid, 13)
             await update_combat_power(sid)
             await ctx.reply(f"✅ **Chuyển class thành công!** {new_cls['icon']} {new_cls['name']}")
         finally:

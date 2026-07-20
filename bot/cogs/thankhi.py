@@ -109,6 +109,8 @@ class ThankhiView(discord.ui.View):
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (ARTIFACT_UNLOCK_COST, sid))
             await db.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, 1, 0)", (sid,))
             await db.commit()
+            from bot.cogs.quest import update_progress
+            await update_progress(db, sid, 8)
             embed = thankhi_embed(1, interaction.user.display_name, stones=0)
             view = ThankhiView(1, False)
             await interaction.edit_original_response(embed=embed, view=view)
@@ -141,6 +143,8 @@ class ThankhiView(discord.ui.View):
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (coin_need, sid))
             await db.execute("UPDATE player_artifact SET star=star+1, stone_count=stone_count-? WHERE player_id=?", (stone_need, sid))
             await db.commit()
+            from bot.cogs.quest import update_progress
+            await update_progress(db, sid, 8)
             new_star = current + 1
             # Lấy stones mới sau khi trừ
             new_stones = stones - stone_need

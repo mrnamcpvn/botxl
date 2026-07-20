@@ -55,6 +55,8 @@ class TradeView(discord.ui.View):
                 await db.execute("UPDATE player_wives SET player_id=?, equipped=0 WHERE id=?",
                                   (self.receiver_id, self.data["wife_dbid"]))
                 await db.commit()
+                from bot.cogs.quest import update_progress
+                await update_progress(db, self.receiver_id, 10)
                 self.clear_items()
                 await interaction.edit_original_response(
                     content=f"🤝 **{self.receiver_name}** nhận **{wd['emoji']} {wd['name']}** từ **{self.sender_name}**!",
@@ -96,6 +98,8 @@ class TradeView(discord.ui.View):
                     else:
                         await db.execute("INSERT INTO inventory (player_id, item_id, quantity) VALUES (?, ?, ?)", (self.receiver_id, iid, qty))
                 await db.commit()
+                from bot.cogs.quest import update_progress
+                await update_progress(db, self.receiver_id, 10)
                 self.clear_items()
                 await interaction.edit_original_response(
                     content=f"🤝 **{self.receiver_name}** nhận {qty}× **{item_name}** từ **{self.sender_name}**!",
