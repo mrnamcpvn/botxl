@@ -12,7 +12,7 @@ from bot.data.classes import CLASSES, PERK_DESCRIPTIONS, DEFAULT_SKILLS, DEFAULT
 from bot.engine.battle import get_effective_stats, get_equipped_skill, regen_hp, get_class_perk, calc_class_stat
 from bot.engine.rewards import calc_level, calc_rewards, apply_rewards
 from bot.engine.ranking import calculate_elo
-from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, STUCK_BATTLE_TIMEOUT, CHALLENGE_TIMEOUT_SECONDS, BATTLE_COOLDOWN_SECONDS
+from bot.config import HP_REGEN_INTERVAL, STUCK_BATTLE_TIMEOUT, CHALLENGE_TIMEOUT_SECONDS, BATTLE_COOLDOWN_SECONDS
 from bot.logger import logger
 from bot.cogs.admin import ROLE_MULTIPLIERS
 from bot.views.stats_view import StatsView
