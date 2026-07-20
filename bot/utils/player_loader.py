@@ -20,7 +20,6 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     if not row:
         return None
     pdata = dict(row)
-    regen_hp(pdata)
 
     # Skill slots
     slots_cursor = await db.execute(
@@ -64,6 +63,8 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
     buff_row = await buff_cursor.fetchone()
     pdata["buffs"] = dict(buff_row) if buff_row else {}
+
+    regen_hp(pdata)
 
     if reset_cd:
         pdata["attack_cd"] = 0

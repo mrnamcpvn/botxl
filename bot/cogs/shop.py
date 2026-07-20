@@ -7,6 +7,7 @@ from bot.engine.combat_power import update_combat_power
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, STAR_NAMES, STAR_COLORS, SLOT_NAMES as EQ_SLOT_NAMES
 from bot.data.skills import SKILLS_DB, RARITY_STARS
 from bot.engine.rewards import calc_level
+from bot.engine.battle import get_effective_stats
 from bot.views.inventory_view import InventoryView
 
 EQUIP_SLOT_MAP = {}
@@ -119,9 +120,12 @@ class ShopCog(commands.Cog):
             effect = item["effect"]
             msg_parts = []
             if "hp_restore_percent" in effect:
+                from bot.utils.player_loader import load_player_full
+                full = await load_player_full(db, uid)
+                eff_max = get_effective_stats(full)["hp_max"] if full else pdata.get("hp_max", 100)
                 pct = effect["hp_restore_percent"]
-                heal = int(pdata["hp_max"] * pct / 100)
-                new_hp = min(pdata["hp_max"], pdata["hp"] + heal)
+                heal = int(eff_max * pct / 100)
+                new_hp = min(eff_max, pdata["hp"] + heal)
                 actual = new_hp - pdata["hp"]
                 pdata["hp"] = new_hp
                 await db.execute("UPDATE players SET hp=? WHERE id=?", (new_hp, uid))
