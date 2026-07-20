@@ -221,7 +221,7 @@ def calc_dungeon_rewards(floor: int) -> dict:
 class DungeonView(discord.ui.View):
     def __init__(self, cog, player_id: str, floor: int, player_pdata: dict,
                  npc_pdata: dict, player_name: str, accumulated_rewards: dict):
-        super().__init__(timeout=None)
+        super().__init__(timeout=300)
         self.cog = cog
         self.player_id = player_id
         self.floor = floor
@@ -270,6 +270,11 @@ class DungeonView(discord.ui.View):
             style=discord.ButtonStyle.secondary, custom_id="dungeon_def", row=2)
         btn_def.callback = self._make_move_callback("defense")
         self.add_item(btn_def)
+
+    async def on_timeout(self):
+        if not self.finished:
+            self.finished = True
+            self.cog.sessions.pop(self.player_id, None)
 
     async def _fight_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
