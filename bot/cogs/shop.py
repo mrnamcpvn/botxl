@@ -159,6 +159,10 @@ class ShopCog(commands.Cog):
             await db.commit()
             parts = " | ".join(msg_parts) if msg_parts else "✅"
             await self._reply(ctx_or_int, f"✅ Dùng **{item['name']}**! {parts}")
+            from bot.cogs.quest import update_progress
+            await update_progress(db, uid, 5)
+            if "hp_restore_percent" in effect:
+                await update_progress(db, uid, 14)
         finally:
             await db.close()
 
