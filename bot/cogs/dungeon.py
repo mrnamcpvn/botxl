@@ -15,9 +15,116 @@ from bot.config import (
     DUNGEON_TICKET_COST_1, DUNGEON_TICKET_COST_2,
 )
 from bot.utils.player_loader import load_player_full
+from bot.views.ui_helpers import (
+    hp_bar, format_battle_log, result_embed,
+    dungeon_floor_color, is_boss_floor, dungeon_progress_bar
+)
 
 
 REAL_CLASSES = ["banxabong", "xola", "sieunhan", "thaychua", "muoi", "chodien", "baque"]
+
+
+# ── Dungeon embed helpers ─────────────────────────────────────────────────────
+
+def _dungeon_header_embed(floor: int, player_name: str, pdata: dict,
+                           npc_data: dict, extra_msg: str = "") -> discord.Embed:
+    """Embed hiển thị trạng thái tầng dungeon."""
+    eff = get_effective_stats(pdata)
+    cls_player = CLASSES.get(pdata.get("class_id", "banxabong"), CLASSES["banxabong"])
+
+    is_boss = is_boss_floor(floor)
+    color = dungeon_floor_color(floor)
+    title = f"⚔️ BOSS TẦNG {floor}!" if is_boss else f"🏰 Vực Sâu Xỏ Lá — Tầng {floor}"
+
+    prog_bar = dungeon_progress_bar(floor, DUNGEON_MAX_FLOOR, 10)
+
+    # HP bars
+    p_bar = hp_bar(pdata["hp"], eff["hp_max"], 8)
+    n_bar = hp_bar(npc_data["hp"], npc_data["hp_max"], 8)
+    p_pct = int(pdata["hp"] / max(eff["hp_max"], 1) * 100)
+    n_pct = int(npc_data["hp"] / max(npc_data["hp_max"], 1) * 100)
+
+    desc = (
+        f"**Tiến Độ:** {prog_bar} `{floor}/{DUNGEON_MAX_FLOOR}`\n"
+        f"{'─' * 28}\n"
+        f"{cls_player['icon']} **{player_name}** Lv.{pdata.get('level', 1)}\n"
+        f"❤️ `{pdata['hp']}/{eff['hp_max']}` ({p_pct}%)  {p_bar}\n\n"
+        f"{'💀' if is_boss else '👾'} **{npc_data['name']}** Lv.{npc_data['level']}\n"
+        f"❤️ `{npc_data['hp']}/{npc_data['hp_max']}` ({n_pct}%)  {n_bar}"
+    )
+    if extra_msg:
+        desc += f"\n{'─' * 28}\n{extra_msg}"
+
+    embed = discord.Embed(title=title, description=desc, color=color)
+    if is_boss:
+        embed.set_footer(text="⚠️ BOSS ROUND — Nguy hiểm cao!")
+    return embed
+
+
+def _dungeon_battle_embed(floor: int, player_name: str, pdata: dict,
+                           npc_data: dict, log_lines: list[str]) -> discord.Embed:
+    """Embed hiển thị diễn biến chiến đấu trong dungeon."""
+    eff = get_effective_stats(pdata)
+    is_boss = is_boss_floor(floor)
+    color = dungeon_floor_color(floor)
+
+    p_bar = hp_bar(pdata["hp"], eff["hp_max"], 8)
+    n_bar = hp_bar(npc_data["hp"], npc_data["hp_max"], 8)
+    p_pct = int(pdata["hp"] / max(eff["hp_max"], 1) * 100)
+    n_pct = int(npc_data["hp"] / max(npc_data["hp_max"], 1) * 100)
+
+    # Skill CDs
+    cd_parts = []
+    for cat in ["attack", "special", "defense"]:
+        sk = get_equipped_skill(pdata, cat)
+        cd = pdata.get(f"{cat}_cd", 0)
+        cd_parts.append(f"{sk.get('icon','?')}{'✅' if cd <= 0 else f'⏳{cd}'}")
+
+    status_block = (
+        f"**{player_name}** `{pdata['hp']}/{eff['hp_max']}` ({p_pct}%)\n"
+        f"{p_bar}  {' '.join(cd_parts)}\n\n"
+        f"**{npc_data['name']}** `{npc_data['hp']}/{npc_data['hp_max']}` ({n_pct}%)\n"
+        f"{n_bar}"
+    )
+
+    log_text = format_battle_log(log_lines, max_chars=1800)
+
+    embed = discord.Embed(
+        title=f"{'💀 BOSS' if is_boss else '👾 Dungeon'} — Tầng {floor}/{DUNGEON_MAX_FLOOR}",
+        color=color
+    )
+    embed.add_field(name="📊 Trạng Thái", value=status_block, inline=False)
+    if log_text:
+        embed.add_field(name="⚔️ Diễn Biến", value=log_text, inline=False)
+    prog_bar = dungeon_progress_bar(floor, DUNGEON_MAX_FLOOR, 10)
+    embed.set_footer(text=f"Tiến độ: {prog_bar} {floor}/{DUNGEON_MAX_FLOOR}")
+    return embed
+
+
+def _dungeon_reward_embed(acc: dict, floor: int, title: str) -> discord.Embed:
+    """Embed hiển thị thưởng dungeon."""
+    embed = discord.Embed(title=f"🏆 {title}", color=0xffd700)
+
+    reward_lines = []
+    if acc["coins"] > 0:
+        reward_lines.append(f"💰 **{acc['coins']:,} 🪙**".replace(",", "."))
+    for k, label, emoji in [
+        ("stone_basic", "Đá Sơ Cấp", "🔵"),
+        ("stone_medium", "Đá Trung Cấp", "🟢"),
+        ("stone_advanced", "Đá Cao Cấp", "🔴"),
+    ]:
+        v = acc["stones"].get(k, 0)
+        if v > 0:
+            reward_lines.append(f"{emoji} **{v}x** {label}")
+    for eq in acc["equipment"]:
+        stars = STAR_LABELS.get(eq["star"], "⭐")
+        reward_lines.append(f"⚒️ {stars} **{eq['name']}**")
+
+    embed.description = "\n".join(reward_lines) if reward_lines else "_Không có gì..._"
+
+    prog = dungeon_progress_bar(floor, DUNGEON_MAX_FLOOR, 10)
+    embed.set_footer(text=f"Dừng ở tầng {floor}/{DUNGEON_MAX_FLOOR}  ·  {prog}")
+    return embed
 
 
 def generate_dungeon_npc(floor: int) -> dict:
@@ -309,7 +416,6 @@ class DungeonCog(commands.Cog):
                 await self._reply(ctx_or_int, "❌ Không tìm thấy dữ liệu người chơi!")
                 return
 
-            # load_player_full đã gọi regen_hp bên trong — không cần gọi lại
             eff = get_effective_stats(pdata)
 
             npc_data = generate_dungeon_npc(floor)
@@ -320,17 +426,7 @@ class DungeonCog(commands.Cog):
             rewards = {"stones": {"stone_basic": 0, "stone_medium": 0, "stone_advanced": 0},
                        "coins": 0, "equipment": []}
 
-            cls_player = CLASSES.get(pdata.get("class_id", "banxabong"), CLASSES["banxabong"])
-            desc = (
-                f"🏰 **Tầng {floor}/{DUNGEON_MAX_FLOOR}**\n"
-                f"━━━━━━━━━━━\n"
-                f"{cls_player['icon']} **{display_name}** Lv.{pdata.get('level', 1)}\n"
-                f"👾 **{npc_data['name']}** Lv.{npc_data['level']}\n"
-                f"❤️ {display_name}: `{pdata['hp']}/{eff['hp_max']}`\n"
-                f"❤️ {npc_data['name']}: `{npc_data['hp']}/{npc_data['hp_max']}`\n"
-                f"{extra_msg}"
-            )
-            embed = discord.Embed(title="🏰 VỰC SÂU XỎ LÁ", description=desc, color=0x8844ff)
+            embed = _dungeon_header_embed(floor, display_name, pdata, npc_data, extra_msg)
 
             session = {
                 "player_pdata": pdata,
@@ -455,21 +551,9 @@ class DungeonCog(commands.Cog):
         session["npc_pdata"] = npc
         session["flags"] = flags
 
-        eff = get_effective_stats(player)
-        bar_len = 10
-        pct1 = max(0, min(bar_len, int(player["hp"] / max(eff["hp_max"], 1) * bar_len)))
-        hp1_bar = "🟩" * pct1 + "⬜" * (bar_len - pct1)
-        pct2 = max(0, min(bar_len, int(npc["hp"] / max(npc["hp_max"], 1) * bar_len)))
-        hp2_bar = "🟩" * pct2 + "⬜" * (bar_len - pct2)
-
-        result_lines.append("\n━━━━━━━━━━━")
-        result_lines.append(f"❤️ {session['player_name']}:`{player['hp']}/{eff['hp_max']}`{hp1_bar}")
-        result_lines.append(f"❤️ {npc['name']}:`{npc['hp']}/{npc['hp_max']}`{hp2_bar}")
-
-        desc = session.get("_start_desc", f"🏰 **Tầng {session['floor']}/{DUNGEON_MAX_FLOOR}**")
-        embed = discord.Embed(title="🏰 VỰC SÂU XỎ LÁ",
-                              description=desc + "\n\n" + "\n".join(result_lines),
-                              color=0x8844ff)
+        embed = _dungeon_battle_embed(
+            session["floor"], session["player_name"], player, npc, result_lines
+        )
         new_view = DungeonView(self, view.player_id, session["floor"],
                                player, npc, session["player_name"],
                                session["accumulated_rewards"])
@@ -518,12 +602,6 @@ class DungeonCog(commands.Cog):
             result_lines.append(f"\n🎯 Sẵn sàng tầng **{next_floor}**!")
             result_lines.append(f"💎 Tích lũy: {acc['coins']}🪙 | Sơ:{acc['stones']['stone_basic']} Trung:{acc['stones']['stone_medium']} Cao:{acc['stones']['stone_advanced']}")
 
-            desc = f"🏰 Đã thắng **tầng {floor}**! → Tầng {next_floor}/{DUNGEON_MAX_FLOOR}"
-            embed = discord.Embed(title="🏰 VỰC SÂU XỎ LÁ - THẮNG!",
-                                  description=desc + "\n\n" + "\n".join(result_lines),
-                                  color=0x00ff00)
-
-            player = session["player_pdata"]
             npc_data = generate_dungeon_npc(next_floor)
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
@@ -533,7 +611,8 @@ class DungeonCog(commands.Cog):
             session["npc_pdata"] = npc_data
             session["npc_name"] = npc_data["name"]
             session["flags"] = {"turn_count": 0}
-            session["_start_desc"] = desc
+
+            embed = _dungeon_battle_embed(next_floor, session["player_name"], player, npc_data, result_lines)
 
             new_view = DungeonView(self, sid, next_floor, player, npc_data,
                                    session["player_name"], acc)
@@ -592,22 +671,11 @@ class DungeonCog(commands.Cog):
 
             await db.commit()
 
-            total_lines = []
-            if acc["coins"] > 0:
-                total_lines.append(f"💰 Tổng coin: +{acc['coins']}🪙")
-            for k, label in [("stone_basic", "Đá sơ cấp"), ("stone_medium", "Đá trung cấp"), ("stone_advanced", "Đá cao cấp")]:
-                if acc["stones"].get(k, 0) > 0:
-                    total_lines.append(f"💎 {label}: +{acc['stones'][k]}")
-            if acc["equipment"]:
-                total_lines.append(f"⚒️ Trang bị: {len(acc['equipment'])} món")
-            if total_lines:
-                result_lines.append("\n".join(total_lines))
-
         finally:
             await db.close()
 
-        embed = discord.Embed(title="🏰 VỰC SÂU XỎ LÁ - NHẬN THƯỞNG",
-                              description="\n".join(result_lines), color=0xffd700)
+        floor = session.get("floor", 0)
+        embed = _dungeon_reward_embed(acc, floor, "Nhận Thưởng Bí Cảnh")
         await interaction.edit_original_response(embed=embed, view=None)
 
     async def _reply(self, ctx_or_int, msg, ephemeral=False):

@@ -7,6 +7,7 @@ from bot.engine.combat_power import update_combat_power
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, STAR_NAMES, STAR_COLORS, SLOT_NAMES as EQ_SLOT_NAMES
 from bot.data.skills import SKILLS_DB, RARITY_STARS
 from bot.engine.rewards import calc_level
+from bot.views.inventory_view import InventoryView
 
 EQUIP_SLOT_MAP = {}
 ALL_SLOTS = ["weapon", "armor", "boots", "gloves", "belt", "ring"]
@@ -222,129 +223,71 @@ class ShopCog(commands.Cog):
         uid = str(user.id)
         db = await get_db()
         try:
+            # Player
             cursor = await db.execute("SELECT * FROM players WHERE id=?", (uid,))
             row = await cursor.fetchone()
             if not row:
                 await self._reply(ctx_or_int, "🤷 Chưa đăng ký!")
                 return
             pdata = dict(row)
-            inv_cursor = await db.execute("SELECT item_id, quantity FROM inventory WHERE player_id=? AND quantity>0 ORDER BY item_id", (uid,))
+
+            # Consumables
+            inv_cursor = await db.execute(
+                "SELECT item_id, quantity FROM inventory WHERE player_id=? AND quantity>0 ORDER BY item_id",
+                (uid,))
             consumables = {}
             async for r in inv_cursor:
                 consumables[r[0]] = r[1]
+
+            # Equipment (bao gồm hidden_stats để hiện 🌟)
             eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance, equipped FROM player_equipment WHERE player_id=? ORDER BY id", (uid,))
+                "SELECT id, item_id, enhance, equipped, hidden_stats FROM player_equipment "
+                "WHERE player_id=? ORDER BY equipped DESC, id",
+                (uid,))
             eq_rows = []
             async for r in eq_cursor:
                 eq_rows.append(dict(r))
-            equipped = {}
-            for er in eq_rows:
-                if er["equipped"]:
-                    slot = None
-                    if er["item_id"] in EQUIPMENT:
-                        slot = EQUIPMENT[er["item_id"]]["slot"]
-                    elif er["item_id"] in SHOP_ITEMS and SHOP_ITEMS[er["item_id"]]["type"] == "equipment":
-                        slot = SHOP_ITEMS[er["item_id"]]["slot"]
-                    if slot:
-                        equipped[slot] = er["id"]
+
+            # Enhance stones
             stone_cursor = await db.execute(
-                "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?", (uid,))
+                "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?",
+                (uid,))
             stone_row = await stone_cursor.fetchone()
+
+            # Skills
             skill_cursor = await db.execute("SELECT skill_id FROM player_skills WHERE player_id=?", (uid,))
             owned_skills = set()
             async for r in skill_cursor:
                 owned_skills.add(r[0])
-            slot_skill_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (uid,))
+
+            slot_skill_cursor = await db.execute(
+                "SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (uid,))
             equipped_skills = {}
             async for r in slot_skill_cursor:
                 equipped_skills[r[0]] = r[1]
-            level, xp_in_level = calc_level(pdata.get("xp", 0))
-            best_star = 0
-            for er in eq_rows:
-                if er["item_id"] in EQUIPMENT and er["equipped"]:
-                    best_star = max(best_star, EQUIPMENT[er["item_id"]]["star"])
-            embed_color = STAR_COLORS.get(best_star, 0x00ff88)
-            embed = discord.Embed(title=f"🎒 Túi Đồ {user.display_name}", color=embed_color,
-                                  description=f"Lv.{level} | 💰 {pdata.get('coins', 0)}🪙")
-            if consumables:
-                lines = []
-                for iid, qty in consumables.items():
-                    item = SHOP_ITEMS.get(iid)
-                    if item:
-                        lines.append(f"`{iid}` {item['name']} ×**{qty}** — {item['desc']}")
-                if lines:
-                    embed.add_field(name="🧪 Tiêu Hao", value="\n".join(lines), inline=False)
-            if eq_rows:
-                lines = []
-                for slot in ALL_SLOTS:
-                    eid = equipped.get(slot)
-                    slot_name = EQ_SLOT_NAMES.get(slot, slot)
-                    if eid:
-                        er = next((r for r in eq_rows if r["id"] == eid), None)
-                        if er:
-                            eiid = er["item_id"]
-                            enh = er["enhance"]
-                            if enh >= 9:
-                                enh_str = " 🌟MAX🌟"
-                            elif enh > 0:
-                                enh_str = f" ✦+{enh}"
-                            else:
-                                enh_str = ""
-                            if eiid in SHOP_ITEMS:
-                                lines.append(f"✅ **{slot_name}**: {SHOP_ITEMS[eiid]['name']}{enh_str}")
-                            elif eiid in EQUIPMENT:
-                                e = EQUIPMENT[eiid]
-                                stars = STAR_LABELS.get(e["star"], "⭐")
-                                name = e["name"]
-                                if e["star"] == 6:
-                                    name = f"**[Thần Thoại]** {name}"
-                                lines.append(f"✅ **{slot_name}**: {stars} {name}{enh_str}")
-                    else:
-                        lines.append(f"⬜ {slot_name}: (trống)")
-                lines.append("")
-                for er in eq_rows:
-                    eiid = er["item_id"]
-                    enh = er["enhance"]
-                    if enh >= 9:
-                        enh_str = " 🌟MAX🌟"
-                    elif enh > 0:
-                        enh_str = f" ✦+{enh}"
-                    else:
-                        enh_str = ""
-                    ee = "✅" if er["equipped"] else "📦"
-                    if eiid in SHOP_ITEMS:
-                        item = SHOP_ITEMS[eiid]
-                        lines.append(f"`ID{eiid}` {ee} {item['name']}{enh_str}")
-                    elif eiid in EQUIPMENT:
-                        e = EQUIPMENT[eiid]
-                        stars = STAR_LABELS.get(e["star"], "⭐")
-                        slot = EQ_SLOT_NAMES.get(e["slot"], e["slot"])
-                        name = e["name"]
-                        if e["star"] == 6:
-                            name = f"**[Thần Thoại]** {name}"
-                        lines.append(f"`ID{eiid}` {ee} {stars} {name}{enh_str} ({slot})")
-                if stone_row and (stone_row[0] or stone_row[1] or stone_row[2]):
-                    lines.append("")
-                    lines.append(f"💎 Đá sơ cấp: {stone_row[0]} | 💎 Đá trung cấp: {stone_row[1]} | 💎 Đá cao cấp: {stone_row[2]}")
-                if lines:
-                    embed.add_field(name="⚒️ Trang Bị", value="\n".join(lines), inline=False)
-            if owned_skills:
-                lines = []
-                for sid in sorted(owned_skills):
-                    sk = SKILLS_DB.get(sid)
-                    if sk:
-                        stars = RARITY_STARS.get(sk.get("rarity", "common"), "⭐")
-                        is_e = any(equipped_skills.get(s) == sid for s in ["attack", "special", "defense", "passive"])
-                        s = "✅ ĐANG DÙNG" if is_e else "📦 CÓ"
-                        lines.append(f"`{sid}` {sk['icon']} **{sk['name']}** {stars} | {s}")
-                if lines:
-                    embed.add_field(name="🔥 Kỹ Năng", value="\n".join(lines), inline=False)
-            if isinstance(ctx_or_int, discord.ext.commands.Context):
-                await ctx_or_int.send(embed=embed)
-            else:
-                await ctx_or_int.response.send_message(embed=embed)
+
+            # Buff
+            buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (uid,))
+            buff_row = await buff_cursor.fetchone()
+            pdata["buffs"] = dict(buff_row) if buff_row else {}
+
         finally:
             await db.close()
+
+        view = InventoryView(
+            user=user,
+            pdata=pdata,
+            eq_rows=eq_rows,
+            consumables=consumables,
+            stone_row=stone_row,
+            owned_skills=owned_skills,
+            equipped_skills=equipped_skills,
+        )
+
+        if isinstance(ctx_or_int, discord.ext.commands.Context):
+            await ctx_or_int.send(embed=view.embed, view=view)
+        else:
+            await ctx_or_int.response.send_message(embed=view.embed, view=view)
 
     async def _reply(self, ctx_or_int, msg, ephemeral=False):
         if isinstance(ctx_or_int, discord.ext.commands.Context):

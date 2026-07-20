@@ -20,8 +20,74 @@ from bot.utils.player_loader import (
     load_player_full, save_player_data as _save_player_util,
     load_equipped_wives, level_wives_xp
 )
+from bot.views.ui_helpers import hp_bar, format_battle_log, result_embed, npc_difficulty_badge
 
 RARITY_DMG_MULT = {"B": 0.5, "A": 0.75, "S": 1.0, "SVIP": 1.5}
+
+
+def _npc_start_embed(display_name: str, pdata: dict, npc_data: dict) -> discord.Embed:
+    """Embed mở đầu trận NPC."""
+    eff = get_effective_stats(pdata)
+    cls_npc = CLASSES.get(npc_data["class_id"], CLASSES["banxabong"])
+    cls_player = CLASSES.get(pdata.get("class_id", "banxabong"), CLASSES["banxabong"])
+    diff = npc_difficulty_badge(npc_data["level"])
+    p_bar = hp_bar(pdata["hp"], eff["hp_max"], 8)
+    n_bar = hp_bar(npc_data["hp"], npc_data["hp_max"], 8)
+
+    embed = discord.Embed(
+        title=f"👾 NPC: {npc_data['name']}",
+        color=0x9966ff,
+        description=(
+            f"**Độ Khó:** {diff}\n"
+            f"{'─' * 26}\n"
+            f"{cls_player['icon']} **{display_name}** Lv.{pdata.get('level', 1)}\n"
+            f"❤️ `{pdata['hp']}/{eff['hp_max']}`  {p_bar}\n\n"
+            f"{cls_npc['icon']} **{npc_data['name']}** Lv.{npc_data['level']}\n"
+            f"❤️ `{npc_data['hp']}/{npc_data['hp_max']}`  {n_bar}\n"
+            f"{'─' * 26}\n"
+            f"🎯 **{display_name}** đi trước!"
+        )
+    )
+    return embed
+
+
+def _npc_battle_embed(player_name: str, pdata: dict, npc_data: dict,
+                       log_lines: list, wives: list) -> discord.Embed:
+    """Embed diễn biến trận NPC."""
+    eff = get_effective_stats(pdata)
+    p_bar = hp_bar(pdata["hp"], eff["hp_max"], 8)
+    n_bar = hp_bar(npc_data["hp"], npc_data["hp_max"], 8)
+    p_pct = int(pdata["hp"] / max(eff["hp_max"], 1) * 100)
+    n_pct = int(npc_data["hp"] / max(npc_data["hp_max"], 1) * 100)
+
+    cd_parts = []
+    for cat in ["attack", "special", "defense"]:
+        sk = get_equipped_skill(pdata, cat)
+        cd = pdata.get(f"{cat}_cd", 0)
+        cd_parts.append(f"{sk.get('icon','?')}{'✅' if cd <= 0 else f'⏳{cd}'}")
+
+    wife_line = ""
+    if wives:
+        wlist = [
+            f"{WIVES.get(w['wife_id'], WIVES[1])['emoji']}Lv.{w['level']}"
+            for w in wives
+        ]
+        wife_line = f"\n💍 {'  '.join(wlist)}"
+
+    status_block = (
+        f"**{player_name}** `{pdata['hp']}/{eff['hp_max']}` ({p_pct}%)\n"
+        f"{p_bar}  {' '.join(cd_parts)}{wife_line}\n\n"
+        f"**{npc_data['name']}** `{npc_data['hp']}/{npc_data['hp_max']}` ({n_pct}%)\n"
+        f"{n_bar}"
+    )
+
+    log_text = format_battle_log(log_lines, max_chars=1800)
+
+    embed = discord.Embed(title="👾 NPC BATTLE", color=0x9966ff)
+    embed.add_field(name="📊 Trạng Thái", value=status_block, inline=False)
+    if log_text:
+        embed.add_field(name="⚔️ Diễn Biến", value=log_text, inline=False)
+    return embed
 
 
 class NPCBattleView(discord.ui.View):
@@ -227,18 +293,7 @@ class NPCCog(commands.Cog):
             cls_npc = CLASSES.get(npc_data["class_id"], CLASSES["banxabong"])
             cls_player = CLASSES.get(pdata.get("class_id", "banxabong"), CLASSES["banxabong"])
 
-            embed = discord.Embed(
-                title=f"👾 THÁCH NPC: {npc_data['name']}",
-                color=0x9966ff,
-                description=(
-                    f"{cls_player['icon']} **{display_name}** Lv.{pdata.get('level',1)}"
-                    f" ⚔️ {cls_npc['icon']} **{npc_data['name']}** Lv.{npc_data['level']}\n"
-                    f"━━━━━━━━━━━\n"
-                    f"❤️ {display_name}: `{pdata['hp']}/{eff['hp_max']}`\n"
-                    f"❤️ {npc_data['name']}: `{npc_data['hp']}/{npc_data['hp_max']}`\n"
-                    f"🎲 **{display_name}** đi trước!"
-                )
-            )
+            embed = _npc_start_embed(display_name, pdata, npc_data)
 
             session = {
                 "player_pdata": pdata,
@@ -366,24 +421,9 @@ class NPCCog(commands.Cog):
         session["npc_pdata"] = npc
         session["flags"] = flags
 
-        eff = get_effective_stats(player)
-        bar_len = 10
-        pct1 = max(0, min(10, int(player["hp"] / max(eff["hp_max"], 1) * bar_len)))
-        hp1_bar = "🟩" * pct1 + "⬜" * (bar_len - pct1)
-        pct2 = max(0, min(10, int(npc["hp"] / max(npc["hp_max"], 1) * bar_len)))
-        hp2_bar = "🟩" * pct2 + "⬜" * (bar_len - pct2)
-
-        result_lines.append("\n━━━━━━━━━━━")
-        result_lines.append(f"❤️ {session['player_name']}:`{player['hp']}/{eff['hp_max']}`{hp1_bar}")
-        result_lines.append(f"❤️ {npc['name']}:`{npc['hp']}/{npc['hp_max']}`{hp2_bar}")
-
-        # Wife display — reuse wives đã load ở trên (không cần mở DB lần nữa)
-        if wives:
-            wlist = [f"{WIVES.get(w['wife_id'], WIVES[1])['emoji']} **{WIVES.get(w['wife_id'], WIVES[1])['name']}** Lv.{w['level']}"
-                     for w in wives]
-            result_lines.append(f"💍 Vợ: {' | '.join(wlist)}")
-
-        embed = discord.Embed(title="👾 NPC BATTLE", description="\n".join(result_lines), color=0x9966ff)
+        embed = _npc_battle_embed(
+            session["player_name"], player, npc, result_lines, wives
+        )
         new_view = NPCBattleView(self, sid, view.npc_id, player, npc,
                                  npc["name"], session["player_name"], True)
         await interaction.edit_original_response(embed=embed, view=new_view)
@@ -449,8 +489,29 @@ class NPCCog(commands.Cog):
             await db.close()
 
         self.sessions.pop(sid, None)
-        embed = discord.Embed(title="👾 NPC BATTLE - KẾT THÚC", description="\n".join(result_lines),
-                              color=0xffd700 if player_wins else 0xff0000)
+
+        if player_wins:
+            embed = result_embed(
+                winner_name=session["player_name"],
+                loser_name=npc["name"],
+                coins=w_coins, xp=w_xp,
+                elo_change=None,
+                drop_text=drop["text"] if drop else None,
+                wife_lines=wife_lines if player_wins else [],
+                extra_lines=["💎 +1 Đá Thần Khí!"] if "💎 +1 Đá Thần Khí!" in result_lines else None,
+            )
+            log_summary = format_battle_log(result_lines, max_chars=1200)
+            if log_summary:
+                embed.description = log_summary
+        else:
+            embed = discord.Embed(
+                title="💀 Thất Bại",
+                description=(
+                    f"**{session['player_name']}** thua **{npc['name']}**!\n\n"
+                    + format_battle_log(result_lines, max_chars=1500)
+                ),
+                color=0xff4444,
+            )
         await interaction.edit_original_response(embed=embed, view=None)
 
 async def setup(bot):

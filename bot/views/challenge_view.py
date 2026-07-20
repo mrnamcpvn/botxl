@@ -7,6 +7,7 @@ from bot.cogs.admin import sync_role_mult
 from bot.engine.battle import get_effective_stats, regen_hp
 from bot.data.equipment import EQUIPMENT
 from bot.data.shop_items import SHOP_ITEMS
+from bot.views.ui_helpers import hp_bar
 
 
 class ChallengeView(discord.ui.View):
@@ -187,10 +188,12 @@ class ChallengeView(discord.ui.View):
                 title="⚔️ TRẬN CHIẾN BẮT ĐẦU!",
                 color=0xff6600,
                 description=(
-                    f"{cls1['icon']} **{challenger.display_name}** ⚔️ {cls2['icon']} **{target_m.display_name}**\n"
-                    f"🎲 **{turn_user.display_name}** đi trước!\n━━━━━━━━━━━\n"
-                    f"❤️ {challenger.display_name}: `{p1['hp']}/{eff1['hp_max']}`\n"
-                    f"❤️ {target_m.display_name}: `{p2['hp']}/{eff2['hp_max']}`"
+                    f"### {cls1['icon']} {challenger.display_name}  ⚔️  {cls2['icon']} {target_m.display_name}\n"
+                    f"─────────────────────\n"
+                    f"❤️ **{challenger.display_name}** `{p1['hp']}/{eff1['hp_max']}` {hp_bar(p1['hp'], eff1['hp_max'], 8)}\n"
+                    f"❤️ **{target_m.display_name}** `{p2['hp']}/{eff2['hp_max']}` {hp_bar(p2['hp'], eff2['hp_max'], 8)}\n"
+                    f"─────────────────────\n"
+                    f"🎯 **{turn_user.display_name}** đi trước!"
                 )
             )
             view = BattleView(self.bot, battle_id, first, turn_user.display_name, skill_labels)

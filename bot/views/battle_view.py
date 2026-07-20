@@ -16,8 +16,62 @@ from bot.utils.player_loader import (
     load_player_full, save_player_data as _save_player_data_util,
     load_equipped_wives, level_wives_xp
 )
+from bot.views.ui_helpers import hp_bar, skill_cd_row, format_battle_log, result_embed
 
 RARITY_DMG_MULT = {"B": 0.5, "A": 0.75, "S": 1.0, "SVIP": 1.5}
+
+
+def _battle_ongoing_embed(
+    p1: dict, p2: dict, p1_name: str, p2_name: str,
+    next_name: str, log_lines: list[str],
+    p1_wives: list, p2_wives: list,
+) -> discord.Embed:
+    """Embed hiển thị diễn biến trận đấu đang diễn ra."""
+    eff1 = get_effective_stats(p1)
+    eff2 = get_effective_stats(p2)
+
+    # HP bars
+    bar1 = hp_bar(p1["hp"], eff1["hp_max"], 8)
+    bar2 = hp_bar(p2["hp"], eff2["hp_max"], 8)
+    pct1 = int(p1["hp"] / max(eff1["hp_max"], 1) * 100)
+    pct2 = int(p2["hp"] / max(eff2["hp_max"], 1) * 100)
+
+    # CD icons
+    cd1_parts = []
+    cd2_parts = []
+    for cat in ["attack", "special", "defense"]:
+        for p, parts in [(p1, cd1_parts), (p2, cd2_parts)]:
+            sk = get_equipped_skill(p, cat)
+            cd = p.get(f"{cat}_cd", 0)
+            parts.append(f"{sk.get('icon','?')}{'✅' if cd <= 0 else f'⏳{cd}'}")
+
+    # Wife display
+    def wife_summary(wives: list) -> str:
+        if not wives:
+            return ""
+        parts = [f"{WIVES.get(w['wife_id'], WIVES[1])['emoji']}Lv.{w['level']}" for w in wives]
+        return "  ".join(parts)
+
+    w1 = wife_summary(p1_wives)
+    w2 = wife_summary(p2_wives)
+
+    status_block = (
+        f"**{p1_name}** `{p1['hp']}/{eff1['hp_max']}` ({pct1}%)\n"
+        f"{bar1}  {' '.join(cd1_parts)}"
+        + (f"\n💍 {w1}" if w1 else "") + "\n\n"
+        f"**{p2_name}** `{p2['hp']}/{eff2['hp_max']}` ({pct2}%)\n"
+        f"{bar2}  {' '.join(cd2_parts)}"
+        + (f"\n💍 {w2}" if w2 else "")
+    )
+
+    log_text = format_battle_log(log_lines, max_chars=2000)
+
+    embed = discord.Embed(color=0x5865f2)
+    embed.add_field(name="📊 Trạng Thái", value=status_block, inline=False)
+    if log_text:
+        embed.add_field(name="⚔️ Diễn Biến", value=log_text, inline=False)
+    embed.set_footer(text=f"⏳ Lượt: {next_name}")
+    return embed
 
 
 class BattleView(discord.ui.View):
@@ -369,16 +423,19 @@ class BattleView(discord.ui.View):
                 await update_combat_power(p1_id, db=db)
                 await update_combat_power(p2_id, db=db)
 
-                lines = result["log_messages"] + [
-                    f"💰 {p1_m.display_name if winner_id == p1_id else p2_m.display_name}: +{w_coins}🪙 +{w_xp}XP",
-                ]
-                if wife_lines:
-                    lines.append("")
-                    lines.extend(wife_lines)
-
-                if drop:
-                    lines.append(f"\n{drop['text']}")
-                embed = discord.Embed(title="⚔️ KẾT THÚC!", description="\n".join(lines), color=0xffd700)
+                winner_m_name = p1_m.display_name if winner_id == p1_id else p2_m.display_name
+                loser_m_name  = p2_m.display_name if winner_id == p1_id else p1_m.display_name
+                embed = result_embed(
+                    winner_name=winner_m_name,
+                    loser_name=loser_m_name,
+                    coins=w_coins, xp=w_xp,
+                    elo_change=None,
+                    drop_text=drop["text"] if drop else None,
+                    wife_lines=wife_lines,
+                )
+                log_summary = format_battle_log(result["log_messages"], max_chars=1500)
+                if log_summary:
+                    embed.description = log_summary
                 await interaction.edit_original_response(embed=embed, view=None)
                 return
 
@@ -406,51 +463,17 @@ class BattleView(discord.ui.View):
             next_m = p1_m if new_turn == p1_id else p2_m
             next_pdata = p1 if new_turn == p1_id else p2
 
-            eff1 = get_effective_stats(p1)
-            eff2 = get_effective_stats(p2)
-
-            ask = get_equipped_skill(next_pdata, "attack")
-            ssk = get_equipped_skill(next_pdata, "special")
-            dsk = get_equipped_skill(next_pdata, "defense")
-
-            bar_len = 10
-            pct1 = max(0, min(bar_len, int(p1["hp"] / max(eff1["hp_max"], 1) * bar_len)))
-            hp1_bar = "🟩" * pct1 + "⬜" * (bar_len - pct1)
-            pct2 = max(0, min(bar_len, int(p2["hp"] / max(eff2["hp_max"], 1) * bar_len)))
-            hp2_bar = "🟩" * pct2 + "⬜" * (bar_len - pct2)
-
-            result["log_messages"].append("\n━━━━━━━━━━━")
-            result["log_messages"].append(f"❤️ {p1_m.display_name}:`{p1['hp']}/{eff1['hp_max']}`{hp1_bar}")
-            result["log_messages"].append(f"❤️ {p2_m.display_name}:`{p2['hp']}/{eff2['hp_max']}`{hp2_bar}")
-
-            for pd, pn in [(p1, p1_m.display_name), (p2, p2_m.display_name)]:
-                cds = []
-                for cat2 in ["attack", "special", "defense"]:
-                    sk = get_equipped_skill(pd, cat2)
-                    cd = pd.get(f"{cat2}_cd", 0)
-                    icon = sk.get("icon", "❓")
-                    cds.append(f"{icon}{'✅' if cd <= 0 else f'⏳{cd}'}")
-                result["log_messages"].append(f"  {pn}: {' '.join(cds)}")
-
-            result["log_messages"].append(f"\n⏳ **{next_m.display_name}** — 15s!")
-
             # --- Wife display --- (reuse db đang mở)
             p1_wives_disp = await load_equipped_wives(db, p1_id)
             p2_wives_disp = await load_equipped_wives(db, p2_id)
-            if p1_wives_disp:
-                wlist = []
-                for w in p1_wives_disp:
-                    wd = WIVES.get(w["wife_id"], WIVES[1])
-                    wlist.append(f"{wd['emoji']} **{wd['name']}** Lv.{w['level']}")
-                result["log_messages"].append(f"💍 {p1_m.display_name}: {' | '.join(wlist)}")
-            if p2_wives_disp:
-                wlist = []
-                for w in p2_wives_disp:
-                    wd = WIVES.get(w["wife_id"], WIVES[1])
-                    wlist.append(f"{wd['emoji']} **{wd['name']}** Lv.{w['level']}")
-                result["log_messages"].append(f"💍 {p2_m.display_name}: {' | '.join(wlist)}")
 
-            embed = discord.Embed(title="⚔️ DIỄN BIẾN", description="\n".join(result["log_messages"]), color=0x00ff00)
+            embed = _battle_ongoing_embed(
+                p1, p2,
+                p1_m.display_name, p2_m.display_name,
+                next_m.display_name,
+                result["log_messages"],
+                p1_wives_disp, p2_wives_disp,
+            )
             view = BattleView(self.bot, self.battle_id, new_turn, next_m.display_name, get_skill_labels(next_pdata))
             await interaction.edit_original_response(embed=embed, view=view)
             view.start_countdown()
@@ -533,19 +556,15 @@ class BattleView(discord.ui.View):
         await update_combat_power(winner_id, db=db)
         await update_combat_power(loser_sid, db=db)
 
-        lines = [
-            f"⏰ **{loser_name}** hết giờ!" if is_timeout else f"💀 **{loser_name}** thua!",
-            f"🏆 **{winner_name}** CHIẾN THẮNG! 🎉",
-            f"💰 {winner_name}: +{w_coins}🪙 +{w_xp}XP",
-        ]
-        if wife_lines:
-            lines.append("")
-            lines.extend(wife_lines)
-
-        if drop:
-            lines.append(f"\n{drop['text']}")
-
-        embed = discord.Embed(title="⚔️ KẾT THÚC", description="\n".join(lines), color=0xffd700)
+        embed = result_embed(
+            winner_name=winner_name,
+            loser_name=loser_name,
+            coins=w_coins, xp=w_xp,
+            elo_change=None,
+            drop_text=drop["text"] if drop else None,
+            wife_lines=wife_lines,
+            is_timeout=is_timeout,
+        )
         try:
             await self.message.edit(embed=embed, view=None)
         except:

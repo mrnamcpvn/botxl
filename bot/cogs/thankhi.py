@@ -6,23 +6,57 @@ from bot.data.artifacts import ARTIFACTS
 from bot.config import ARTIFACT_UNLOCK_COST, ARTIFACT_MAX_STAR, ARTIFACT_UPGRADE_COSTS
 
 
-def thankhi_embed(star: int, display_name: str) -> discord.Embed:
+def thankhi_embed(star: int, display_name: str, stones: int = 0) -> discord.Embed:
+    """Embed hiển thị Thần Khí — đẹp hơn với star rating và preview nâng cấp."""
     a = ARTIFACTS.get(star, ARTIFACTS[0])
-    embed = discord.Embed(title=f"🔱 Thần Khí — {display_name}", color=a["color"])
+
+    # Star display
+    star_filled = "⭐" * star
+    star_empty = "✩" * (ARTIFACT_MAX_STAR - star)
+
     if star == 0:
-        embed.description = "🔒 Chưa kích hoạt\nDùng nút bên dưới để mở khóa với 100,000🪙"
-    else:
-        boost = int(star * 15)
-        star_icons = "⭐" * star
-        name = f"{a.get('emoji','')} {a['name']}"
-        embed.description = (
-            f"# {name}\n"
-            f"# {star_icons}\n"
-            f"⚡ **+{boost}%** toàn bộ chỉ số\n"
-            f"*{a['desc']}*"
+        embed = discord.Embed(
+            title="🔒 Thần Khí — Chưa Kích Hoạt",
+            description=(
+                "Thần Khí là vũ khí tối thượng tăng **toàn bộ chỉ số**.\n\n"
+                f"💰 Chi phí kích hoạt: **{ARTIFACT_UNLOCK_COST:,} 🪙**\n"
+                "🪨 Đá thần khí kiếm từ NPC Lv.15+ và Dungeon tầng 50+"
+            ),
+            color=0x888888
         )
+        embed.set_footer(text="Dùng nút bên dưới để kích hoạt")
+        return embed
+
+    boost = star * 15
+    next_star = star + 1
+    can_upgrade = next_star <= ARTIFACT_MAX_STAR
+    next_cost = ARTIFACT_UPGRADE_COSTS.get(next_star, (0, 0)) if can_upgrade else None
+
+    desc = (
+        f"# {a.get('emoji', '')} {a['name']}\n"
+        f"### {star_filled}{star_empty}\n"
+        f"*{a['desc']}*\n\n"
+        f"⚡ **+{boost}%** tất cả chỉ số"
+    )
+
+    if stones > 0:
+        desc += f"\n💎 Đá thần khí: **{stones}** viên"
+
+    if can_upgrade and next_cost:
+        stone_need, coin_need = next_cost
+        desc += (
+            f"\n\n{'─' * 22}\n"
+            f"**Nâng lên ★{next_star}:**\n"
+            f"💎 {stone_need} đá  ·  💰 {coin_need:,} 🪙"
+        )
+    elif star >= ARTIFACT_MAX_STAR:
+        desc += f"\n\n🌟 **ĐÃ ĐẠT CẤP ĐỘ TỐI ĐA!**"
+
+    embed = discord.Embed(title="🔱 Thần Khí", description=desc.replace(",", "."), color=a["color"])
+
     if a.get("gif_url"):
         embed.set_image(url=a["gif_url"])
+
     return embed
 
 
@@ -70,12 +104,12 @@ class ThankhiView(discord.ui.View):
             cursor = await db.execute("SELECT coins FROM players WHERE id=?", (sid,))
             row = await cursor.fetchone()
             if not row or row[0] < ARTIFACT_UNLOCK_COST:
-                await interaction.followup.send(f"😅 Cần {ARTIFACT_UNLOCK_COST}🪙!", ephemeral=True)
+                await interaction.followup.send(f"😅 Cần {ARTIFACT_UNLOCK_COST:,}🪙!".replace(",", "."), ephemeral=True)
                 return
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (ARTIFACT_UNLOCK_COST, sid))
             await db.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, 1, 0)", (sid,))
             await db.commit()
-            embed = thankhi_embed(1, interaction.user.display_name)
+            embed = thankhi_embed(1, interaction.user.display_name, stones=0)
             view = ThankhiView(1, False)
             await interaction.edit_original_response(embed=embed, view=view)
         finally:
@@ -97,18 +131,20 @@ class ThankhiView(discord.ui.View):
                 return
             stone_need, coin_need = cost
             if stones < stone_need:
-                await interaction.followup.send(f"😅 Cần {stone_need} đá thần khí, có {stones}!", ephemeral=True)
+                await interaction.followup.send(f"😅 Cần **{stone_need}** đá, có **{stones}**!", ephemeral=True)
                 return
             pc = await db.execute("SELECT coins FROM players WHERE id=?", (sid,))
             pr = await pc.fetchone()
             if not pr or pr[0] < coin_need:
-                await interaction.followup.send(f"😅 Cần {coin_need}🪙!", ephemeral=True)
+                await interaction.followup.send(f"😅 Cần **{coin_need:,}**🪙!".replace(",", "."), ephemeral=True)
                 return
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (coin_need, sid))
             await db.execute("UPDATE player_artifact SET star=star+1, stone_count=stone_count-? WHERE player_id=?", (stone_need, sid))
             await db.commit()
             new_star = current + 1
-            embed = thankhi_embed(new_star, interaction.user.display_name)
+            # Lấy stones mới sau khi trừ
+            new_stones = stones - stone_need
+            embed = thankhi_embed(new_star, interaction.user.display_name, stones=new_stones)
             can_upgrade = new_star < ARTIFACT_MAX_STAR
             view = ThankhiView(new_star, can_upgrade)
             await interaction.edit_original_response(embed=embed, view=view)
@@ -143,9 +179,7 @@ class ThankhiCog(commands.Cog):
                     pr = await pc.fetchone()
                     if pr and pr[0] >= cost[1]:
                         can_upgrade = True
-            embed = thankhi_embed(star, display_name)
-            if stones > 0:
-                embed.set_footer(text=f"💎 Đá thần khí: {stones} viên")
+            embed = thankhi_embed(star, display_name, stones=stones)
             view = ThankhiView(star, can_upgrade)
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.reply(embed=embed, view=view)
