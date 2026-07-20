@@ -462,20 +462,37 @@ class DungeonCog(commands.Cog):
     async def _handle_dungeon_fight(self, interaction: discord.Interaction, view: DungeonView):
         sid = view.player_id
         session = self.sessions.get(sid)
-        if not session or view.finished:
-            await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
+        if not session:
+            await self._recover_dungeon(interaction, sid)
             return
-        npc_move = self._npc_ai_move(session["npc_pdata"])
-        await self._execute_dungeon_turn(interaction, session, view, npc_move)
+        if view.finished:
+            await interaction.followup.send("🤷 Trận đã kết thúc!", ephemeral=True)
+            return
+        await self._execute_dungeon_turn(interaction, session, view, "attack")
 
     async def _handle_dungeon_move(self, interaction: discord.Interaction,
                                     view: DungeonView, move_type: str):
         sid = view.player_id
         session = self.sessions.get(sid)
-        if not session or view.finished:
-            await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
+        if not session:
+            await self._recover_dungeon(interaction, sid)
+            return
+        if view.finished:
+            await interaction.followup.send("🤷 Trận đã kết thúc!", ephemeral=True)
             return
         await self._execute_dungeon_turn(interaction, session, view, move_type)
+
+    async def _recover_dungeon(self, interaction: discord.Interaction, sid: str):
+        db = await get_db()
+        try:
+            dg = await (await db.execute("SELECT checkpoint FROM dungeon_progress WHERE player_id=?", (sid,))).fetchone()
+            if dg:
+                floor = dg[0] + 1
+                await self._start_dungeon_floor(interaction, sid, interaction.user.display_name, floor, "\n🔄 Khôi phục phiên!")
+            else:
+                await interaction.followup.send("🤷 Hết rồi!", ephemeral=True)
+        finally:
+            await db.close()
 
     async def _execute_dungeon_turn(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
