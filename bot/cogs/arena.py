@@ -307,6 +307,15 @@ class Arena(commands.Cog):
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
             pdata["_equip_hidden"] = equip_hidden
+            from bot.data.equipment import SET_BONUSES
+            stars_per_slot = {}
+            for slot, eq_id in equipped.items():
+                item_id = equip_items.get(str(eq_id))
+                if item_id and item_id in EQUIPMENT:
+                    stars_per_slot[slot] = EQUIPMENT[item_id]["star"]
+            pdata["_set_bonus"] = None
+            if len(stars_per_slot) == 6 and len(set(stars_per_slot.values())) == 1:
+                pdata["_set_bonus"] = SET_BONUSES.get(list(stars_per_slot.values())[0])
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}
@@ -901,6 +910,15 @@ class Arena(commands.Cog):
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
             pdata["_equip_hidden"] = equip_hidden
+            from bot.data.equipment import SET_BONUSES
+            stars_per_slot = {}
+            for slot, eq_id in equipped.items():
+                item_id = equip_items.get(str(eq_id))
+                if item_id and item_id in EQUIPMENT:
+                    stars_per_slot[slot] = EQUIPMENT[item_id]["star"]
+            pdata["_set_bonus"] = None
+            if len(stars_per_slot) == 6 and len(set(stars_per_slot.values())) == 1:
+                pdata["_set_bonus"] = SET_BONUSES.get(list(stars_per_slot.values())[0])
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}
