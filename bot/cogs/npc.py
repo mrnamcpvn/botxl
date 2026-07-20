@@ -393,9 +393,9 @@ class NPCCog(commands.Cog):
             player = result["p2"]
             result_lines.extend(result["log_messages"])
 
-            if result["finished"]:
-                await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, player["hp"] > 0)
-                return
+        if result["finished"]:
+            await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, npc["hp"] <= 0)
+            return
 
         # --- WIFE ATTACKS --- (dùng db mới mở trong đoạn này — không mở 2 connections riêng)
         db_wife = await get_db()
