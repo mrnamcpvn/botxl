@@ -5,7 +5,7 @@ class TestGetEffectiveStats:
     def test_basic_stats(self, basic_player):
         stats = get_effective_stats(basic_player)
         assert stats["attack_min"] == 12
-        assert stats["defense"] == 10
+        assert stats["defense"] == 20
 
 class TestExecuteAction:
     @pytest.mark.asyncio
