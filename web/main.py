@@ -2,9 +2,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from web.routes import players, battles, admin
+from bot.config import WEB_SECRET_KEY
 
 app = FastAPI(title="Bot-XL Dashboard")
-app.add_middleware(SessionMiddleware, secret_key="botxl-secret-key-change-me")
+app.add_middleware(SessionMiddleware, secret_key=WEB_SECRET_KEY)
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
 app.include_router(players.router)
 app.include_router(battles.router)

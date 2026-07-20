@@ -18,6 +18,7 @@ from bot.cogs.admin import ROLE_MULTIPLIERS
 from bot.views.stats_view import StatsView
 from bot.views.leaderboard_view import LeaderboardView
 from bot.engine.combat_power import update_combat_power
+from bot.utils.player_loader import load_player_full, save_player_data as _save_player_data_util
 
 
 def action_skill_id(pdata: dict, move_type: str) -> int:
@@ -1209,55 +1210,18 @@ class Arena(commands.Cog):
         return dict(row)
 
     async def _load_equipment(self, db, pdata: dict, pid: str):
-            eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
-            equipped = {}
-            equip_items = {}
-            equip_enhances = {}
-            equip_hidden = {}
-            async for r in eq_cursor:
-                eq_id = r[0]
-                eiid = r[1]
-                enh = r[2]
-                hidden = r[3] if len(r) > 3 and r[3] else ""
-                slot = None
-                if eiid in EQUIPMENT:
-                    slot = EQUIPMENT[eiid]["slot"]
-                elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid]["type"] == "equipment":
-                    slot = SHOP_ITEMS[eiid]["slot"]
-                if slot:
-                    equipped[slot] = eq_id
-                    equip_items[str(eq_id)] = eiid
-                    equip_enhances[str(eq_id)] = enh
-                    equip_hidden[str(eq_id)] = hidden
-            pdata["equipped"] = equipped
-            pdata["_equip_items"] = equip_items
-            pdata["_equip_enhances"] = equip_enhances
-            pdata["_equip_hidden"] = equip_hidden
-
-    async def _load_full_player(self, db, pid: str) -> dict:
-        cursor = await db.execute("SELECT * FROM players WHERE id=?", (pid,))
-        row = await cursor.fetchone()
-        if not row:
-            return {}
-        pdata = dict(row)
-        regen_hp(pdata)
-        slots_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (pid,))
-        slots = {}
-        async for srow in slots_cursor:
-            slots[srow[0]] = srow[1]
-        pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
+        """Fix: dùng pid thay vì sid (biến undefined cũ)."""
         eq_cursor = await db.execute(
             "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
         equipped = {}
         equip_items = {}
         equip_enhances = {}
         equip_hidden = {}
-        async for erow in eq_cursor:
-            eq_id = erow[0]
-            eiid = erow[1]
-            enh = erow[2]
-            hidden = erow[3] if erow[3] else ""
+        async for r in eq_cursor:
+            eq_id = r[0]
+            eiid = r[1]
+            enh = r[2]
+            hidden = r[3] if len(r) > 3 and r[3] else ""
             slot = None
             if eiid in EQUIPMENT:
                 slot = EQUIPMENT[eiid]["slot"]
@@ -1272,27 +1236,14 @@ class Arena(commands.Cog):
         pdata["_equip_items"] = equip_items
         pdata["_equip_enhances"] = equip_enhances
         pdata["_equip_hidden"] = equip_hidden
-        buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
-        buff_row = await buff_cursor.fetchone()
-        pdata["buffs"] = dict(buff_row) if buff_row else {}
-        return pdata
+
+    async def _load_full_player(self, db, pid: str) -> dict:
+        """Dùng shared utility từ player_loader."""
+        result = await load_player_full(db, pid)
+        return result if result is not None else {}
 
     async def _save_player_data(self, db, pid: str, pdata: dict):
-        await db.execute("""UPDATE players SET hp=?, hp_max=?, attack_min=?, attack_max=?, defense=?,
-                             wins=?, losses=?, damage_dealt=?, damage_taken=?, coins=?, xp=?, level=?,
-                             stat_points=?, elo=?, attack_cd=?, special_cd=?, defense_cd=?, last_hp_update=?
-                             WHERE id=?""",
-                          (pdata.get("hp", 100), pdata.get("hp_max", 100),
-                           pdata.get("attack_min", 10), pdata.get("attack_max", 20),
-                           pdata.get("defense", 5),
-                           pdata.get("wins", 0), pdata.get("losses", 0),
-                           pdata.get("damage_dealt", 0), pdata.get("damage_taken", 0),
-                           pdata.get("coins", 0), pdata.get("xp", 0), pdata.get("level", 1),
-                           pdata.get("stat_points", 0), pdata.get("elo", 1000),
-                           pdata.get("attack_cd", 0), pdata.get("special_cd", 0),
-                           pdata.get("defense_cd", 0),
-                           pdata.get("last_hp_update", time.time()),
-                           pid))
+        await _save_player_data_util(db, pid, pdata)
 
     async def _sync_role_mult(self, db, member: discord.Member):
         role_names = [r.name for r in member.roles]

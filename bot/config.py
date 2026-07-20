@@ -6,6 +6,7 @@ load_dotenv()
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 DB_PATH = os.path.join(DATA_DIR, "botxl.db")
 TOKEN = os.getenv("TOKEN") or "YOUR_BOT_TOKEN_HERE"
+WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY") or "botxl-secret-key-change-me"
 
 HP_REGEN_RATE = 30
 HP_REGEN_INTERVAL = 30

@@ -1,5 +1,6 @@
 import random
 import time
+import json
 from bot.data.skills import SKILLS_DB
 from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT
@@ -69,7 +70,6 @@ def get_effective_stats(pdata: dict) -> dict:
     for slot, eq_id in eq.items():
         hidden_json = equip_hidden.get(str(eq_id), "")
         if hidden_json:
-            import json
             try:
                 hs = json.loads(hidden_json)
                 for k, v in hs.items():

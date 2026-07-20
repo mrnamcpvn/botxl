@@ -5,6 +5,19 @@ from bot.data.equipment import EQUIPMENT, STAR_LABELS, DROP_WEIGHTS
 
 DROP_CHANCE = 0.08
 
+# Build lookup tables một lần khi module load — tránh O(n) scan mỗi drop
+_CONSUMABLE_IDS: list[int] = [i for i, it in SHOP_ITEMS.items() if it["type"] == "consumable"]
+_EQUIP_BY_STAR: dict[int, list[int]] = {}
+for _eid, _e in EQUIPMENT.items():
+    _EQUIP_BY_STAR.setdefault(_e["star"], []).append(_eid)
+# Cumulative weight table cho weighted random star
+_STAR_CUMULATIVE: list[tuple[int, int]] = []
+_cum = 0
+for _star, _weight in DROP_WEIGHTS.items():
+    _cum += _weight
+    _STAR_CUMULATIVE.append((_star, _cum))
+_TOTAL_WEIGHT: int = _cum
+
 
 def calc_drop(role_mult: float = 1.0) -> dict | None:
     chance = DROP_CHANCE * role_mult
@@ -15,24 +28,21 @@ def calc_drop(role_mult: float = 1.0) -> dict | None:
         coins = random.randint(50, 200)
         return {"type": "coins", "amount": coins, "text": f"💰 +{coins}🪙 (rơi từ xác địch!)"}
     elif roll < 0.50:
-        item = random.choice([i for i, it in SHOP_ITEMS.items() if it["type"] == "consumable"])
+        item = random.choice(_CONSUMABLE_IDS)
         return {"type": "item", "item_id": item, "item_name": SHOP_ITEMS[item]["name"],
                 "text": f"🧪 Rơi: **{SHOP_ITEMS[item]['name']}**!"}
     else:
-        # Equipment drop using rarity weights
-        total = sum(DROP_WEIGHTS.values())
-        r = random.randint(1, total)
-        cum = 0
+        # Weighted random star dùng cumulative table — O(n stars) thay vì O(n items)
+        r = random.randint(1, _TOTAL_WEIGHT)
         star = 1
-        for s, w in DROP_WEIGHTS.items():
-            cum += w
+        for s, cum in _STAR_CUMULATIVE:
             if r <= cum:
                 star = s
                 break
-        items = [e for eid, e in EQUIPMENT.items() if e["star"] == star]
-        if items:
-            chosen = random.choice(items)
-            eid = [k for k, v in EQUIPMENT.items() if v == chosen][0]
+        eids = _EQUIP_BY_STAR.get(star)
+        if eids:
+            eid = random.choice(eids)
+            chosen = EQUIPMENT[eid]
             return {"type": "equip", "equip_id": eid, "equip_name": chosen["name"],
                     "star": star, "slot": chosen["slot"],
                     "text": f"⚒️ Rơi: {STAR_LABELS.get(star, '⭐')} **{chosen['name']}**!"}

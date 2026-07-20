@@ -1,5 +1,9 @@
 import aiosqlite
+import logging
 from bot.config import DB_PATH
+
+logger = logging.getLogger(__name__)
+
 
 async def get_db() -> aiosqlite.Connection:
     db = await aiosqlite.connect(DB_PATH, timeout=10.0)
@@ -143,13 +147,15 @@ async def _run_migrations(db):
     for sql in MIGRATIONS:
         try:
             await db.execute(sql)
-        except:
-            pass
+        except Exception:
+            pass  # Column đã tồn tại — bỏ qua
 
     try:
+        # Kiểm tra xem player_equipment đã có cột enhance chưa
         await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES ('_mig_ck_', 0, 0, 0)")
         await db.execute("DELETE FROM player_equipment WHERE player_id='_mig_ck_'")
-    except:
+    except Exception:
+        # Cần migrate từ schema cũ (quantity-based) sang per-instance
         await db.execute("BEGIN")
         try:
             await db.execute("""CREATE TABLE IF NOT EXISTS player_equipment_new (
@@ -170,8 +176,10 @@ async def _run_migrations(db):
             await db.execute("DROP TABLE IF EXISTS player_equipment")
             await db.execute("ALTER TABLE player_equipment_new RENAME TO player_equipment")
             await db.commit()
-        except:
+            logger.info("[DB] Migrated player_equipment to per-instance schema")
+        except Exception as e:
             await db.execute("ROLLBACK")
+            logger.error(f"[DB] Migration failed: {e}")
             raise
         try:
             await db.execute("""UPDATE player_equipment SET equipped = 1
@@ -179,11 +187,11 @@ async def _run_migrations(db):
                 JOIN player_equip_slots pes ON pes.player_id = pe.player_id
                 AND pes.item_id = pe.item_id AND pe.equipped = 0)""")
             await db.execute("DROP TABLE IF EXISTS player_equip_slots")
-        except:
+        except Exception:
             pass
         try:
             await db.execute("DROP TABLE IF EXISTS _mig_numbers")
-        except:
+        except Exception:
             pass
 
     await db.execute("""CREATE TABLE IF NOT EXISTS player_enhance_stones (
@@ -203,8 +211,8 @@ async def _run_migrations(db):
     )""")
     try:
         await db.execute("ALTER TABLE player_equipment ADD COLUMN hidden_stats TEXT DEFAULT ''")
-    except:
-        pass
+    except Exception:
+        pass  # Cột đã tồn tại
 
 
 async def init_db():
@@ -213,5 +221,36 @@ async def init_db():
         for sql in TABLES:
             await db.execute(sql)
         await _run_migrations(db)
+        await _create_indexes(db)
+        await db.commit()
     finally:
         await db.close()
+
+
+async def _create_indexes(db):
+    """
+    Indexes cho các query hot nhất:
+    - player_equipment: filter equipped=1 theo player_id (load gear mỗi command)
+    - player_wives: filter equipped=1 theo player_id (hiển thị battle)
+    - active_battles: lookup theo player1_id/player2_id (check battle state)
+    - battle_history: query theo player1/player2 (replay command)
+    - players: sort theo combat_power (leaderboard)
+    - challenges: lookup theo challenger_id (check challenge state)
+    """
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_player_equipment_player_equipped ON player_equipment(player_id, equipped)",
+        "CREATE INDEX IF NOT EXISTS idx_player_wives_player_equipped ON player_wives(player_id, equipped)",
+        "CREATE INDEX IF NOT EXISTS idx_active_battles_p1 ON active_battles(player1_id)",
+        "CREATE INDEX IF NOT EXISTS idx_active_battles_p2 ON active_battles(player2_id)",
+        "CREATE INDEX IF NOT EXISTS idx_battle_history_p1 ON battle_history(player1_id)",
+        "CREATE INDEX IF NOT EXISTS idx_battle_history_p2 ON battle_history(player2_id)",
+        "CREATE INDEX IF NOT EXISTS idx_players_combat_power ON players(combat_power DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_challenges_challenger ON challenges(challenger_id)",
+        "CREATE INDEX IF NOT EXISTS idx_player_skill_slots_player ON player_skill_slots(player_id)",
+        "CREATE INDEX IF NOT EXISTS idx_battle_status_battle ON battle_status(battle_id)",
+    ]
+    for sql in indexes:
+        try:
+            await db.execute(sql)
+        except Exception:
+            pass

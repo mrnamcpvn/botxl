@@ -14,6 +14,7 @@ from bot.config import (
     DUNGEON_FREE_ENTRIES, DUNGEON_MAX_TICKETS,
     DUNGEON_TICKET_COST_1, DUNGEON_TICKET_COST_2,
 )
+from bot.utils.player_loader import load_player_full
 
 
 REAL_CLASSES = ["banxabong", "xola", "sieunhan", "thaychua", "muoi", "chodien", "baque"]
@@ -302,42 +303,13 @@ class DungeonCog(commands.Cog):
                                     floor: int, extra_msg: str = ""):
         db = await get_db()
         try:
-            cursor = await db.execute("SELECT * FROM players WHERE id=?", (sid,))
-            row = await cursor.fetchone()
-            pdata = dict(row)
+            # Dùng shared utility — bao gồm hidden_stats (fix bug cũ thiếu hidden stats)
+            pdata = await load_player_full(db, sid, reset_cd=True)
+            if pdata is None:
+                await self._reply(ctx_or_int, "❌ Không tìm thấy dữ liệu người chơi!")
+                return
 
-            slots_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (sid,))
-            slots = {}
-            async for r in slots_cursor:
-                slots[r[0]] = r[1]
-            pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
-
-            eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
-            equipped = {}
-            equip_items = {}
-            equip_enhances = {}
-            async for r in eq_cursor:
-                eq_id = r[0]
-                eiid = r[1]
-                enh = r[2]
-                slot = None
-                if eiid in EQUIPMENT:
-                    slot = EQUIPMENT[eiid]["slot"]
-                if slot:
-                    equipped[slot] = eq_id
-                    equip_items[str(eq_id)] = eiid
-                    equip_enhances[str(eq_id)] = enh
-            pdata["equipped"] = equipped
-            pdata["_equip_items"] = equip_items
-            pdata["_equip_enhances"] = equip_enhances
-
-            regen_hp(pdata)
-
-            pdata["attack_cd"] = 0
-            pdata["special_cd"] = 0
-            pdata["defense_cd"] = 0
-
+            # load_player_full đã gọi regen_hp bên trong — không cần gọi lại
             eff = get_effective_stats(pdata)
 
             npc_data = generate_dungeon_npc(floor)

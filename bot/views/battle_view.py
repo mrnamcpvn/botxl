@@ -12,6 +12,10 @@ from bot.engine.battle import execute_action, get_equipped_skill, regen_hp, get_
 from bot.engine.rewards import calc_rewards, apply_rewards, calc_drop, apply_drop
 from bot.engine.ranking import calculate_elo
 from bot.engine.combat_power import update_combat_power
+from bot.utils.player_loader import (
+    load_player_full, save_player_data as _save_player_data_util,
+    load_equipped_wives, level_wives_xp
+)
 
 RARITY_DMG_MULT = {"B": 0.5, "A": 0.75, "S": 1.0, "SVIP": 1.5}
 
@@ -225,8 +229,8 @@ class BattleView(discord.ui.View):
             await db.execute("UPDATE players SET last_battle_time=? WHERE id=? OR id=?", (time.time(), winner_id, sid))
             await db.execute("DELETE FROM active_battles WHERE id=?", (self.battle_id,))
             await db.commit()
-            await update_combat_power(winner_id)
-            await update_combat_power(sid)
+            await update_combat_power(winner_id, db=db)
+            await update_combat_power(sid, db=db)
 
             wn = p1_m.display_name if winner_id == p1_id else p2_m.display_name
             embed = discord.Embed(title="⚔️ KẾT THÚC!",
@@ -294,15 +298,13 @@ class BattleView(discord.ui.View):
             p1 = result["p1"]
             p2 = result["p2"]
 
-            # --- WIFE ATTACKS ---
-            p1_wives_cursor = await db.execute("SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (p1_id,))
-            p1_wives = await p1_wives_cursor.fetchall()
-            p2_wives_cursor = await db.execute("SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (p2_id,))
-            p2_wives = await p2_wives_cursor.fetchall()
+            # --- WIFE ATTACKS --- (reuse db đang mở, không mở thêm connection)
+            p1_wives = await load_equipped_wives(db, p1_id)
+            p2_wives = await load_equipped_wives(db, p2_id)
 
             if p1_wives:
                 result["log_messages"].append("")
-                for w in [dict(r) for r in p1_wives]:
+                for w in p1_wives:
                     wd = WIVES.get(w["wife_id"], WIVES[1])
                     mult = RARITY_DMG_MULT.get(wd["rarity"], 0.5)
                     dmg = max(1, int(random.randint(4, 10) * w.get("level", 1) * mult))
@@ -312,7 +314,7 @@ class BattleView(discord.ui.View):
 
             if p2_wives:
                 result["log_messages"].append("")
-                for w in [dict(r) for r in p2_wives]:
+                for w in p2_wives:
                     wd = WIVES.get(w["wife_id"], WIVES[1])
                     mult = RARITY_DMG_MULT.get(wd["rarity"], 0.5)
                     dmg = max(1, int(random.randint(4, 10) * w.get("level", 1) * mult))
@@ -364,8 +366,8 @@ class BattleView(discord.ui.View):
                 await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=? OR player_id=?", (p1_id, p2_id))
 
                 await db.commit()
-                await update_combat_power(p1_id)
-                await update_combat_power(p2_id)
+                await update_combat_power(p1_id, db=db)
+                await update_combat_power(p2_id, db=db)
 
                 lines = result["log_messages"] + [
                     f"💰 {p1_m.display_name if winner_id == p1_id else p2_m.display_name}: +{w_coins}🪙 +{w_xp}XP",
@@ -432,22 +434,18 @@ class BattleView(discord.ui.View):
 
             result["log_messages"].append(f"\n⏳ **{next_m.display_name}** — 15s!")
 
-            # --- Wife display ---
-            p1_wives_cursor = await db.execute("SELECT pw.* FROM player_wives pw WHERE pw.player_id=? AND pw.equipped=1", (p1_id,))
-            p1_wives = await p1_wives_cursor.fetchall()
-            p2_wives_cursor = await db.execute("SELECT pw.* FROM player_wives pw WHERE pw.player_id=? AND pw.equipped=1", (p2_id,))
-            p2_wives = await p2_wives_cursor.fetchall()
-            if p1_wives:
+            # --- Wife display --- (reuse db đang mở)
+            p1_wives_disp = await load_equipped_wives(db, p1_id)
+            p2_wives_disp = await load_equipped_wives(db, p2_id)
+            if p1_wives_disp:
                 wlist = []
-                for r in p1_wives:
-                    w = dict(r)
+                for w in p1_wives_disp:
                     wd = WIVES.get(w["wife_id"], WIVES[1])
                     wlist.append(f"{wd['emoji']} **{wd['name']}** Lv.{w['level']}")
                 result["log_messages"].append(f"💍 {p1_m.display_name}: {' | '.join(wlist)}")
-            if p2_wives:
+            if p2_wives_disp:
                 wlist = []
-                for r in p2_wives:
-                    w = dict(r)
+                for w in p2_wives_disp:
                     wd = WIVES.get(w["wife_id"], WIVES[1])
                     wlist.append(f"{wd['emoji']} **{wd['name']}** Lv.{w['level']}")
                 result["log_messages"].append(f"💍 {p2_m.display_name}: {' | '.join(wlist)}")
@@ -466,45 +464,8 @@ class BattleView(discord.ui.View):
                 pass
 
     async def _load_full_player(self, db, pid: str) -> dict:
-        cursor = await db.execute("SELECT * FROM players WHERE id=?", (pid,))
-        row = await cursor.fetchone()
-        if not row:
-            return {}
-        pdata = dict(row)
-        regen_hp(pdata)
-        # Skills
-        slots_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (pid,))
-        slots = {}
-        async for srow in slots_cursor:
-            slots[srow[0]] = srow[1]
-        pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
-        # Equipment
-        eq_cursor = await db.execute(
-            "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=1", (pid,))
-        equipped = {}
-        equip_items = {}
-        equip_enhances = {}
-        async for erow in eq_cursor:
-            eq_id = erow[0]
-            eiid = erow[1]
-            enh = erow[2]
-            slot = None
-            if eiid in EQUIPMENT:
-                slot = EQUIPMENT[eiid]["slot"]
-            elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid]["type"] == "equipment":
-                slot = SHOP_ITEMS[eiid]["slot"]
-            if slot:
-                equipped[slot] = eq_id
-                equip_items[str(eq_id)] = eiid
-                equip_enhances[str(eq_id)] = enh
-        pdata["equipped"] = equipped
-        pdata["_equip_items"] = equip_items
-        pdata["_equip_enhances"] = equip_enhances
-        # Buffs
-        buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
-        buff_row = await buff_cursor.fetchone()
-        pdata["buffs"] = dict(buff_row) if buff_row else {}
-        return pdata
+        result = await load_player_full(db, pid)
+        return result if result is not None else {}
 
     async def _get_player_data(self, db, pid: str) -> dict:
         cursor = await db.execute("SELECT * FROM players WHERE id=?", (pid,))
@@ -516,44 +477,11 @@ class BattleView(discord.ui.View):
         return pdata
 
     async def _save_player_data(self, db, pid: str, pdata: dict):
-        await db.execute("""UPDATE players SET hp=?, hp_max=?, attack_min=?, attack_max=?, defense=?,
-                             wins=?, losses=?, damage_dealt=?, damage_taken=?, coins=?, xp=?, level=?,
-                             stat_points=?, elo=?, attack_cd=?, special_cd=?, defense_cd=?, last_hp_update=?
-                             WHERE id=?""",
-                          (pdata.get("hp", 100), pdata.get("hp_max", 100),
-                           pdata.get("attack_min", 10), pdata.get("attack_max", 20),
-                           pdata.get("defense", 5),
-                           pdata.get("wins", 0), pdata.get("losses", 0),
-                           pdata.get("damage_dealt", 0), pdata.get("damage_taken", 0),
-                           pdata.get("coins", 0), pdata.get("xp", 0), pdata.get("level", 1),
-                           pdata.get("stat_points", 0), pdata.get("elo", 1000),
-                           pdata.get("attack_cd", 0), pdata.get("special_cd", 0),
-                           pdata.get("defense_cd", 0),
-                           pdata.get("last_hp_update", time.time()),
-                           pid))
+        await _save_player_data_util(db, pid, pdata)
         await db.commit()
 
     async def _level_wives(self, db, player_id: str, battle_xp: int) -> list[str]:
-        gained = max(1, int(battle_xp * WIFE_XP_SHARE))
-        lines = []
-        if gained <= 0:
-            return lines
-        cursor = await db.execute(
-            "SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (player_id,))
-        async for row in cursor:
-            w = dict(row)
-            wd = WIVES.get(w["wife_id"], WIVES[1])
-            new_xp = w["xp"] + gained
-            new_level = w["level"]
-            leftover = new_xp
-            while leftover >= new_level * 50:
-                leftover -= new_level * 50
-                new_level += 1
-            await db.execute("UPDATE player_wives SET xp=?, level=? WHERE id=?",
-                              (leftover, new_level, w["id"]))
-            lvl_up = f" ⬆Lv.{new_level}!" if new_level > w["level"] else ""
-            lines.append(f"💕 {wd['emoji']} **{wd['name']}**: +{gained}XP{lvl_up}")
-        return lines
+        return await level_wives_xp(db, player_id, battle_xp, WIFE_XP_SHARE)
 
     async def _finish_battle(self, db, battle, loser_sid: str, is_timeout: bool = False):
         winner_id = battle["player1_id"] if battle["player2_id"] == loser_sid else battle["player2_id"]
@@ -602,8 +530,8 @@ class BattleView(discord.ui.View):
         await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=? OR player_id=?", (winner_id, loser_sid))
 
         await db.commit()
-        await update_combat_power(winner_id)
-        await update_combat_power(loser_sid)
+        await update_combat_power(winner_id, db=db)
+        await update_combat_power(loser_sid, db=db)
 
         lines = [
             f"⏰ **{loser_name}** hết giờ!" if is_timeout else f"💀 **{loser_name}** thua!",

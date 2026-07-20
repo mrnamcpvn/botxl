@@ -16,6 +16,10 @@ from bot.engine.ranking import calculate_elo
 from bot.config import BATTLE_COOLDOWN_SECONDS
 from bot.data.wives import WIVES, WIFE_XP_SHARE
 from bot.engine.combat_power import update_combat_power
+from bot.utils.player_loader import (
+    load_player_full, save_player_data as _save_player_util,
+    load_equipped_wives, level_wives_xp
+)
 
 RARITY_DMG_MULT = {"B": 0.5, "A": 0.75, "S": 1.0, "SVIP": 1.5}
 
@@ -150,16 +154,16 @@ class NPCCog(commands.Cog):
 
         db = await get_db()
         try:
-            cursor = await db.execute("SELECT * FROM players WHERE id=?", (sid,))
-            row = await cursor.fetchone()
-            if not row:
+            # Kiểm tra tồn tại player trước khi load full
+            exist_cursor = await db.execute("SELECT role_mult, last_battle_time FROM players WHERE id=?", (sid,))
+            exist_row = await exist_cursor.fetchone()
+            if not exist_row:
                 msg = f"🤷 Chưa đăng ký! `{prefix}register`"
                 if isinstance(ctx_or_int, discord.ext.commands.Context):
                     await ctx_or_int.reply(msg)
                 else:
                     await ctx_or_int.response.send_message(msg, ephemeral=True)
                 return
-            pdata = dict(row)
 
             battle_check = await db.execute("SELECT 1 FROM active_battles WHERE player1_id=? OR player2_id=?", (sid, sid))
             if await battle_check.fetchone():
@@ -178,8 +182,8 @@ class NPCCog(commands.Cog):
                     await ctx_or_int.response.send_message(msg, ephemeral=True)
                 return
 
-            if pdata.get("role_mult", 1.0) < 3.0 and pdata.get("last_battle_time", 0) > 0:
-                remaining = BATTLE_COOLDOWN_SECONDS - int(time.time() - pdata["last_battle_time"])
+            if exist_row[0] < 3.0 and exist_row[1] > 0:
+                remaining = BATTLE_COOLDOWN_SECONDS - int(time.time() - exist_row[1])
                 if remaining > 0:
                     mins = remaining // 60
                     secs = remaining % 60
@@ -190,49 +194,21 @@ class NPCCog(commands.Cog):
                         await ctx_or_int.response.send_message(msg, ephemeral=True)
                     return
 
-            slots_cursor = await db.execute("SELECT slot, skill_id FROM player_skill_slots WHERE player_id=?", (sid,))
-            slots = {}
-            async for r in slots_cursor:
-                slots[r[0]] = r[1]
-            pdata["skill_equipped"] = slots if slots else {"attack": 1, "special": 5, "defense": 10, "passive": 14}
-            eq_cursor = await db.execute(
-                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE player_id=? AND equipped=1", (sid,))
-            equipped = {}
-            equip_items = {}
-            equip_enhances = {}
-            equip_hidden = {}
-            async for r in eq_cursor:
-                eq_id = r[0]
-                eiid = r[1]
-                enh = r[2]
-                hidden = r[3] if len(r) > 3 and r[3] else ""
-                slot = None
-                if eiid in EQUIPMENT:
-                    slot = EQUIPMENT[eiid]["slot"]
-                elif eiid in SHOP_ITEMS and SHOP_ITEMS[eiid]["type"] == "equipment":
-                    slot = SHOP_ITEMS[eiid]["slot"]
-                if slot:
-                    equipped[slot] = eq_id
-                    equip_items[str(eq_id)] = eiid
-                    equip_enhances[str(eq_id)] = enh
-                    equip_hidden[str(eq_id)] = hidden
-            pdata["equipped"] = equipped
-            pdata["_equip_items"] = equip_items
-            pdata["_equip_enhances"] = equip_enhances
-            pdata["_equip_hidden"] = equip_hidden
-            buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
-            buff_row = await buff_cursor.fetchone()
-            pdata["buffs"] = dict(buff_row) if buff_row else {}
+            # Dùng shared utility — đã bao gồm skills, equipment, hidden_stats, buffs, regen_hp
+            pdata = await load_player_full(db, sid, reset_cd=True)
+            if pdata is None:
+                msg = f"🤷 Chưa đăng ký! `{prefix}register`"
+                if isinstance(ctx_or_int, discord.ext.commands.Context):
+                    await ctx_or_int.reply(msg)
+                else:
+                    await ctx_or_int.response.send_message(msg, ephemeral=True)
+                return
+
+            # Artifact data (ngoài player_loader vì đặc thù NPC)
             art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
             art_row = await art_cursor.fetchone()
             pdata["_artifact_star"] = art_row[0] if art_row else 0
             pdata["_artifact_stones"] = art_row[1] if art_row else 0
-            pdata["damage_dealt"] = pdata.get("damage_dealt", 0)
-            pdata["damage_taken"] = pdata.get("damage_taken", 0)
-            pdata["attack_cd"] = 0
-            pdata["special_cd"] = 0
-            pdata["defense_cd"] = 0
-            regen_hp(pdata)
 
             if pdata.get("hp", 0) <= 0:
                 msg = "💀 Mày 0 máu!"
@@ -366,13 +342,13 @@ class NPCCog(commands.Cog):
                 await self._finish_npc_battle(interaction, session, view, player, npc, result_lines, player["hp"] > 0)
                 return
 
-        # --- WIFE ATTACKS ---
-        db = await get_db()
+        # --- WIFE ATTACKS --- (dùng db mới mở trong đoạn này — không mở 2 connections riêng)
+        db_wife = await get_db()
         try:
-            cursor = await db.execute("SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (sid,))
-            wives = [dict(r) for r in await cursor.fetchall()]
+            wives = await load_equipped_wives(db_wife, sid)
         finally:
-            await db.close()
+            await db_wife.close()
+
         for w in wives:
             wd = WIVES.get(w["wife_id"], WIVES[1])
             mult = RARITY_DMG_MULT.get(wd["rarity"], 0.5)
@@ -401,18 +377,10 @@ class NPCCog(commands.Cog):
         result_lines.append(f"❤️ {session['player_name']}:`{player['hp']}/{eff['hp_max']}`{hp1_bar}")
         result_lines.append(f"❤️ {npc['name']}:`{npc['hp']}/{npc['hp_max']}`{hp2_bar}")
 
-        # Wife display
-        db2 = await get_db()
-        try:
-            wife_cursor = await db2.execute("SELECT pw.* FROM player_wives pw WHERE pw.player_id=? AND pw.equipped=1", (sid,))
-            wife_rows = [dict(r) for r in await wife_cursor.fetchall()]
-        finally:
-            await db2.close()
-        if wife_rows:
-            wlist = []
-            for wr in wife_rows:
-                wd = WIVES.get(wr["wife_id"], WIVES[1])
-                wlist.append(f"{wd['emoji']} **{wd['name']}** Lv.{wr['level']}")
+        # Wife display — reuse wives đã load ở trên (không cần mở DB lần nữa)
+        if wives:
+            wlist = [f"{WIVES.get(w['wife_id'], WIVES[1])['emoji']} **{WIVES.get(w['wife_id'], WIVES[1])['name']}** Lv.{w['level']}"
+                     for w in wives]
             result_lines.append(f"💍 Vợ: {' | '.join(wlist)}")
 
         embed = discord.Embed(title="👾 NPC BATTLE", description="\n".join(result_lines), color=0x9966ff)
@@ -443,7 +411,7 @@ class NPCCog(commands.Cog):
                 w_coins = int(w_coins * 0.5)
                 w_xp = int(w_xp * 0.5)
                 apply_rewards(player, w_coins, w_xp)
-                wife_lines = await self._level_wives(db, sid, w_xp)
+                wife_lines = await level_wives_xp(db, sid, w_xp, WIFE_XP_SHARE)
                 player["wins"] = player.get("wins", 0) + 1
                 result_lines.append(f"💰 {session['player_name']}: +{w_coins}🪙 +{w_xp}XP")
                 if wife_lines:
@@ -476,7 +444,7 @@ class NPCCog(commands.Cog):
                                player.get("coins", 0), player.get("xp", 0), player.get("level", 1),
                                player.get("stat_points", 0), now, now, sid))
             await db.commit()
-            await update_combat_power(sid)
+            await update_combat_power(sid, db=db)
         finally:
             await db.close()
 
@@ -484,29 +452,6 @@ class NPCCog(commands.Cog):
         embed = discord.Embed(title="👾 NPC BATTLE - KẾT THÚC", description="\n".join(result_lines),
                               color=0xffd700 if player_wins else 0xff0000)
         await interaction.edit_original_response(embed=embed, view=None)
-
-    async def _level_wives(self, db, player_id: str, battle_xp: int) -> list[str]:
-        gained = max(1, int(battle_xp * WIFE_XP_SHARE))
-        lines = []
-        if gained <= 0:
-            return lines
-        cursor = await db.execute(
-            "SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (player_id,))
-        async for row in cursor:
-            w = dict(row)
-            wd = WIVES.get(w["wife_id"], WIVES[1])
-            new_xp = w["xp"] + gained
-            new_level = w["level"]
-            leftover = new_xp
-            while leftover >= new_level * 50:
-                leftover -= new_level * 50
-                new_level += 1
-            await db.execute("UPDATE player_wives SET xp=?, level=? WHERE id=?",
-                              (leftover, new_level, w["id"]))
-            lvl_up = f" ⬆Lv.{new_level}!" if new_level > w["level"] else ""
-            lines.append(f"💕 {wd['emoji']} **{wd['name']}**: +{gained}XP{lvl_up}")
-        return lines
-
 
 async def setup(bot):
     await bot.add_cog(NPCCog(bot))
