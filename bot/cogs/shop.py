@@ -650,6 +650,12 @@ class SellView(discord.ui.View):
         btn_dismantle.callback = self._dismantle_callback
         self.add_item(btn_dismantle)
 
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if str(interaction.user.id) != self.player_id:
+            await interaction.response.send_message("🤡 Có phải mày đâu!", ephemeral=True)
+            return False
+        return True
+
     async def _sell_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         if self.used:
@@ -657,6 +663,10 @@ class SellView(discord.ui.View):
         self.used = True
         db = await get_db()
         try:
+            cursor = await db.execute("SELECT id FROM player_equipment WHERE id=? AND player_id=?", (self.eq_id, self.player_id))
+            if not await cursor.fetchone():
+                await interaction.followup.send("🤷 Trang bị đã bán rồi!", ephemeral=True)
+                return
             await db.execute("DELETE FROM player_equipment WHERE id=?", (self.eq_id,))
             price = SELL_PRICES.get(self.star, 100)
             await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (price, self.player_id))
@@ -674,6 +684,10 @@ class SellView(discord.ui.View):
         self.used = True
         db = await get_db()
         try:
+            cursor = await db.execute("SELECT id FROM player_equipment WHERE id=? AND player_id=?", (self.eq_id, self.player_id))
+            if not await cursor.fetchone():
+                await interaction.followup.send("🤷 Trang bị đã bán rồi!", ephemeral=True)
+                return
             await db.execute("DELETE FROM player_equipment WHERE id=?", (self.eq_id,))
             dm = DISMANTLE_REWARDS.get(self.star, {})
             for sk, sq in dm.items():
