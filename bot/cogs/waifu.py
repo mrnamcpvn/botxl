@@ -257,15 +257,25 @@ class WaifuCog(commands.Cog):
             await db.close()
 
     async def _show_waifus(self, ctx_or_int, sid: str, prefix: str):
+        _rarity_order = {"SVIP": 4, "S": 3, "A": 2, "B": 1}
         db = await get_db()
         try:
             cursor = await db.execute(
-                "SELECT * FROM player_wives WHERE player_id=? ORDER BY equipped DESC, rarity DESC, id ASC",
+                "SELECT * FROM player_wives WHERE player_id=? ORDER BY equipped DESC, id ASC",
                 (sid,))
             rows = await cursor.fetchall()
             wives = [_parse_wife_row(r) for r in rows]
         finally:
             await db.close()
+
+        # Sort trong kho theo rarity giảm dần (không sort ở SQL vì rarity nằm trong Python dict)
+        equipped_wives = [w for w in wives if w.get("equipped")]
+        stored_wives   = sorted(
+            [w for w in wives if not w.get("equipped")],
+            key=lambda w: _rarity_order.get(w["wife_data"]["rarity"], 0),
+            reverse=True,
+        )
+        wives = equipped_wives + stored_wives
 
         user_name = (ctx_or_int.author.display_name
                      if hasattr(ctx_or_int, "author") else ctx_or_int.user.display_name)
