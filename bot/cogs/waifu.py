@@ -259,46 +259,125 @@ class WaifuCog(commands.Cog):
     async def _show_waifus(self, ctx_or_int, sid: str, prefix: str):
         db = await get_db()
         try:
-            cursor = await db.execute("SELECT * FROM player_wives WHERE player_id=? ORDER BY equipped DESC, id ASC", (sid,))
+            cursor = await db.execute(
+                "SELECT * FROM player_wives WHERE player_id=? ORDER BY equipped DESC, rarity DESC, id ASC",
+                (sid,))
             rows = await cursor.fetchall()
             wives = [_parse_wife_row(r) for r in rows]
+        finally:
+            await db.close()
 
-            if not wives:
-                msg = f"💕 Chưa có Vợ nào! Dùng `{prefix}gacha` để quay (lần đầu free)!"
-                if isinstance(ctx_or_int, commands.Context):
-                    await ctx_or_int.reply(msg)
-                else:
-                    await ctx_or_int.response.send_message(msg, ephemeral=True)
-                return
+        user_name = (ctx_or_int.author.display_name
+                     if hasattr(ctx_or_int, "author") else ctx_or_int.user.display_name)
 
-            embed = discord.Embed(title=f"💕 HAREM CỦA {ctx_or_int.author.display_name if hasattr(ctx_or_int, 'author') else ctx_or_int.user.display_name}",
-                                  color=0xff69b4)
-            embed.set_footer(text=f"👥 {len(wives)} vợ | Dùng {prefix}waifu equip <id> | Tối đa {MAX_EQUIPPED} vợ ra trận")
-
-            # Thumbnail = vợ đầu tiên có ảnh
-            for w in wives:
-                img = w["wife_data"].get("image_url", "")
-                if img:
-                    embed.set_thumbnail(url=img)
-                    break
-
-            for w in wives:
-                wd = w["wife_data"]
-                stars = RARITY_STARS.get(wd["rarity"], "⭐")
-                cls = CLASSES.get(w.get("class_id", "banxabong"), CLASSES["banxabong"])
-                eq = "💍 ĐANG MANG" if w["equipped"] else ""
-                s = _wife_stats(w)
-                embed.add_field(
-                    name=f"{'💍' if w['equipped'] else '  '} `{w['id']}` {wd['emoji']} **{wd['name']}** {stars} {cls['icon']}",
-                    value=f"❤️ `{s['hp_max']}` ⚔️ `{s['attack_min']}-{s['attack_max']}` 🛡️ `{s['defense']}` | Lv.{w['level']} XP:`{w['xp']}/{w['level']*50}`\n{w['equipped'] and eq or ''}",
-                    inline=False)
-
+        if not wives:
+            embed = discord.Embed(
+                title="💕 Harem Trống",
+                description=(
+                    f"**{user_name}** chưa có Vợ nào!\n\n"
+                    f"🎰 Dùng `{prefix}gacha` để quay — **lần đầu FREE!**\n"
+                    f"💕 Xác suất: B 60% · A 25% · S 12% · SVIP 3%"
+                ),
+                color=0xff69b4,
+            )
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.send(embed=embed)
             else:
                 await ctx_or_int.response.send_message(embed=embed)
-        finally:
-            await db.close()
+            return
+
+        # Màu dựa theo vợ hiếm nhất
+        rarity_priority = {"SVIP": 4, "S": 3, "A": 2, "B": 1}
+        best_rarity = max(
+            (w["wife_data"]["rarity"] for w in wives),
+            key=lambda r: rarity_priority.get(r, 0)
+        )
+        rarity_color_map = {"B": 0x888888, "A": 0x00ff88, "S": 0x0088ff, "SVIP": 0xffaa00}
+        color = rarity_color_map.get(best_rarity, 0xff69b4)
+
+        # Equipped vs kho
+        equipped = [w for w in wives if w.get("equipped")]
+        stored  = [w for w in wives if not w.get("equipped")]
+
+        embed = discord.Embed(
+            title=f"💕 Harem — {user_name}",
+            color=color,
+        )
+
+        # Set thumbnail = vợ equipped có ảnh, hoặc vợ đầu tiên có ảnh
+        for w in (equipped + stored):
+            img = w["wife_data"].get("image_url", "")
+            if img:
+                embed.set_thumbnail(url=img)
+                break
+
+        # ── Đang ra trận ──
+        if equipped:
+            lines = []
+            for w in equipped:
+                wd = w["wife_data"]
+                stars = RARITY_STARS.get(wd["rarity"], "⭐")
+                cls = CLASSES.get(w.get("class_id", "banxabong"), CLASSES["banxabong"])
+                s = _wife_stats(w)
+                xp_need = w["level"] * 50
+                xbar = "🟦" * min(8, w["xp"] * 8 // max(xp_need, 1)) + "⬜" * max(0, 8 - min(8, w["xp"] * 8 // max(xp_need, 1)))
+                lines.append(
+                    f"`{w['id']}` {wd['emoji']} **{wd['name']}** {stars} {cls['icon']}\n"
+                    f"　❤️`{s['hp_max']}` ⚔️`{s['attack_min']}~{s['attack_max']}` 🛡️`{s['defense']}`\n"
+                    f"　Lv.**{w['level']}**  `{w['xp']}/{xp_need}` {xbar}"
+                )
+            embed.add_field(
+                name=f"💍 Ra Trận ({len(equipped)}/{MAX_EQUIPPED})",
+                value="\n\n".join(lines),
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name=f"💍 Ra Trận (0/{MAX_EQUIPPED})",
+                value="_Chưa có vợ nào ra trận_",
+                inline=False,
+            )
+
+        # ── Kho vợ ──
+        if stored:
+            # Nhóm theo rarity để hiển thị gọn
+            rarity_groups: dict[str, list[str]] = {"SVIP": [], "S": [], "A": [], "B": []}
+            for w in stored:
+                wd = w["wife_data"]
+                stars = RARITY_STARS.get(wd["rarity"], "⭐")
+                cls = CLASSES.get(w.get("class_id", "banxabong"), CLASSES["banxabong"])
+                rarity_groups.setdefault(wd["rarity"], []).append(
+                    f"`{w['id']}` {wd['emoji']} {wd['name']} {stars} Lv.{w['level']} {cls['icon']}"
+                )
+
+            kho_lines = []
+            for r in ["SVIP", "S", "A", "B"]:
+                lines_r = rarity_groups.get(r, [])
+                if lines_r:
+                    kho_lines.append(f"**{r}** ({len(lines_r)})")
+                    kho_lines.extend(lines_r)
+
+            kho_text = "\n".join(kho_lines)
+            if len(kho_text) > 1024:
+                kho_text = kho_text[:1000] + "\n_...còn nữa_"
+            embed.add_field(
+                name=f"📦 Trong Kho ({len(stored)} vợ)",
+                value=kho_text,
+                inline=False,
+            )
+
+        embed.set_footer(
+            text=(
+                f"Tổng: {len(wives)} vợ  ·  "
+                f"`{prefix}waifu equip <id>` mang ra trận  ·  "
+                f"`{prefix}gacha` quay thêm (5,000🪙)"
+            )
+        )
+
+        if isinstance(ctx_or_int, commands.Context):
+            await ctx_or_int.send(embed=embed)
+        else:
+            await ctx_or_int.response.send_message(embed=embed)
 
     async def _gacha_pull(self, ctx_or_int, sid: str, display_name: str, prefix: str):
         db = await get_db()
@@ -368,21 +447,49 @@ class WaifuCog(commands.Cog):
             color = RARITY_COLOR.get(wife["rarity"], 0xff69b4)
             cls = CLASSES.get(class_id, CLASSES["banxabong"])
 
-            embed = discord.Embed(
-                title="🎰 GACHA!",
-                color=color,
-                description=(
-                    f"**{display_name}** quay được...\n\n"
-                    f"# {wife['emoji']} {wife['name']}\n"
-                    f"### {stars} {wife['rarity']}\n"
-                    f"*{wife['full']}*\n"
-                    f"{wife['desc']}\n\n"
-                    f"🎭 Class: {cls['icon']} {cls['name']}\n"
-                    f"{'🆓 FREE PULL!' if is_first else f'💰 -{cost}🪙 | Còn {coins - cost}🪙'}"
-                )
+            # Rarity header text
+            rarity_header = {
+                "B":    "🌸 Thường",
+                "A":    "💎 Hiếm",
+                "S":    "🌟 Cực Hiếm",
+                "SVIP": "👑 HUYỀN THOẠI",
+            }.get(wife["rarity"], wife["rarity"])
+
+            # Animated-feel: SVIP thêm glow
+            if wife["rarity"] == "SVIP":
+                title = "✨ GACHA ✨ JACKPOT!"
+            elif wife["rarity"] == "S":
+                title = "🎰 GACHA — Hiếm!"
+            else:
+                title = "🎰 GACHA"
+
+            embed = discord.Embed(title=title, color=color)
+
+            desc_parts = [
+                f"**{display_name}** vừa quay được...\n",
+                f"# {wife['emoji']} {wife['name']}",
+                f"### {stars}  {rarity_header}",
+                f"*{wife['full']}*",
+                f"_{wife['desc']}_\n",
+                f"🎭 Class: {cls['icon']} **{cls['name']}**  ·  {cls['desc']}",
+            ]
+
+            if is_first:
+                desc_parts.append("\n🎁 **FREE PULL!** Lần đầu miễn phí!")
+            else:
+                desc_parts.append(f"\n💰 Tốn **{cost:,}🪙**  ·  Còn **{coins - cost:,}🪙**".replace(",", "."))
+
+            # Xác suất note
+            desc_parts.append(
+                f"\n_Tỉ lệ: B 60% · A 25% · S 12% · SVIP 3%_"
             )
+
+            embed.description = "\n".join(desc_parts)
+
             if wife.get("image_url"):
                 embed.set_thumbnail(url=wife["image_url"])
+
+            embed.set_footer(text=f"Dùng /{prefix.strip('/')}waifu để xem harem · /{prefix.strip('/')}waifu equip <id> để ra trận")
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.send(embed=embed)
             else:
