@@ -40,11 +40,12 @@ async def update_progress(db, player_id: str, quest_id: int, amount: int = 1):
 
 
 class QuestView(discord.ui.View):
-    def __init__(self, player_id: str, quests_data: list, completed_count: int):
+    def __init__(self, player_id: str, quests_data: list, completed_count: int, all_claimed: bool):
         super().__init__(timeout=300)
         self.player_id = player_id
         self.quests_data = quests_data
         self.completed_count = completed_count
+        self.all_claimed = all_claimed
 
         for i, qd in enumerate(quests_data):
             q = qd["quest"]
@@ -59,7 +60,7 @@ class QuestView(discord.ui.View):
             btn.callback = self._make_quest_cb(i)
             self.add_item(btn)
 
-        if completed_count >= QUESTS_PER_DAY:
+        if completed_count >= QUESTS_PER_DAY and not all_claimed:
             bonus_btn = discord.ui.Button(
                 emoji="🌟", label="Nhận Thưởng Hoàn Thành", style=discord.ButtonStyle.primary,
                 custom_id="quest_bonus", row=4)
@@ -139,10 +140,17 @@ class QuestView(discord.ui.View):
         try:
             today = datetime.now().strftime("%Y-%m-%d")
             c = await (await db.execute(
-                "SELECT COUNT(*) FROM daily_quests WHERE player_id=? AND date=? AND completed=1 AND claimed=0",
+                "SELECT COUNT(*) FROM daily_quests WHERE player_id=? AND date=? AND completed=1",
                 (sid, today))).fetchone()
             if c[0] < QUESTS_PER_DAY:
-                await interaction.followup.send(f"🤷 Chưa đủ {QUESTS_PER_DAY} quest!", ephemeral=True)
+                await interaction.followup.send(f"🤷 Chưa đủ {QUESTS_PER_DAY} quest hoàn thành!", ephemeral=True)
+                return
+
+            claimed_check = await (await db.execute(
+                "SELECT COUNT(*) FROM daily_quests WHERE player_id=? AND date=? AND claimed=1",
+                (sid, today))).fetchone()
+            if claimed_check[0] >= QUESTS_PER_DAY:
+                await interaction.followup.send("🤷 Đã nhận thưởng hoàn thành rồi!", ephemeral=True)
                 return
 
             await db.execute("UPDATE daily_quests SET claimed=1 WHERE player_id=? AND date=?", (sid, today))
@@ -201,6 +209,42 @@ class QuestCog(commands.Cog):
                 quests_data.append(rd)
                 if rd["completed"]:
                     completed += 1
+
+            # Auto-claim completed quests + bonus
+            claim_msgs = []
+            bonus_given = False
+            for qd in quests_data:
+                if qd["completed"] and not qd["claimed"]:
+                    q = QUESTS.get(qd["quest_id"], {})
+                    qd["claimed"] = True
+                    if q.get("reward_coins"):
+                        await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (q["reward_coins"], sid))
+                    if q.get("reward_xp"):
+                        await db.execute("UPDATE players SET xp=xp+? WHERE id=?", (q["reward_xp"], sid))
+                    if q.get("reward_stone"):
+                        sk = {"basic":"stone_basic","medium":"stone_medium","advanced":"stone_advanced"}.get(q["reward_stone"], q["reward_stone"])
+                        sq = q.get("reward_stone_qty", 1)
+                        await db.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {sk}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
+                                         (sid, sq, sid, sid, sid))
+                        await db.execute(f"UPDATE player_enhance_stones SET {sk}=COALESCE((SELECT {sk} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({sk} IS NULL OR {sk}=0)", (sid, sid))
+                    if q.get("reward_artifact"):
+                        await db.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + ?)",
+                                         (sid, sid, sid, q["reward_artifact"]))
+                    await db.execute("UPDATE daily_quests SET claimed=1 WHERE player_id=? AND quest_id=? AND date=?",
+                                     (sid, qd["quest_id"], today))
+                    await db.execute("INSERT OR REPLACE INTO player_vip_coins (player_id, amount) VALUES (?, COALESCE((SELECT amount FROM player_vip_coins WHERE player_id=?), 0) + 1)",
+                                     (sid, sid))
+                    claim_msgs.append(f"🎉 **{q.get('name','?')}**: +{q.get('reward_coins',0)}🪙 +1 VIP")
+
+            if completed >= QUESTS_PER_DAY:
+                all_claimed = await (await db.execute(
+                    "SELECT COUNT(*) FROM daily_quests WHERE player_id=? AND date=? AND claimed=1", (sid, today))).fetchone()
+                if all_claimed[0] >= QUESTS_PER_DAY:
+                    bonus_already = await (await db.execute("SELECT 1 FROM daily_quests WHERE player_id=? AND date=? AND claimed=1 LIMIT 1", (sid, today))).fetchone()
+                    bonus_given = True
+
+            if claim_msgs:
+                await db.commit()
 
             embed = discord.Embed(
                 title=f"📋 Nhiệm Vụ Hàng Ngày — {display_name}",
