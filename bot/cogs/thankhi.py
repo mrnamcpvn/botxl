@@ -87,8 +87,12 @@ class ThankhiView(discord.ui.View):
             upgrade_btn.callback = self._upgrade_callback
             self.add_item(upgrade_btn)
 
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return True
+
     def _make_nav(self, delta: int):
         async def cb(interaction: discord.Interaction):
+            await interaction.response.defer()
             new_star = self.star + delta
             if 0 <= new_star <= 10:
                 embed = thankhi_embed(new_star, interaction.user.display_name)
