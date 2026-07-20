@@ -5,7 +5,7 @@ from bot.data.skills import SKILLS_DB
 from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT, SET_BONUSES
 from bot.data.classes import CLASSES
-from bot.config import HP_REGEN_INTERVAL, HP_REGEN_RATE, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT
+from bot.config import HP_REGEN_INTERVAL, HP_REGEN_RATE, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT, GLOBAL_DEF_MULT
 
 
 def calc_class_stat(base: int, scale: int, level: int) -> int:
@@ -133,6 +133,7 @@ def get_effective_stats(pdata: dict) -> dict:
             dodge += set_bonus["dodge"]
 
     hp_max = int(hp_max * GLOBAL_HP_MULT)
+    defense = int(defense * GLOBAL_DEF_MULT)
 
     return {
         "hp_max": hp_max,
