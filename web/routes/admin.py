@@ -65,81 +65,166 @@ async def admin_coins(request: Request, player_id: str = Form(...), amount: int 
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
+    msg = ""
     try:
         conn.execute("UPDATE players SET coins=coins+? WHERE id=?", (amount, player_id))
         conn.commit()
-        msg = f"✅ Tặng {amount}🪙 cho <@{player_id}>"
+        msg = f"✅ Tặng **{amount}**🪙 cho <@{player_id}>"
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })
 
 @router.post("/admin/dungeon", response_class=HTMLResponse)
 async def admin_dungeon(request: Request, player_id: str = Form(...), entries: int = Form(...)):
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
+    msg = ""
     try:
-        conn.execute("INSERT OR IGNORE INTO dungeon_progress (player_id, checkpoint, daily_entries, daily_tickets_bought, last_entry_date, last_week_reset) VALUES (?, 0, 0, 0, '', '')", (player_id,))
-        conn.execute("UPDATE dungeon_progress SET daily_entries=daily_entries-?, daily_tickets_bought=MAX(0, daily_tickets_bought-?) WHERE player_id=?", (entries, entries, player_id))
+        conn.execute(
+            "INSERT OR IGNORE INTO dungeon_progress (player_id, checkpoint, daily_entries, daily_tickets_bought, last_entry_date, last_week_reset) VALUES (?, 0, 0, 0, '', '')",
+            (player_id,)
+        )
+        # Giảm daily_entries để player có thêm lượt (tặng thêm lượt = giảm số đã dùng)
+        conn.execute(
+            "UPDATE dungeon_progress SET daily_entries=MAX(0, daily_entries-?), daily_tickets_bought=MAX(0, daily_tickets_bought-?) WHERE player_id=?",
+            (entries, entries, player_id)
+        )
         conn.commit()
-        msg = f"✅ Tặng {entries} lượt bí cảnh cho <@{player_id}>"
+        msg = f"✅ Tặng **{entries}** lượt bí cảnh cho <@{player_id}>"
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })
 
 @router.post("/admin/equip", response_class=HTMLResponse)
 async def admin_equip(request: Request, player_id: str = Form(...), equip_id: int = Form(...)):
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
+    msg = ""
     try:
-        conn.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (player_id, equip_id))
+        conn.execute(
+            "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+            (player_id, equip_id)
+        )
         conn.commit()
-        msg = f"✅ Tặng trang bị cho <@{player_id}>"
+        from bot.data.equipment import EQUIPMENT, STAR_LABELS
+        eq = EQUIPMENT.get(equip_id, {})
+        eq_name = f"{STAR_LABELS.get(eq.get('star', 1), '⭐')} {eq.get('name', f'Item {equip_id}')}"
+        msg = f"✅ Tặng **{eq_name}** cho <@{player_id}>"
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })
 
 @router.post("/admin/stones", response_class=HTMLResponse)
 async def admin_stones(request: Request, player_id: str = Form(...), stone_type: str = Form(...), amount: int = Form(...)):
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
-    labels = {"stone_basic": "Đá sơ cấp", "stone_medium": "Đá trung cấp", "stone_advanced": "Đá cao cấp", "artifact": "Đá thần khí"}
+    labels = {
+        "stone_basic": "Đá Sơ Cấp",
+        "stone_medium": "Đá Trung Cấp",
+        "stone_advanced": "Đá Cao Cấp",
+        "artifact": "Đá Thần Khí",
+    }
+    msg = ""
     try:
         if stone_type == "artifact":
-            conn.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + ?)",
-                         (player_id, player_id, player_id, amount))
+            # Tặng đá thần khí — giữ nguyên star, cộng thêm đá
+            row = conn.execute(
+                "SELECT star, stone_count FROM player_artifact WHERE player_id=?",
+                (player_id,)
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE player_artifact SET stone_count=stone_count+? WHERE player_id=?",
+                    (amount, player_id)
+                )
+            else:
+                # Chưa kích hoạt: tặng đá nhưng star=0 (vẫn cần 100k xu để mở)
+                conn.execute(
+                    "INSERT INTO player_artifact (player_id, star, stone_count) VALUES (?, 0, ?)",
+                    (player_id, amount)
+                )
+
+        elif stone_type in ("stone_basic", "stone_medium", "stone_advanced"):
+            # Tặng đá cường hóa — dùng UPSERT an toàn
+            existing = conn.execute(
+                "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?",
+                (player_id,)
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    f"UPDATE player_enhance_stones SET {stone_type}={stone_type}+? WHERE player_id=?",
+                    (amount, player_id)
+                )
+            else:
+                # Row chưa tồn tại — tạo mới với đúng cột
+                vals = {
+                    "stone_basic": 0, "stone_medium": 0, "stone_advanced": 0
+                }
+                vals[stone_type] = amount
+                conn.execute(
+                    "INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, ?, ?)",
+                    (player_id, vals["stone_basic"], vals["stone_medium"], vals["stone_advanced"])
+                )
         else:
-            conn.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {stone_type}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
-                         (player_id, amount, player_id, player_id, player_id))
-            conn.execute(f"UPDATE player_enhance_stones SET {stone_type}=COALESCE((SELECT {stone_type} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({stone_type} IS NULL OR {stone_type}=0)",
-                         (player_id, player_id))
-        conn.commit()
-        msg = f"✅ Tặng {amount} {labels[stone_type]} cho <@{player_id}>"
+            msg = f"❌ Loại đá không hợp lệ: {stone_type}"
+
+        if not msg:
+            conn.commit()
+            msg = f"✅ Tặng **{amount}x {labels.get(stone_type, stone_type)}** cho <@{player_id}>"
+
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })
 
 @router.post("/admin/skill", response_class=HTMLResponse)
 async def admin_skill(request: Request, player_id: str = Form(...), skill_id: int = Form(...)):
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
+    msg = ""
     try:
         conn.execute("INSERT OR IGNORE INTO player_skills (player_id, skill_id) VALUES (?, ?)", (player_id, skill_id))
         conn.commit()
         from bot.data.skills import SKILLS_DB
-        sn = SKILLS_DB.get(skill_id, {}).get("name", f"Skill {skill_id}")
-        msg = f"✅ Tặng {sn} cho <@{player_id}>"
+        sk = SKILLS_DB.get(skill_id, {})
+        sn = f"{sk.get('icon', '')} {sk.get('name', f'Skill {skill_id}')}"
+        msg = f"✅ Tặng **{sn}** cho <@{player_id}>"
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })
 
 @router.post("/admin/artifact", response_class=HTMLResponse)
 async def admin_artifact(request: Request, player_id: str = Form(...), star: int = Form(...)):
@@ -147,25 +232,56 @@ async def admin_artifact(request: Request, player_id: str = Form(...), star: int
         return RedirectResponse(url="/login")
     conn = get_db()
     try:
-        conn.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, ?, COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0))",
-                     (player_id, star, player_id))
+        # Đảm bảo star hợp lệ
+        star = max(1, min(10, star))
+
+        # Lấy stone_count hiện tại (nếu có), giữ nguyên
+        row = conn.execute(
+            "SELECT stone_count FROM player_artifact WHERE player_id=?", (player_id,)
+        ).fetchone()
+        current_stones = row["stone_count"] if row else 0
+
+        # INSERT OR REPLACE — tạo mới hoặc cập nhật, luôn set star đúng
+        # Khi player chưa kích hoạt: tạo row mới với star được tặng
+        # Khi đã có: cập nhật star, giữ stone_count
+        conn.execute(
+            "INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, ?, ?)",
+            (player_id, star, current_stones)
+        )
         conn.commit()
-        msg = f"✅ Set thần khí ★{star} cho <@{player_id}>"
+
+        from bot.data.artifacts import ARTIFACTS
+        artifact_name = ARTIFACTS.get(star, {}).get("name", f"★{star}")
+        msg = f"✅ Tặng Thần Khí **{artifact_name}** (★{star}) cho <@{player_id}>"
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })
 
 @router.post("/admin/resetcd", response_class=HTMLResponse)
 async def admin_resetcd(request: Request, player_id: str = Form(...)):
     if not request.session.get("admin"):
         return RedirectResponse(url="/login")
     conn = get_db()
+    msg = ""
     try:
-        conn.execute("UPDATE players SET attack_cd=0, special_cd=0, defense_cd=0 WHERE id=?", (player_id,))
+        conn.execute(
+            "UPDATE players SET attack_cd=0, special_cd=0, defense_cd=0 WHERE id=?",
+            (player_id,)
+        )
         conn.commit()
-        msg = f"✅ Reset CD cho <@{player_id}>"
+        msg = f"✅ Reset cooldown cho <@{player_id}>"
     except Exception as e:
-        msg, error = "", str(e)
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
     players = get_players(); equips = get_equip_list(); skills = get_skill_list()
-    return templates.TemplateResponse(request, "admin.html", {"request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg})
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "msg": msg
+    })

@@ -310,6 +310,11 @@ class Arena(commands.Cog):
             pdata["buffs"] = dict(buff_row) if buff_row else {}
             wife_cursor = await db.execute("SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (sid,))
             wives_data = [dict(r) async for r in wife_cursor]
+            # Load artifact data cho stats tab 4
+            art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
+            art_row = await art_cursor.fetchone()
+            pdata["_artifact_star"] = art_row[0] if art_row else 0
+            pdata["_artifact_stones"] = art_row[1] if art_row else 0
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
             await update_combat_power(sid, pdata, wives_data, db=db)
@@ -895,6 +900,11 @@ class Arena(commands.Cog):
             pdata["buffs"] = dict(buff_row) if buff_row else {}
             wife_cursor = await db.execute("SELECT * FROM player_wives WHERE player_id=? AND equipped=1", (sid,))
             wives_data = [dict(r) async for r in wife_cursor]
+            # Load artifact data cho stats tab 4
+            art_cursor = await db.execute("SELECT star, stone_count FROM player_artifact WHERE player_id=?", (sid,))
+            art_row = await art_cursor.fetchone()
+            pdata["_artifact_star"] = art_row[0] if art_row else 0
+            pdata["_artifact_stones"] = art_row[1] if art_row else 0
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
             await update_combat_power(sid, pdata, wives_data, db=db)

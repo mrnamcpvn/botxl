@@ -39,8 +39,14 @@ def _enh_str(enh: int) -> str:
 
 
 def _equip_line(er: dict) -> str:
-    """Tạo 1 dòng hiển thị cho 1 equipment row."""
-    eiid = er["item_id"]
+    """Tạo 1 dòng hiển thị cho 1 equipment row.
+
+    Phân biệt 2 loại ID:
+      item_id  — dùng cho /equip <item_id>   (101, 201, 301...)
+      row id   — dùng cho /cuonghoa <row_id> (1, 2, 3... — row trong DB)
+    """
+    eiid = er["item_id"]      # ID loại đồ (dùng /equip)
+    row_id = er["id"]         # Row ID cụ thể (dùng /cuonghoa)
     enh = er.get("enhance", 0)
     eq_flag = "✅" if er.get("equipped") else "📦"
     enh_s = _enh_str(enh)
@@ -76,13 +82,25 @@ def _equip_line(er: dict) -> str:
         hidden_tag = " 🌟" if hidden_json else ""
 
         stat_s = f" `{' '.join(parts)}`" if parts else ""
-        return f"{eq_flag} `{er['id']}` {stars} **{name}**{enh_s}{hidden_tag} {stat_s} _{slot_name}_"
+
+        # Hiện rõ 2 ID: item_id cho /equip, row_id cho /cuonghoa
+        id_info = f"equip:`{eiid}` cường:`{row_id}`"
+        return (
+            f"{eq_flag} {stars} **{name}**{enh_s}{hidden_tag}{stat_s} _{slot_name}_\n"
+            f"　└ {id_info}"
+        )
 
     elif eiid in SHOP_ITEMS:
         item = SHOP_ITEMS[eiid]
-        return f"{eq_flag} `{er['id']}` {item['name']}{enh_s}"
+        return (
+            f"{eq_flag} **{item['name']}**{enh_s}\n"
+            f"　└ equip:`{eiid}` cường:`{row_id}`"
+        )
 
-    return f"{eq_flag} `{er['id']}` `item#{eiid}`{enh_s}"
+    return (
+        f"{eq_flag} `item#{eiid}`{enh_s}\n"
+        f"　└ equip:`{eiid}` cường:`{row_id}`"
+    )
 
 
 def _chunks(lst: list, n: int) -> list[list]:
@@ -295,9 +313,16 @@ class InventoryView(discord.ui.View):
                     name = e["name"]
                     if e["star"] == 6:
                         name = f"✨ {name}"
-                    worn_lines.append(f"{slot_name}: {stars} **{name}**{enh_s}")
+                    # hiện item_id để dùng /equip, row id để dùng /cuonghoa
+                    worn_lines.append(
+                        f"{slot_name}: {stars} **{name}**{enh_s}\n"
+                        f"　└ equip:`{eiid}` · cường:`{er['id']}`"
+                    )
                 elif eiid in SHOP_ITEMS:
-                    worn_lines.append(f"{slot_name}: {SHOP_ITEMS[eiid]['name']}{enh_s}")
+                    worn_lines.append(
+                        f"{slot_name}: {SHOP_ITEMS[eiid]['name']}{enh_s}\n"
+                        f"　└ equip:`{eiid}`"
+                    )
             else:
                 worn_lines.append(f"{slot_name}: ▫️ _trống_")
 
@@ -348,10 +373,11 @@ class InventoryView(discord.ui.View):
         embed.add_field(
             name="💡 Hướng Dẫn",
             value=(
-                "`/equip <id>` mặc/tháo trang bị\n"
+                "`/equip <equip_id>` mặc/tháo trang bị\n"
                 "`/unequip <slot>` tháo theo slot\n"
+                "`/cuonghoa <cường_id>` cường hóa\n"
                 "`/use <id>` dùng tiêu hao\n"
-                "`/cuonghoa <id>` cường hóa"
+                "_(Xem tab ⚒️ để lấy ID đúng)_"
             ),
             inline=False,
         )
@@ -392,8 +418,12 @@ class InventoryView(discord.ui.View):
 
         # Legend
         embed.add_field(
-            name="🔖 Ký Hiệu",
-            value="✅ đang mặc  ·  📦 trong kho  ·  🌟 có hidden stats",
+            name="🔖 Ký Hiệu & ID",
+            value=(
+                "✅ đang mặc  ·  📦 trong kho  ·  🌟 có hidden stats\n"
+                "`equip:xxx` → dùng `/equip xxx` để mặc/tháo\n"
+                "`cường:xxx` → dùng `/cuonghoa xxx` để cường hóa"
+            ),
             inline=False,
         )
 
