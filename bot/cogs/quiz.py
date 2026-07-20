@@ -158,6 +158,7 @@ class QuizCog(commands.Cog):
 
                 from bot.cogs.quest import update_progress
                 await update_progress(db, sid, 7)
+                await update_progress(db, sid, 15)
 
                 embed = discord.Embed(
                     title="🎉 CHÍNH XÁC!",
