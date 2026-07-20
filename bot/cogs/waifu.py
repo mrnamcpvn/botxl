@@ -453,6 +453,9 @@ class WaifuCog(commands.Cog):
                 await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (cost, sid))
             await db.commit()
 
+            from bot.cogs.quest import update_progress
+            await update_progress(db, sid, 9)
+
             stars = RARITY_STARS.get(wife["rarity"], "⭐")
             color = RARITY_COLOR.get(wife["rarity"], 0xff69b4)
             cls = CLASSES.get(class_id, CLASSES["banxabong"])
