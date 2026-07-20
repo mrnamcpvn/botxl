@@ -190,6 +190,8 @@ class Arena(commands.Cog):
                 l_coins, l_xp = calc_rewards(False)
                 apply_rewards(p1 if winner_id == p1_id else p2, w_coins, w_xp)
                 apply_rewards(p2 if winner_id == p1_id else p1, l_coins, l_xp)
+                from bot.cogs.quest import update_progress
+                await update_progress(db, winner_id, 2)
                 p1_battles = p1.get("wins", 0) + p1.get("losses", 0)
                 new_elo_p1, new_elo_p2 = calculate_elo(
                     p1.get("elo", 1000), p2.get("elo", 1000),

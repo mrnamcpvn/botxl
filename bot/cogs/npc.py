@@ -453,6 +453,11 @@ class NPCCog(commands.Cog):
                 apply_rewards(player, w_coins, w_xp)
                 wife_lines = await level_wives_xp(db, sid, w_xp, WIFE_XP_SHARE)
                 player["wins"] = player.get("wins", 0) + 1
+
+                from bot.cogs.quest import update_progress
+                await update_progress(db, sid, 1)
+                if npc.get("level", 0) >= 15:
+                    await update_progress(db, sid, 11)
                 result_lines.append(f"💰 {session['player_name']}: +{w_coins}🪙 +{w_xp}XP")
                 if wife_lines:
                     result_lines.extend(wife_lines)

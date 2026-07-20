@@ -156,6 +156,9 @@ class QuizCog(commands.Cog):
 
                 await db.commit()
 
+                from bot.cogs.quest import update_progress
+                await update_progress(db, sid, 7)
+
                 embed = discord.Embed(
                     title="🎉 CHÍNH XÁC!",
                     description=f"**{message.author.display_name}** trả lời đúng!\nĐáp án: **{self.active_question}**\n\n{' | '.join(reward_parts)}",

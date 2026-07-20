@@ -134,6 +134,10 @@ TABLES = [
         answer TEXT NOT NULL,
         category TEXT DEFAULT 'general'
     )""",
+    """CREATE TABLE IF NOT EXISTS player_vip_coins (
+        player_id TEXT PRIMARY KEY,
+        amount INTEGER DEFAULT 0
+    )""",
 ]
 
 MIGRATIONS = [

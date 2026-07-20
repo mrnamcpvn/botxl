@@ -87,6 +87,8 @@ class ShopCog(commands.Cog):
                 await db.execute("INSERT OR IGNORE INTO player_skills (player_id, skill_id) VALUES (?, ?)", (uid, item["skill_id"]))
             await db.commit()
             await self._reply(ctx_or_int, f"✅ Mua **{item['name']}** thành công!")
+            from bot.cogs.quest import update_progress
+            await update_progress(db, uid, 4)
         finally:
             await db.close()
 

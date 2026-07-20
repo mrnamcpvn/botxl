@@ -401,6 +401,8 @@ class DungeonCog(commands.Cog):
             await db.commit()
 
             next_floor = dg["checkpoint"] + 1
+            from bot.cogs.quest import update_progress
+            await update_progress(db, sid, 6)
             await self._start_dungeon_floor(ctx_or_int, sid, display_name, next_floor, ticket_msg)
 
         finally:

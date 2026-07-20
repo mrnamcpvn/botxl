@@ -164,6 +164,8 @@ class EnhanceCog(commands.Cog):
 
             if success:
                 await db.execute("UPDATE player_equipment SET enhance=? WHERE id=?", (target, eid))
+                from bot.cogs.quest import update_progress
+                await update_progress(db, sid, 3)
                 hidden_msg = ""
                 if target in MILESTONES:
                     hidden = generate_hidden_stat(equip_star, target)

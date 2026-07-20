@@ -21,4 +21,5 @@ SHOP_ITEMS = {
     23:{"name":"🍀 Vía Ông Địa [BỊ ĐỘNG]","desc":"15% né đòn","price":4000,"type":"skill","skill_id":18},
     24:{"name":"💢 Điên Không Kịp Thở [BỊ ĐỘNG]","desc":"Tích dmg→trả 2x","price":4000,"type":"skill","skill_id":19},
     25:{"name":"💎 Chưa Chết Đã Sống Lại [BỊ ĐỘNG]","desc":"HP<30%: -50% dmg","price":15000,"type":"skill","skill_id":20},
+    26:{"name":"🎫 Vé Reset Quest","desc":"Reset 1 quest (chọn số)","price":500,"type":"consumable","effect":{}},
 }
