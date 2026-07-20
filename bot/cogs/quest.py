@@ -28,6 +28,7 @@ async def ensure_quests(db, player_id: str):
 
 
 async def update_progress(db, player_id: str, quest_id: int, amount: int = 1):
+    await ensure_quests(db, player_id)
     today = datetime.now().strftime("%Y-%m-%d")
     await db.execute(
         "UPDATE daily_quests SET progress=MIN(target, progress+?) WHERE player_id=? AND quest_id=? AND date=? AND completed=0",
