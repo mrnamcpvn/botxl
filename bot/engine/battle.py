@@ -3,7 +3,7 @@ import time
 import json
 from bot.data.skills import SKILLS_DB
 from bot.data.shop_items import SHOP_ITEMS
-from bot.data.equipment import EQUIPMENT
+from bot.data.equipment import EQUIPMENT, SET_BONUSES
 from bot.data.classes import CLASSES
 from bot.config import HP_REGEN_INTERVAL, HP_REGEN_RATE, ENHANCE_BONUS_PER_LEVEL
 
@@ -117,6 +117,20 @@ def get_effective_stats(pdata: dict) -> dict:
         dodge = int(dodge * art_mult)
         reflect = int(reflect * art_mult)
         regen = int(regen * art_mult)
+
+    set_bonus = pdata.get("_set_bonus")
+    if set_bonus:
+        if set_bonus.get("hp_pct"):
+            hp_max = int(hp_max * (1 + set_bonus["hp_pct"] / 100))
+        if set_bonus.get("atk_pct"):
+            atk_min = int(atk_min * (1 + set_bonus["atk_pct"] / 100))
+            atk_max = int(atk_max * (1 + set_bonus["atk_pct"] / 100))
+        if set_bonus.get("def_pct"):
+            defense = int(defense * (1 + set_bonus["def_pct"] / 100))
+        if set_bonus.get("crit"):
+            crit += set_bonus["crit"]
+        if set_bonus.get("dodge"):
+            dodge += set_bonus["dodge"]
 
     return {
         "hp_max": hp_max,

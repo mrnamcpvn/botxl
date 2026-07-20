@@ -8,6 +8,15 @@ SLOT_NAMES = {
 }
 DROP_WEIGHTS = {1: 500, 2: 300, 3: 159, 4: 30, 5: 10, 6: 1}
 
+SET_BONUSES = {
+    1: {"name": "Đồng Nát", "hp_pct": 5},
+    2: {"name": "Tinh Anh", "hp_pct": 8, "def_pct": 5},
+    3: {"name": "Hiếm Có", "hp_pct": 10, "atk_pct": 8},
+    4: {"name": "Sử Thi", "hp_pct": 15, "atk_pct": 10, "crit": 5},
+    5: {"name": "Huyền Thoại", "hp_pct": 20, "atk_pct": 15, "crit": 8},
+    6: {"name": "Thần Thoại", "hp_pct": 30, "atk_pct": 20, "crit": 10, "dodge": 5},
+}
+
 EQUIPMENT = {
     # ═══════ ⭐1 🔵 VŨ KHÍ (ATK) ═══════
     101: {"name":"Gậy Tre Làng","slot":"weapon","star":1,"stats":{"attack_min":3,"attack_max":5}},

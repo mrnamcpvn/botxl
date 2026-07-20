@@ -5,6 +5,7 @@ Thay thế code copy-paste ở arena.py, battle_view.py, npc.py, dungeon.py.
 import time
 from bot.data.equipment import EQUIPMENT
 from bot.data.shop_items import SHOP_ITEMS
+from bot.data.equipment import SET_BONUSES
 from bot.engine.battle import regen_hp
 
 
@@ -58,6 +59,19 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     pdata["_equip_items"] = equip_items
     pdata["_equip_enhances"] = equip_enhances
     pdata["_equip_hidden"] = equip_hidden
+
+    # Set bonus
+    pdata["_set_bonus"] = None
+    stars_per_slot = {}
+    for slot, eq_id in equipped.items():
+        item_id = equip_items.get(str(eq_id))
+        if item_id and item_id in EQUIPMENT:
+            stars_per_slot[slot] = EQUIPMENT[item_id]["star"]
+    if len(stars_per_slot) == 6:
+        star_values = set(stars_per_slot.values())
+        if len(star_values) == 1:
+            star = star_values.pop()
+            pdata["_set_bonus"] = SET_BONUSES.get(star)
 
     # Buffs
     buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))

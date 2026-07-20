@@ -323,6 +323,24 @@ class StatsView(discord.ui.View):
                 lines.append(f"**{slot_label}**: ▫️ _Trống_")
 
         embed.add_field(name="🧥 Đang Mặc", value="\n".join(lines) or "_(chưa có gì)_", inline=False)
+
+        set_bonus = pdata.get("_set_bonus")
+        if set_bonus:
+            from bot.data.equipment import SET_BONUSES as SB
+            for star, sb in SB.items():
+                if sb == set_bonus:
+                    parts = []
+                    if sb.get("hp_pct"): parts.append(f"❤️ +{sb['hp_pct']}% HP")
+                    if sb.get("atk_pct"): parts.append(f"⚔️ +{sb['atk_pct']}% ATK")
+                    if sb.get("def_pct"): parts.append(f"🛡️ +{sb['def_pct']}% DEF")
+                    if sb.get("crit"): parts.append(f"💥 +{sb['crit']}% Crit")
+                    if sb.get("dodge"): parts.append(f"🍀 +{sb['dodge']}% Dodge")
+                    embed.add_field(
+                        name=f"🌟 SET {sb['name']} ★{star} KÍCH HOẠT!",
+                        value=" · ".join(parts),
+                        inline=False)
+                    break
+
         embed.add_field(
             name="💡 Lệnh",
             value="`/equip <id>` mặc  ·  `/unequip <slot>` tháo  ·  `/cuonghoa <id>` cường hóa",
