@@ -75,7 +75,7 @@ NPC_DEFINITIONS = {
     },
     "10": {
         "name": "⚡ Lôi Thần Sấm Sét", "class_id": "chodien", "level": 27,
-        "hp": 2400, "hp_max": 2400, "attack_min": 740, "attack_max": 1040, "defense": 380,
+        "hp": 2400, "hp_max": 2400, "attack_min": 540, "attack_max": 740, "defense": 480,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -83,7 +83,7 @@ NPC_DEFINITIONS = {
     },
     "11": {
         "name": "🧊 Băng Thần Vĩnh Cửu", "class_id": "xola", "level": 30,
-        "hp": 2800, "hp_max": 2800, "attack_min": 840, "attack_max": 1160, "defense": 460,
+        "hp": 2800, "hp_max": 2800, "attack_min": 640, "attack_max": 860, "defense": 560,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -91,7 +91,7 @@ NPC_DEFINITIONS = {
     },
     "12": {
         "name": "🔥 Phượng Hoàng Lửa Thiêng", "class_id": "sieunhan", "level": 33,
-        "hp": 3200, "hp_max": 3200, "attack_min": 1000, "attack_max": 1360, "defense": 520,
+        "hp": 3200, "hp_max": 3200, "attack_min": 800, "attack_max": 960, "defense": 520,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -99,7 +99,7 @@ NPC_DEFINITIONS = {
     },
     "13": {
         "name": "🌌 Chúa Tể Hư Không", "class_id": "thaychua", "level": 36,
-        "hp": 3700, "hp_max": 3700, "attack_min": 1140, "attack_max": 1560, "defense": 580,
+        "hp": 3700, "hp_max": 3700, "attack_min": 940, "attack_max": 1160, "defense": 580,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -107,7 +107,7 @@ NPC_DEFINITIONS = {
     },
     "14": {
         "name": "👑 Vua Quỷ Tận Thế", "class_id": "trumcuoi", "level": 39,
-        "hp": 4200, "hp_max": 4200, "attack_min": 1300, "attack_max": 1800, "defense": 680,
+        "hp": 4200, "hp_max": 4200, "attack_min": 1100, "attack_max": 1400, "defense": 680,
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0,
         "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
