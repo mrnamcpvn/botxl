@@ -180,15 +180,24 @@ class ThankhiCog(commands.Cog):
             star = row[0] if row else 0
             stones = row[1] if row else 0
             can_upgrade = False
+            need_stones = 0
+            need_coins = 0
             if star > 0 and star < ARTIFACT_MAX_STAR:
                 cost = ARTIFACT_UPGRADE_COSTS.get(star + 1)
-                if cost and stones >= cost[0]:
-                    pc = await db.execute("SELECT coins FROM players WHERE id=?", (sid,))
-                    pr = await pc.fetchone()
-                    if pr and pr[0] >= cost[1]:
-                        can_upgrade = True
-            embed = thankhi_embed(star, display_name, stones=stones)
+                if cost:
+                    need_stones = cost[0]
+                    need_coins = cost[1]
+                    if stones >= need_stones:
+                        pc = await db.execute("SELECT coins FROM players WHERE id=?", (sid,))
+                        pr = await pc.fetchone()
+                        if pr and pr[0] >= need_coins:
+                            can_upgrade = True
+            embed = thankhi_embed(star, display_name)
+            if stones > 0 or star > 0:
+                embed.set_footer(text=f"💎 Đá thần khí: {stones} viên")
             view = ThankhiView(star, can_upgrade)
+            if star > 0 and star < ARTIFACT_MAX_STAR and not can_upgrade:
+                embed.description += f"\n\n⚠️ Cần **{need_stones}** Đá TK + **{need_coins:,}**🪙 để nâng cấp".replace(",", ".")
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.reply(embed=embed, view=view)
             else:
