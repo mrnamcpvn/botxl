@@ -126,10 +126,8 @@ class QuizCog(commands.Cog):
                     stone = random.choice(["stone_basic", "stone_medium", "stone_advanced"])
                     stone_labels = {"stone_basic": "Đá sơ cấp", "stone_medium": "Đá trung cấp", "stone_advanced": "Đá cao cấp"}
                     stone_qty = random.randint(1, 3)
-                    await db.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {stone}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
-                                     (sid, stone_qty, sid, sid, sid))
-                    await db.execute(f"UPDATE player_enhance_stones SET {stone}=COALESCE((SELECT {stone} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({stone} IS NULL OR {stone}=0)",
-                                     (sid, sid))
+                    await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
+                    await db.execute(f"UPDATE player_enhance_stones SET {stone}={stone}+? WHERE player_id=?", (stone_qty, sid))
                     reward_parts.append(f"💎 +{stone_qty} {stone_labels[stone]}")
                 elif roll < 0.20:
                     consumable = random.choice([i for i, it in SHOP_ITEMS.items() if it["type"] == "consumable"])

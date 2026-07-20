@@ -111,10 +111,8 @@ class QuestView(discord.ui.View):
             if q.get("reward_stone"):
                 sk = {"basic": "stone_basic", "medium": "stone_medium", "advanced": "stone_advanced"}.get(q["reward_stone"], q["reward_stone"])
                 sq = q.get("reward_stone_qty", 1)
-                await db.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {sk}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
-                                 (sid, sq, sid, sid, sid))
-                await db.execute(f"UPDATE player_enhance_stones SET {sk}=COALESCE((SELECT {sk} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({sk} IS NULL OR {sk}=0)",
-                                 (sid, sid))
+                await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
+                await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
                 labels = {"stone_basic": "Đá sơ cấp", "stone_medium": "Đá trung cấp", "stone_advanced": "Đá cao cấp"}
                 reward_parts.append(f"💎 +{sq} {labels.get(sk, sk)}")
             if q.get("reward_artifact"):
@@ -155,10 +153,8 @@ class QuestView(discord.ui.View):
 
             await db.execute("UPDATE daily_quests SET claimed=1 WHERE player_id=? AND date=?", (sid, today))
             await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (1000, sid))
-            await db.execute("INSERT OR REPLACE INTO player_enhance_stones (player_id, stone_advanced, stone_basic, stone_medium, stone_advanced) VALUES (?, 1, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), 1)",
-                             (sid, sid, sid))
-            await db.execute("UPDATE player_enhance_stones SET stone_advanced=COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND (stone_advanced IS NULL OR stone_advanced=0)",
-                             (sid, sid))
+            await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
+            await db.execute("UPDATE player_enhance_stones SET stone_advanced=stone_advanced+1 WHERE player_id=?", (sid,))
             await db.execute("INSERT OR REPLACE INTO player_vip_coins (player_id, amount) VALUES (?, COALESCE((SELECT amount FROM player_vip_coins WHERE player_id=?), 0) + 2)",
                              (sid, sid))
             await db.commit()
@@ -224,9 +220,8 @@ class QuestCog(commands.Cog):
                     if q.get("reward_stone"):
                         sk = {"basic":"stone_basic","medium":"stone_medium","advanced":"stone_advanced"}.get(q["reward_stone"], q["reward_stone"])
                         sq = q.get("reward_stone_qty", 1)
-                        await db.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {sk}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
-                                         (sid, sq, sid, sid, sid))
-                        await db.execute(f"UPDATE player_enhance_stones SET {sk}=COALESCE((SELECT {sk} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({sk} IS NULL OR {sk}=0)", (sid, sid))
+                        await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
+                        await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
                     if q.get("reward_artifact"):
                         await db.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + ?)",
                                          (sid, sid, sid, q["reward_artifact"]))

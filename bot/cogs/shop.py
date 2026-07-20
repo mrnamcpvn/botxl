@@ -691,10 +691,8 @@ class SellView(discord.ui.View):
             await db.execute("DELETE FROM player_equipment WHERE id=?", (self.eq_id,))
             dm = DISMANTLE_REWARDS.get(self.star, {})
             for sk, sq in dm.items():
-                await db.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {sk}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
-                                 (self.player_id, sq, self.player_id, self.player_id, self.player_id))
-                await db.execute(f"UPDATE player_enhance_stones SET {sk}=COALESCE((SELECT {sk} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({sk} IS NULL OR {sk}=0)",
-                                 (self.player_id, self.player_id))
+                await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (self.player_id,))
+                await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, self.player_id))
             await db.commit()
             dm_parts = [f"{STONE_LABELS.get(k,k)}×{v}" for k, v in dm.items()]
             stars = STAR_LABELS.get(self.star, "⭐")
