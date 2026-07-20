@@ -9,7 +9,7 @@ from bot.data.equipment import EQUIPMENT, STAR_LABELS, STAR_COLORS, SLOT_NAMES a
 from bot.data.classes import CLASSES
 from bot.engine.battle import get_effective_stats, get_equipped_skill
 from bot.engine.combat_power import calc_combat_power
-from bot.config import HP_REGEN_RATE, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL, MAX_ENHANCE
+from bot.config import HP_REGEN_PCT, HP_REGEN_INTERVAL, ENHANCE_BONUS_PER_LEVEL, MAX_ENHANCE
 from bot.data.artifacts import ARTIFACTS
 from bot.cogs.enhance import HIDDEN_STAT_POOLS
 from bot.views.ui_helpers import hp_bar
@@ -141,7 +141,7 @@ class StatsView(discord.ui.View):
         hp_max = eff["hp_max"]
         hbar = hp_bar(hp, hp_max, 10)
         pct = int(hp / max(hp_max, 1) * 100)
-        regen_note = f"\n💤 Hồi +**{HP_REGEN_RATE}HP** mỗi {HP_REGEN_INTERVAL}s" if hp < hp_max else ""
+        regen_note = f"\n💤 Hồi **{HP_REGEN_PCT}% HP** mỗi {HP_REGEN_INTERVAL}s" if hp < hp_max else ""
         embed.add_field(
             name="❤️ HP",
             value=f"`{hp}/{hp_max}` ({pct}%)\n{hbar}{regen_note}",

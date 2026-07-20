@@ -5,7 +5,7 @@ from bot.data.skills import SKILLS_DB
 from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT, SET_BONUSES
 from bot.data.classes import CLASSES
-from bot.config import HP_REGEN_INTERVAL, HP_REGEN_RATE, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT, GLOBAL_DEF_MULT
+from bot.config import HP_REGEN_INTERVAL, HP_REGEN_PCT, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT, GLOBAL_DEF_MULT
 
 
 def calc_class_stat(base: int, scale: int, level: int) -> int:
@@ -166,7 +166,7 @@ def regen_hp(pdata: dict, now: float = None) -> bool:
     if elapsed < HP_REGEN_INTERVAL:
         return False
     ticks = int(elapsed // HP_REGEN_INTERVAL)
-    hp_gain = ticks * HP_REGEN_RATE
+    hp_gain = ticks * eff_max * HP_REGEN_PCT // 100
     old = pdata.get("hp", 0)
     eff_max = get_effective_stats(pdata).get("hp_max", 100)
     pdata["hp"] = min(eff_max, pdata["hp"] + hp_gain)
