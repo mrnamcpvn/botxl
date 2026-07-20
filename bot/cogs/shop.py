@@ -672,7 +672,7 @@ class SellView(discord.ui.View):
             await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (price, self.player_id))
             await db.commit()
             stars = STAR_LABELS.get(self.star, "⭐")
-            await interaction.response.edit_message(
+            await interaction.edit_original_response(
                 content=f"💰 Bán {stars} **{self.name}** +{price}🪙", view=None, embed=None)
         finally:
             await db.close()
@@ -696,7 +696,7 @@ class SellView(discord.ui.View):
             await db.commit()
             dm_parts = [f"{STONE_LABELS.get(k,k)}×{v}" for k, v in dm.items()]
             stars = STAR_LABELS.get(self.star, "⭐")
-            await interaction.response.edit_message(
+            await interaction.edit_original_response(
                 content=f"💎 Phân giải {stars} **{self.name}** → {', '.join(dm_parts)}", view=None, embed=None)
         finally:
             await db.close()
