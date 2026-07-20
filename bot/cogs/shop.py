@@ -34,6 +34,10 @@ class ShopCog(commands.Cog):
     async def equip_cmd(self, ctx, item_id: str = None):
         await self._equip(ctx, ctx.author, item_id, "!")
 
+    @commands.command(name="sell")
+    async def sell_cmd(self, ctx, item_id: str = None):
+        await self._sell(ctx, ctx.author, item_id, "!")
+
     @commands.command(name="inv", aliases=["inventory"])
     async def inv_cmd(self, ctx):
         await self._show_inv(ctx, ctx.author, "!")
@@ -394,6 +398,32 @@ class ShopCog(commands.Cog):
     async def slash_inv(self, interaction: discord.Interaction):
         await self._show_inv(interaction, interaction.user, "/")
 
+    @app_commands.command(name="sell", description="🛒 Bán hoặc phân giải trang bị")
+    @app_commands.describe(item_id="ID trang bị muốn bán (xem /inv)")
+    async def slash_sell(self, interaction: discord.Interaction, item_id: str):
+        await self._sell(interaction, interaction.user, item_id, "/")
+
+    @slash_sell.autocomplete("item_id")
+    async def sell_autocomplete(self, interaction: discord.Interaction, current: str):
+        uid = str(interaction.user.id)
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND equipped=0", (uid,))
+            choices = []
+            async for r in cursor:
+                eiid = r[1]
+                if eiid in EQUIPMENT:
+                    e = EQUIPMENT[eiid]
+                    stars = STAR_LABELS.get(e["star"], "⭐")
+                    enh_str = f" +{r[2]}" if r[2] > 0 else ""
+                    name = f"({r[0]}) {stars} {e['name']}{enh_str}"
+                    if current.lower() in str(r[0]) or current.lower() in e['name'].lower():
+                        choices.append(app_commands.Choice(name=name[:100], value=str(r[0])))
+            return choices[:25]
+        finally:
+            await db.close()
+
     @commands.command(name="unequip")
     async def unequip_cmd(self, ctx, slot: str = None):
         await self._unequip(ctx, str(ctx.author.id), slot, "!")
@@ -443,6 +473,55 @@ class ShopCog(commands.Cog):
             if eiid in EQUIPMENT: name = EQUIPMENT[eiid]["name"]
             elif eiid in SHOP_ITEMS: name = SHOP_ITEMS[eiid]["name"]
             await self._reply(ctx_or_int, f"✅ Tháo **{name}{enh_str}** khỏi {EQ_SLOT_NAMES.get(slot, slot)}!")
+        finally:
+            await db.close()
+
+    async def _sell(self, ctx_or_int, user, item_id, prefix):
+        if not item_id:
+            await self._reply(ctx_or_int, f"❌ {prefix}sell <id> (xem ID trong `/inv`)")
+            return
+        try:
+            iid = int(item_id.strip())
+        except:
+            await self._reply(ctx_or_int, "❌ Số không hợp lệ!")
+            return
+
+        uid = str(user.id)
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, item_id, enhance, equipped FROM player_equipment WHERE id=? AND player_id=?",
+                (iid, uid))
+            row = await cursor.fetchone()
+            if not row:
+                await self._reply(ctx_or_int, "📭 Không có trang bị này! Xem `/inv`")
+                return
+            eq = dict(row)
+            eiid = eq["item_id"]
+            if eiid not in EQUIPMENT:
+                await self._reply(ctx_or_int, "❌ Chỉ bán được trang bị!")
+                return
+            if eq["equipped"]:
+                await self._reply(ctx_or_int, "❌ Tháo trang bị ra trước khi bán! `/unequip`")
+                return
+
+            e = EQUIPMENT[eiid]
+            stars = STAR_LABELS.get(e["star"], "⭐")
+            price = SELL_PRICES.get(e["star"], 100)
+            dm = DISMANTLE_REWARDS.get(e["star"], {})
+            dm_parts = [f"{STONE_LABELS.get(k,k)}×{v}" for k, v in dm.items()]
+
+            embed = discord.Embed(
+                title="🛒 Bán Trang Bị",
+                description=f"{stars} **{e['name']}** +{eq['enhance']}\n\n"
+                            f"💰 **Bán**: +{price}🪙\n"
+                            f"💎 **Phân Giải**: {', '.join(dm_parts)}",
+                color=STAR_COLORS.get(e["star"], 0xffaa00))
+            view = SellView(uid, eq["id"], eiid, e["star"], eq["enhance"], e["name"])
+            if isinstance(ctx_or_int, commands.Context):
+                await ctx_or_int.reply(embed=embed, view=view)
+            else:
+                await ctx_or_int.response.send_message(embed=embed, view=view)
         finally:
             await db.close()
 
@@ -527,6 +606,84 @@ def _catalog_embed(slot_filter: str = "weapon") -> discord.Embed:
     embed.description = "\n".join(lines)
     embed.set_footer(text=f"⭐ {len(items)} món | Rơi từ PvP & NPC battle")
     return embed
+
+
+SELL_PRICES = {1: 100, 2: 300, 3: 800, 4: 1200, 5: 2000, 6: 5000}
+
+DISMANTLE_REWARDS = {
+    1: {"stone_basic": 1},
+    2: {"stone_basic": 2},
+    3: {"stone_basic": 3, "stone_medium": 1},
+    4: {"stone_basic": 4, "stone_medium": 2},
+    5: {"stone_medium": 4, "stone_advanced": 2},
+    6: {"stone_medium": 8, "stone_advanced": 3},
+}
+
+STONE_LABELS = {"stone_basic": "Đá sơ cấp", "stone_medium": "Đá trung cấp", "stone_advanced": "Đá cao cấp"}
+
+
+class SellView(discord.ui.View):
+    def __init__(self, player_id: str, eq_id: int, item_id: int, star: int, enhance: int, name: str):
+        super().__init__(timeout=60)
+        self.player_id = player_id
+        self.eq_id = eq_id
+        self.item_id = item_id
+        self.star = star
+        self.enhance = enhance
+        self.name = name
+        self.used = False
+
+        price = SELL_PRICES.get(star, 100)
+        btn_sell = discord.ui.Button(
+            emoji="💰", label=f"Bán ({price}🪙)", style=discord.ButtonStyle.success, custom_id="sell_coin", row=0)
+        btn_sell.callback = self._sell_callback
+        self.add_item(btn_sell)
+
+        dm = DISMANTLE_REWARDS.get(star, {})
+        dm_parts = [f"{STONE_LABELS.get(k,k)}×{v}" for k, v in dm.items()]
+        btn_dismantle = discord.ui.Button(
+            emoji="💎", label=f"Phân Giải ({', '.join(dm_parts)})", style=discord.ButtonStyle.primary, custom_id="sell_dismantle", row=0)
+        btn_dismantle.callback = self._dismantle_callback
+        self.add_item(btn_dismantle)
+
+    async def _sell_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if self.used:
+            return
+        self.used = True
+        db = await get_db()
+        try:
+            await db.execute("DELETE FROM player_equipment WHERE id=?", (self.eq_id,))
+            price = SELL_PRICES.get(self.star, 100)
+            await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (price, self.player_id))
+            await db.commit()
+            stars = STAR_LABELS.get(self.star, "⭐")
+            await interaction.edit_original_response(
+                content=f"💰 Bán {stars} **{self.name}** +{price}🪙", view=None)
+        finally:
+            await db.close()
+
+    async def _dismantle_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if self.used:
+            return
+        self.used = True
+        db = await get_db()
+        try:
+            await db.execute("DELETE FROM player_equipment WHERE id=?", (self.eq_id,))
+            dm = DISMANTLE_REWARDS.get(self.star, {})
+            for sk, sq in dm.items():
+                await db.execute(f"INSERT OR REPLACE INTO player_enhance_stones (player_id, {sk}, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, COALESCE((SELECT stone_basic FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_medium FROM player_enhance_stones WHERE player_id=?), 0), COALESCE((SELECT stone_advanced FROM player_enhance_stones WHERE player_id=?), 0))",
+                                 (self.player_id, sq, self.player_id, self.player_id, self.player_id))
+                await db.execute(f"UPDATE player_enhance_stones SET {sk}=COALESCE((SELECT {sk} FROM player_enhance_stones WHERE player_id=?), 0) WHERE player_id=? AND ({sk} IS NULL OR {sk}=0)",
+                                 (self.player_id, self.player_id))
+            await db.commit()
+            dm_parts = [f"{STONE_LABELS.get(k,k)}×{v}" for k, v in dm.items()]
+            stars = STAR_LABELS.get(self.star, "⭐")
+            await interaction.edit_original_response(
+                content=f"💎 Phân giải {stars} **{self.name}** → {', '.join(dm_parts)}", view=None)
+        finally:
+            await db.close()
 
 
 async def setup(bot):
