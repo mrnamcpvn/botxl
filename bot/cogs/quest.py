@@ -36,6 +36,7 @@ async def update_progress(db, player_id: str, quest_id: int, amount: int = 1):
     await db.execute(
         "UPDATE daily_quests SET completed=1 WHERE player_id=? AND quest_id=? AND date=? AND progress>=target",
         (player_id, quest_id, today))
+    await db.commit()
 
 
 class QuestView(discord.ui.View):
