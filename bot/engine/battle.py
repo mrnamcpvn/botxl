@@ -104,6 +104,20 @@ def get_effective_stats(pdata: dict) -> dict:
         atk_max = int(atk_max * mult)
         defense = int(defense * mult)
 
+    artifact_star = pdata.get("_artifact_star", 0)
+    if artifact_star > 0:
+        art_mult = 1 + artifact_star * 0.15
+        hp_max = int(hp_max * art_mult)
+        atk_min = int(atk_min * art_mult)
+        atk_max = int(atk_max * art_mult)
+        defense = int(defense * art_mult)
+        spd = int(spd * art_mult)
+        crit = int(crit * art_mult)
+        pierce = int(pierce * art_mult)
+        dodge = int(dodge * art_mult)
+        reflect = int(reflect * art_mult)
+        regen = int(regen * art_mult)
+
     return {
         "hp_max": hp_max,
         "attack_min": atk_min,
