@@ -113,7 +113,7 @@ class ThankhiView(discord.ui.View):
             await update_progress(db, sid, 8)
             embed = thankhi_embed(1, interaction.user.display_name, stones=0)
             view = ThankhiView(1, False)
-            await interaction.edit_original_response(embed=embed, view=view)
+            await interaction.response.edit_message(embed=embed, view=view)
         finally:
             await db.close()
 
@@ -151,7 +151,7 @@ class ThankhiView(discord.ui.View):
             embed = thankhi_embed(new_star, interaction.user.display_name, stones=new_stones)
             can_upgrade = new_star < ARTIFACT_MAX_STAR
             view = ThankhiView(new_star, can_upgrade)
-            await interaction.edit_original_response(embed=embed, view=view)
+            await interaction.response.edit_message(embed=embed, view=view)
         finally:
             await db.close()
 
