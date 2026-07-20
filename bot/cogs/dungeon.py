@@ -221,7 +221,7 @@ def calc_dungeon_rewards(floor: int) -> dict:
 class DungeonView(discord.ui.View):
     def __init__(self, cog, player_id: str, floor: int, player_pdata: dict,
                  npc_pdata: dict, player_name: str, accumulated_rewards: dict):
-        super().__init__(timeout=300)
+        super().__init__(timeout=60)
         self.cog = cog
         self.player_id = player_id
         self.floor = floor
@@ -274,7 +274,28 @@ class DungeonView(discord.ui.View):
     async def on_timeout(self):
         if not self.finished:
             self.finished = True
-            self.cog.sessions.pop(self.player_id, None)
+            sid = self.player_id
+            session = self.cog.sessions.pop(sid, None)
+            if session:
+                db = await get_db()
+                try:
+                    acc = session["accumulated_rewards"]
+                    player = session["player_pdata"]
+                    now = time.time()
+                    await db.execute("UPDATE players SET hp=?, last_battle_time=?, last_hp_update=? WHERE id=?",
+                                     (max(0, player.get("hp", 0)), now, now, sid))
+                    if acc["coins"] > 0:
+                        await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
+                    for sk, sq in acc["stones"].items():
+                        if sq > 0 and sk in ("stone_basic", "stone_medium", "stone_advanced"):
+                            await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
+                            await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
+                    for eq in acc["equipment"]:
+                        await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (sid, eq["eid"]))
+                    await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
+                    await db.commit()
+                finally:
+                    await db.close()
 
     async def _fight_callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
