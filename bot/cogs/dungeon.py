@@ -557,6 +557,7 @@ class DungeonCog(commands.Cog):
                                      session: dict, view: DungeonView,
                                      player_move_type: str):
         flags = session["flags"]
+        sid = view.player_id
 
         # Prevent concurrent turns (double-click guard)
         if flags.get("_turn_in_progress"):
@@ -564,89 +565,170 @@ class DungeonCog(commands.Cog):
             return
         flags["_turn_in_progress"] = True
 
-        player = session["player_pdata"]
-        npc = session["npc_pdata"]
-        result_lines = []
+        try:
+            player = session["player_pdata"]
+            npc = session["npc_pdata"]
+            result_lines = []
 
-        if player_move_type == "basic":
-            skill_id = 1
-        else:
-            cat = "defense" if player_move_type == "defense" else player_move_type
-            cd_key = f"{cat}_cd"
-            if player.get(cd_key, 0) > 0:
-                sk = get_equipped_skill(player, cat)
-                await interaction.followup.send(
-                    f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
-                flags.pop("_turn_in_progress", None)
-                return
-            skill = get_equipped_skill(player, cat)
-            skill_id = None
-            for sid2, s in SKILLS_DB.items():
-                if s["name"] == skill["name"]:
-                    skill_id = sid2
-                    break
-            if skill_id is None:
+            if player_move_type == "basic":
                 skill_id = 1
+            else:
+                cat = "defense" if player_move_type == "defense" else player_move_type
+                cd_key = f"{cat}_cd"
+                if player.get(cd_key, 0) > 0:
+                    sk = get_equipped_skill(player, cat)
+                    await interaction.followup.send(
+                        f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
+                    return
+                skill = get_equipped_skill(player, cat)
+                skill_id = None
+                for sid2, s in SKILLS_DB.items():
+                    if s["name"] == skill["name"]:
+                        skill_id = sid2
+                        break
+                if skill_id is None:
+                    skill_id = 1
 
-        result = await execute_action(player, npc, 0, {"type": player_move_type, "skill_id": skill_id}, flags)
-        player = result["p1"]
-        npc = result["p2"]
-        result_lines.extend(result["log_messages"])
-
-        if result["finished"]:
-            flags.pop("_turn_in_progress", None)
-            await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
-            return
-
-        npc_stunned = flags.get(f"{npc['id']}_stunned", False)
-        if npc_stunned:
-            flags.pop(f"{npc['id']}_stunned", None)
-            result_lines.append(f"\n🌑 **{npc['name']}** bị choáng, mất lượt!")
-        else:
-            npc_move = self._npc_ai_move(npc)
-            npc_cat = "defense" if npc_move == "defense" else npc_move
-            npc_cd_key = f"{npc_cat}_cd"
-            if npc.get(npc_cd_key, 0) > 0:
-                npc_move = "attack"
-                npc_cat = "attack"
-                if npc.get("attack_cd", 0) > 0:
-                    npc_move = "defense"
-                    npc_cat = "defense"
-
-            npc_skill = get_equipped_skill(npc, npc_cat)
-            npc_skill_id = None
-            for sid2, s in SKILLS_DB.items():
-                if s["name"] == npc_skill["name"]:
-                    npc_skill_id = sid2
-                    break
-            if npc_skill_id is None:
-                npc_skill_id = 1
-
-            result_lines.append(f"\n👾 {npc['name']} dùng **{npc_skill['icon']} {npc_skill['name']}**")
-
-            flags["turn_count"] = flags.get("turn_count", 0) + 1
-            result = await execute_action(npc, player, 0, {"type": npc_move, "skill_id": npc_skill_id}, flags)
-            npc = result["p1"]
-            player = result["p2"]
+            # ── Player turn ──
+            result = await execute_action(
+                player, npc, 0,
+                {"type": player_move_type, "skill_id": skill_id},
+                flags,
+            )
+            player = result["p1"]
+            npc = result["p2"]
             result_lines.extend(result["log_messages"])
 
             if result["finished"]:
+                session["player_pdata"] = player
+                session["npc_pdata"] = npc
                 await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
                 return
 
-        session["player_pdata"] = player
-        session["npc_pdata"] = npc
-        session["flags"] = flags
+            # ── NPC turn ──
+            npc_stunned = flags.get(f"{npc['id']}_stunned", False)
+            if npc_stunned:
+                flags.pop(f"{npc['id']}_stunned", None)
+                result_lines.append(f"\n🌑 **{npc['name']}** bị choáng, mất lượt!")
+            else:
+                npc_move = self._npc_ai_move(npc)
+                npc_cat = "defense" if npc_move == "defense" else npc_move
+                if npc.get(f"{npc_cat}_cd", 0) > 0:
+                    npc_move = "attack"
+                    npc_cat = "attack"
+                    if npc.get("attack_cd", 0) > 0:
+                        npc_move = "defense"
+                        npc_cat = "defense"
 
-        embed = _dungeon_battle_embed(
-            session["floor"], session["player_name"], player, npc, result_lines
-        )
-        new_view = DungeonView(self, view.player_id, session["floor"],
-                                player, npc, session["player_name"],
-                                session["accumulated_rewards"],
-                                session.get("_run_id", ""))
-        await session["_message"].edit(embed=embed, view=new_view)
-        flags.pop("_turn_in_progress", None)
+                npc_skill = get_equipped_skill(npc, npc_cat)
+                npc_skill_id = None
+                for sid2, s in SKILLS_DB.items():
+                    if s["name"] == npc_skill["name"]:
+                        npc_skill_id = sid2
+                        break
+                if npc_skill_id is None:
+                    npc_skill_id = 1
+
+                result_lines.append(
+                    f"\n👾 {npc['name']} dùng **{npc_skill['icon']} {npc_skill['name']}**"
+                )
+                flags["turn_count"] = flags.get("turn_count", 0) + 1
+                result = await execute_action(
+                    npc, player, 0,
+                    {"type": npc_move, "skill_id": npc_skill_id},
+                    flags,
+                )
+                npc = result["p1"]
+                player = result["p2"]
+                result_lines.extend(result["log_messages"])
+
+                if result["finished"]:
+                    session["player_pdata"] = player
+                    session["npc_pdata"] = npc
+                    # NPC turn kết thúc → player_wins = False (player chết)
+                    await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
+                    return
+
+            session["player_pdata"] = player
+            session["npc_pdata"] = npc
+            session["flags"] = flags
+
+            embed = _dungeon_battle_embed(
+                session["floor"], session["player_name"], player, npc, result_lines
+            )
+            new_view = DungeonView(
+                self, sid, session["floor"],
+                player, npc, session["player_name"],
+                session["accumulated_rewards"],
+                session.get("_run_id", ""),
+            )
+            # Ưu tiên edit message, fallback followup nếu message không còn
+            try:
+                await session["_message"].edit(embed=embed, view=new_view)
+            except Exception:
+                await interaction.followup.send(embed=embed, view=new_view)
+
+        except Exception as e:
+            # Bất kỳ lỗi nào cũng phát thưởng tích lũy và dọn session
+            from bot.logger import logger
+            logger.error(f"[DUNGEON] _execute_dungeon_turn lỗi: {e}", exc_info=True)
+            self.sessions.pop(sid, None)
+            try:
+                acc = session.get("accumulated_rewards", {"stones": {}, "coins": 0, "equipment": []})
+                floor = session.get("floor", 0)
+                db = await get_db()
+                try:
+                    now = time.time()
+                    player_hp = session.get("player_pdata", {}).get("hp", 0)
+                    await db.execute(
+                        "UPDATE players SET hp=?, last_battle_time=?, last_hp_update=? WHERE id=?",
+                        (max(0, player_hp), now, now, sid))
+                    if acc["coins"] > 0:
+                        await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
+                    stones = acc.get("stones", {})
+                    if any(stones.get(k, 0) > 0 for k in ("stone_basic", "stone_medium", "stone_advanced")):
+                        await db.execute(
+                            "INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)",
+                            (sid,))
+                        for sk in ("stone_basic", "stone_medium", "stone_advanced"):
+                            if stones.get(sk, 0) > 0:
+                                await db.execute(
+                                    f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?",
+                                    (stones[sk], sid))
+                    for eq in acc.get("equipment", []):
+                        await db.execute(
+                            "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                            (sid, eq["eid"]))
+                    await db.commit()
+                finally:
+                    await db.close()
+
+                embed = _dungeon_reward_embed(acc, floor, "Lỗi — Nhận Thưởng Tích Lũy")
+                embed.add_field(
+                    name="⚠️ Lỗi xảy ra",
+                    value="Bot gặp lỗi nhưng đã tự động phát thưởng tích lũy. Vào lại bí cảnh bình thường.",
+                    inline=False,
+                )
+                try:
+                    msg = session.get("_message")
+                    if msg:
+                        await msg.edit(embed=embed, view=None)
+                    else:
+                        await interaction.followup.send(embed=embed)
+                except Exception:
+                    await interaction.followup.send(embed=embed)
+            except Exception as e2:
+                logger.error(f"[DUNGEON] Emergency reward fallback cũng lỗi: {e2}", exc_info=True)
+                try:
+                    await interaction.followup.send(
+                        "⚠️ Bí cảnh gặp lỗi! Vào lại bình thường, thưởng tích lũy đã được phát.",
+                        ephemeral=True)
+                except Exception:
+                    pass
+        finally:
+            # Luôn unlock turn flag dù có lỗi hay không
+            if session := self.sessions.get(sid):
+                session.get("flags", {}).pop("_turn_in_progress", None)
 
     async def _finish_dungeon_floor(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
@@ -714,7 +796,10 @@ class DungeonCog(commands.Cog):
             new_view = DungeonView(self, sid, next_floor, player, npc_data,
                                     session["player_name"], acc,
                                     session.get("_run_id", ""))
-            await session["_message"].edit(embed=embed, view=new_view)
+            try:
+                await session["_message"].edit(embed=embed, view=new_view)
+            except Exception:
+                await interaction.followup.send(embed=embed, view=new_view)
         else:
             result_lines.append(f"\n💀 Thua! Nhận thưởng đã tích lũy...")
             await self._collect_rewards(interaction, session, sid, result_lines)
@@ -739,23 +824,24 @@ class DungeonCog(commands.Cog):
         try:
             player = session["player_pdata"]
             now = time.time()
-            await db.execute("""UPDATE players SET hp=?, last_battle_time=?, last_hp_update=?
-                                 WHERE id=?""",
-                             (max(0, player.get("hp", 0)), now, now, sid))
+            await db.execute(
+                """UPDATE players SET hp=?, last_battle_time=?, last_hp_update=? WHERE id=?""",
+                (max(0, player.get("hp", 0)), now, now, sid))
 
             stone_cursor = await db.execute(
                 "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?",
                 (sid,))
             srow = await stone_cursor.fetchone()
             if srow:
-                await db.execute("""UPDATE player_enhance_stones
-                    SET stone_basic=stone_basic+?, stone_medium=stone_medium+?, stone_advanced=stone_advanced+?
-                    WHERE player_id=?""",
+                await db.execute(
+                    """UPDATE player_enhance_stones
+                       SET stone_basic=stone_basic+?, stone_medium=stone_medium+?, stone_advanced=stone_advanced+?
+                       WHERE player_id=?""",
                     (acc["stones"]["stone_basic"], acc["stones"]["stone_medium"],
                      acc["stones"]["stone_advanced"], sid))
             else:
-                await db.execute("""INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced)
-                    VALUES (?, ?, ?, ?)""",
+                await db.execute(
+                    "INSERT INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, ?, ?, ?)",
                     (sid, acc["stones"]["stone_basic"], acc["stones"]["stone_medium"],
                      acc["stones"]["stone_advanced"]))
 
@@ -768,13 +854,28 @@ class DungeonCog(commands.Cog):
                     (sid, eq["eid"]))
 
             await db.commit()
-
+        except Exception as e:
+            from bot.logger import logger
+            logger.error(f"[DUNGEON] _collect_rewards DB lỗi: {e}", exc_info=True)
         finally:
             await db.close()
 
+        # Dọn session TRƯỚC khi edit message để tránh kẹt
+        self.sessions.pop(sid, None)
+
         floor = session.get("floor", 0)
         embed = _dungeon_reward_embed(acc, floor, "Nhận Thưởng Bí Cảnh")
-        await session["_message"].edit(embed=embed, view=None)
+        try:
+            msg = session.get("_message")
+            if msg:
+                await msg.edit(embed=embed, view=None)
+            else:
+                await interaction.followup.send(embed=embed)
+        except Exception:
+            try:
+                await interaction.followup.send(embed=embed)
+            except Exception:
+                pass
 
     async def _reply(self, ctx_or_int, msg, ephemeral=False):
         if isinstance(ctx_or_int, commands.Context):

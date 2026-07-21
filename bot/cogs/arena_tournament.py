@@ -28,11 +28,17 @@ class ArenaTournament(commands.Cog):
         self._fight_task: asyncio.Task | None = None
 
     async def cog_load(self):
+        # Dùng create_task để không block cog_load — wait_until_ready() cần event loop đã chạy
+        asyncio.create_task(self._init_on_ready())
+
+    async def _init_on_ready(self):
         await self.bot.wait_until_ready()
         db = await get_db()
         try:
             cursor = await db.execute(
-                "SELECT id, status, channel_id FROM arena_tournament WHERE status IN ('registering', 'fighting') ORDER BY id DESC LIMIT 1")
+                "SELECT id, status, channel_id FROM arena_tournament "
+                "WHERE status IN ('registering', 'fighting') ORDER BY id DESC LIMIT 1"
+            )
             row = await cursor.fetchone()
             if row:
                 r = dict(row)
@@ -40,11 +46,34 @@ class ArenaTournament(commands.Cog):
                 self._current_status = r["status"]
                 logger.info(f"[ARENA] Resuming tournament #{r['id']} ({r['status']})")
                 if r["status"] == "registering":
-                    self._reg_task = asyncio.create_task(self._registration_phase(int(r["channel_id"]), r["id"]))
+                    # Reset về cancelled nếu bot đã restart — không thể resume đăng ký
+                    await db.execute(
+                        "UPDATE arena_tournament SET status='cancelled', finished_at=? WHERE id=?",
+                        (time.time(), r["id"]))
+                    await db.commit()
+                    self._current_id = None
+                    self._current_status = None
                 elif r["status"] == "fighting":
-                    self._fight_task = asyncio.create_task(self._fighting_phase(int(r["channel_id"]), r["id"]))
+                    # Resume fighting phase với participants từ DB
+                    pcursor = await db.execute(
+                        "SELECT player_id, cp_at_entry FROM arena_participants WHERE tournament_id=?",
+                        (r["id"],))
+                    participants = [dict(p) for p in await pcursor.fetchall()]
+                    if participants:
+                        self._fight_task = asyncio.create_task(
+                            self._fighting_phase(int(r["channel_id"]), r["id"], participants))
+                    else:
+                        await db.execute(
+                            "UPDATE arena_tournament SET status='cancelled', finished_at=? WHERE id=?",
+                            (time.time(), r["id"]))
+                        await db.commit()
+                        self._current_id = None
+                        self._current_status = None
+        except Exception as e:
+            logger.error(f"[ARENA] _init_on_ready lỗi: {e}", exc_info=True)
         finally:
             await db.close()
+
         if ARENA_AUTO_ENABLED:
             self._auto_schedule.start()
 
@@ -167,116 +196,150 @@ class ArenaTournament(commands.Cog):
     async def _fighting_phase(self, channel_id: int, tid: int, participants: list[dict]):
         ch = self.bot.get_channel(channel_id)
         if not ch:
+            logger.error(f"[ARENA] Channel {channel_id} không tìm thấy, hủy tournament #{tid}")
             await self._cancel_tournament(tid)
             return
 
-        for p in participants:
-            db2 = await get_db()
+        try:
+            # Load tên player
+            for p in participants:
+                db2 = await get_db()
+                try:
+                    row = await (await db2.execute(
+                        "SELECT name FROM players WHERE id=?", (p["player_id"],))).fetchone()
+                    p["name"] = row["name"] if row and row["name"] else f"Player{p['player_id'][-4:]}"
+                finally:
+                    await db2.close()
+
+            bracket = {
+                "rounds": [],
+                "participants": {
+                    p["player_id"]: {"name": p.get("name", "?"), "cp": p.get("cp_at_entry", 0)}
+                    for p in participants
+                }
+            }
+
+            current_ids = list(bracket["participants"].keys())
+            bye_history: set[str] = set()
+            round_num = 1
+
+            embed_msg = await ch.send(embed=discord.Embed(
+                title="⚔️ Đấu Trường Sinh Tử — Đang chia cặp...", color=0xffaa00))
+
+            while len(current_ids) > 1:
+                random.shuffle(current_ids)
+                pairs = []
+                i = 0
+                while i + 1 < len(current_ids):
+                    pairs.append((current_ids[i], current_ids[i + 1]))
+                    i += 2
+
+                byes = []
+                if i < len(current_ids):
+                    # Ưu tiên người chưa được bye
+                    candidates = [pid for pid in current_ids[i:] if pid not in bye_history]
+                    if not candidates:
+                        candidates = current_ids[i:]
+                    bye_pid = candidates[0]
+                    bye_history.add(bye_pid)
+                    byes.append(bye_pid)
+
+                rond = {"name": f"Vòng {round_num}", "matches": [], "byes": byes}
+
+                for p1_id, p2_id in pairs:
+                    winner_id, log, p1_hp, p2_hp = await self._run_ai_battle(p1_id, p2_id)
+                    # Fallback nếu winner_id là None
+                    if winner_id is None:
+                        winner_id = p1_id
+                    rond["matches"].append({
+                        "p1_id": p1_id, "p2_id": p2_id,
+                        "winner_id": winner_id,
+                        "log": log[-ARENA_SHOW_LOG_LINES:],
+                        "p1_hp": p1_hp, "p2_hp": p2_hp,
+                    })
+
+                bracket["rounds"].append(rond)
+
+                round_winners = [m["winner_id"] for m in rond["matches"]]
+                current_ids = round_winners + byes
+                round_num += 1
+
+                try:
+                    embed = self._build_bracket_embed(bracket, tid)
+                    await embed_msg.edit(embed=embed)
+                except Exception as e:
+                    logger.warning(f"[ARENA] Edit bracket embed lỗi: {e}")
+                await asyncio.sleep(ARENA_BATTLE_DELAY)
+
+            winner_id = current_ids[0] if current_ids else None
+            if winner_id is None:
+                logger.error(f"[ARENA] Tournament #{tid} kết thúc không có winner!")
+                await self._cancel_tournament(tid)
+                return
+
+            runner_up_id = None
+            third_id = None
+
+            if bracket["rounds"]:
+                final_round = bracket["rounds"][-1]
+                if final_round["matches"]:
+                    fm = final_round["matches"][0]
+                    runner_up_id = fm["p2_id"] if fm["winner_id"] == fm["p1_id"] else fm["p1_id"]
+
+            if len(participants) >= 6 and len(bracket["rounds"]) >= 2:
+                semi = bracket["rounds"][-2]
+                losers = []
+                for m in semi["matches"]:
+                    loser = m["p2_id"] if m["winner_id"] == m["p1_id"] else m["p1_id"]
+                    if loser != winner_id and loser != runner_up_id:
+                        losers.append(loser)
+                if losers:
+                    third_id = losers[0]
+
+            await self._give_rewards(tid, winner_id, runner_up_id, third_id, participants)
+
+            db = await get_db()
             try:
-                row = await (await db2.execute("SELECT name FROM players WHERE id=?", (p["player_id"],))).fetchone()
-                p["name"] = row["name"] if row else f"Player{p['player_id']}"
+                await db.execute(
+                    "UPDATE arena_tournament SET status='done', winner_id=?, runner_up_id=?, third_id=?, "
+                    "finished_at=?, bracket_json=? WHERE id=?",
+                    (winner_id, runner_up_id, third_id, time.time(), json.dumps(bracket), tid))
+                await db.execute(
+                    "UPDATE arena_participants SET final_rank=1 WHERE tournament_id=? AND player_id=?",
+                    (tid, winner_id))
+                if runner_up_id:
+                    await db.execute(
+                        "UPDATE arena_participants SET final_rank=2 WHERE tournament_id=? AND player_id=?",
+                        (tid, runner_up_id))
+                if third_id:
+                    await db.execute(
+                        "UPDATE arena_participants SET final_rank=3 WHERE tournament_id=? AND player_id=?",
+                        (tid, third_id))
+                await db.commit()
             finally:
-                await db2.close()
+                await db.close()
 
-        bracket = {
-            "rounds": [],
-            "participants": {p["player_id"]: {"name": p.get("name", "?"), "cp": p["cp_at_entry"]} for p in participants}
-        }
-
-        current_ids = list(bracket["participants"].keys())
-        bye_history: set[str] = set()
-        round_num = 1
-
-        embed_msg = await ch.send(embed=discord.Embed(title="⚔️ Đấu Trường Sinh Tử — Đang chia cặp...", color=0xffaa00))
-
-        while len(current_ids) > 1:
-            random.shuffle(current_ids)
-            pairs = []
-            i = 0
-            while i + 1 < len(current_ids):
-                pairs.append((current_ids[i], current_ids[i + 1]))
-                i += 2
-
-            byes = []
-            if i < len(current_ids):
-                candidates = [pid for pid in current_ids[i:] if pid not in bye_history]
-                if not candidates:
-                    candidates = current_ids[i:]
-                bye_pid = candidates[0]
-                bye_history.add(bye_pid)
-                byes.append(bye_pid)
-
-            rond = {"name": f"Vòng {round_num}", "matches": [], "byes": byes}
-
-            for p1_id, p2_id in pairs:
-                winner_id, log, p1_hp, p2_hp = await self._run_ai_battle(p1_id, p2_id)
-                rond["matches"].append({
-                    "p1_id": p1_id, "p2_id": p2_id,
-                    "winner_id": winner_id,
-                    "log": log[-ARENA_SHOW_LOG_LINES:],
-                    "p1_hp": p1_hp, "p2_hp": p2_hp,
-                })
-
-            bracket["rounds"].append(rond)
-
-            round_winners = [m["winner_id"] for m in rond["matches"]]
-            current_ids = round_winners + byes
-            round_num += 1
-
-            embed = self._build_bracket_embed(bracket, tid)
+            embed = self._build_podium_embed(
+                winner_id, runner_up_id, third_id, bracket["participants"], tid)
             try:
                 await embed_msg.edit(embed=embed)
             except Exception:
+                await ch.send(embed=embed)
+
+        except asyncio.CancelledError:
+            logger.info(f"[ARENA] Tournament #{tid} bị hủy (CancelledError)")
+            await self._cancel_tournament(tid)
+            return
+        except Exception as e:
+            logger.error(f"[ARENA] _fighting_phase lỗi: {e}", exc_info=True)
+            await self._cancel_tournament(tid)
+            try:
+                await ch.send(f"⚠️ Đấu trường #{tid} gặp lỗi và đã bị hủy. Xin lỗi!")
+            except Exception:
                 pass
-            await asyncio.sleep(ARENA_BATTLE_DELAY)
-
-        winner_id = current_ids[0]
-        runner_up_id = None
-        third_id = None
-
-        if len(bracket["rounds"]) >= 1:
-            final_round = bracket["rounds"][-1]
-            if final_round["matches"]:
-                fm = final_round["matches"][0]
-                runner_up_id = fm["p2_id"] if fm["winner_id"] == fm["p1_id"] else fm["p1_id"]
-
-        if len(participants) >= 6 and len(bracket["rounds"]) >= 2:
-            semi = bracket["rounds"][-2]
-            losers = []
-            for m in semi["matches"]:
-                loser = m["p2_id"] if m["winner_id"] == m["p1_id"] else m["p1_id"]
-                if loser != winner_id and loser != runner_up_id:
-                    losers.append(loser)
-            if losers:
-                third_id = losers[0]
-
-        await self._give_rewards(tid, winner_id, runner_up_id, third_id, participants)
-
-        db = await get_db()
-        try:
-            await db.execute(
-                "UPDATE arena_tournament SET status='done', winner_id=?, runner_up_id=?, third_id=?, finished_at=?, bracket_json=? WHERE id=?",
-                (winner_id, runner_up_id, third_id, time.time(), json.dumps(bracket), tid))
-            await db.execute(
-                "UPDATE arena_participants SET final_rank=1 WHERE tournament_id=? AND player_id=?",
-                (tid, winner_id))
-            if runner_up_id:
-                await db.execute(
-                    "UPDATE arena_participants SET final_rank=2 WHERE tournament_id=? AND player_id=?",
-                    (tid, runner_up_id))
-            if third_id:
-                await db.execute(
-                    "UPDATE arena_participants SET final_rank=3 WHERE tournament_id=? AND player_id=?",
-                    (tid, third_id))
-            await db.commit()
         finally:
-            await db.close()
-
-        embed = self._build_podium_embed(winner_id, runner_up_id, third_id, bracket["participants"], tid)
-        await embed_msg.edit(embed=embed)
-
-        self._current_id = None
-        self._current_status = None
+            self._current_id = None
+            self._current_status = None
 
     async def _run_ai_battle(self, p1_id: str, p2_id: str) -> tuple[str | None, list[str], int, int]:
         db = await get_db()
@@ -350,23 +413,31 @@ class ArenaTournament(commands.Cog):
         for i, rond in enumerate(bracket["rounds"]):
             desc_lines.append(f"🏟️ **{rond['name']}**")
             for m in rond["matches"]:
-                p1n = parts[m["p1_id"]]["name"]
-                p2n = parts[m["p2_id"]]["name"]
-                if m["winner_id"]:
-                    wname = parts[m["winner_id"]]["name"]
-                    desc_lines.append(f"  ✅ **{wname}** thắng {p1n if m['winner_id'] != m['p1_id'] else ''}{p2n if m['winner_id'] != m['p2_id'] else ''}")
+                # Safe get tên — không crash nếu player không có trong parts
+                p1n = parts.get(m["p1_id"], {}).get("name", f"ID{m['p1_id'][-4:]}")
+                p2n = parts.get(m["p2_id"], {}).get("name", f"ID{m['p2_id'][-4:]}")
+                if m.get("winner_id"):
+                    wname = parts.get(m["winner_id"], {}).get("name", "?")
+                    loser_name = p2n if m["winner_id"] == m["p1_id"] else p1n
+                    desc_lines.append(f"  ✅ **{wname}** thắng {loser_name}")
                     for line in m.get("log", []):
-                        desc_lines.append(f"     _{line}_")
+                        if line.strip():
+                            desc_lines.append(f"     _{line[:80]}_")
                 else:
                     desc_lines.append(f"  🔄 **{p1n}** ⚔️ VS 🛡️ **{p2n}**")
             for bye in rond.get("byes", []):
-                desc_lines.append(f"  💎 **{parts[bye]['name']}** BYE — vào thẳng vòng sau")
-            if i < len(bracket["rounds"]) - 1 or any(not m["winner_id"] for m in rond["matches"]):
-                desc_lines.append("")
+                bname = parts.get(bye, {}).get("name", f"ID{bye[-4:]}")
+                desc_lines.append(f"  💎 **{bname}** BYE — vào thẳng vòng sau")
+            desc_lines.append("")
+
+        # Cắt nếu quá dài (Discord embed limit 4096)
+        full = "\n".join(desc_lines)
+        if len(full) > 3800:
+            full = full[:3800] + "\n_...còn nữa_"
 
         return discord.Embed(
             title=f"⚔️ Đấu Trường Sinh Tử #{tid} — LIVE",
-            description="\n".join(desc_lines),
+            description=full,
             color=0xffaa00,
         )
 
@@ -432,7 +503,13 @@ class ArenaTournament(commands.Cog):
                     f"UPDATE player_enhance_stones SET {stone_col}={stone_col}+? WHERE player_id=?", (stone_qty, pid))
 
                 star = rw["equip_star"]
-                if "equip_chance" in rw and random.random() > rw["equip_chance"]:
+                # equip_chance: xác suất NHẬN đồ (không phải bỏ qua)
+                chance = rw.get("equip_chance", 1.0)
+                if random.random() > chance:
+                    # Không nhận đồ lần này
+                    await db.execute(
+                        "UPDATE arena_participants SET reward_given=1, final_rank=? WHERE tournament_id=? AND player_id=?",
+                        (rank, tid, pid))
                     continue
                 eids = _EQUIP_BY_STAR.get(star, [])
                 if eids:

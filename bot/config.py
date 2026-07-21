@@ -10,6 +10,15 @@ WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY") or "botxl-secret-key-change-me"
 
 QUIZ_CHANNEL_ID = int(os.getenv("QUIZ_CHANNEL_ID") or "1040459995319373864")
 
+# Arena Tournament (Đấu Trường Sinh Tử)
+ARENA_INTERVAL          = int(os.getenv("ARENA_INTERVAL", "86400"))   # giây giữa 2 mùa auto (mặc định 24h)
+ARENA_REGISTER_TIME     = int(os.getenv("ARENA_REGISTER_TIME", "120")) # giây mở đăng ký
+ARENA_MIN_PLAYERS       = int(os.getenv("ARENA_MIN_PLAYERS", "4"))
+ARENA_MAX_PLAYERS       = int(os.getenv("ARENA_MAX_PLAYERS", "32"))
+ARENA_AUTO_ENABLED      = os.getenv("ARENA_AUTO_ENABLED", "false").lower() == "true"
+ARENA_BATTLE_DELAY      = float(os.getenv("ARENA_BATTLE_DELAY", "1.5")) # giây delay giữa các trận
+ARENA_SHOW_LOG_LINES    = int(os.getenv("ARENA_SHOW_LOG_LINES", "3"))   # số dòng log hiển thị/trận
+
 HP_REGEN_PCT = 10
 HP_REGEN_INTERVAL = 30
 
