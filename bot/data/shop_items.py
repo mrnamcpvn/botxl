@@ -20,6 +20,6 @@ SHOP_ITEMS = {
     22:{"name":"💚 Nhỏ Nước Muối [BỊ ĐỘNG]","desc":"Hồi 5%/turn","price":3500,"type":"skill","skill_id":17},
     23:{"name":"🍀 Vía Ông Địa [BỊ ĐỘNG]","desc":"15% né đòn","price":4000,"type":"skill","skill_id":18},
     24:{"name":"💢 Điên Không Kịp Thở [BỊ ĐỘNG]","desc":"Tích dmg→trả 2x","price":4000,"type":"skill","skill_id":19},
-    25:{"name":"💎 Chưa Chết Đã Sống Lại [BỊ ĐỘNG]","desc":"HP<30%: -50% dmg","price":15000,"type":"skill","skill_id":20},
+    25:{"name":"💎 Chưa Chết Đã Sống Lại [BỊ ĐỘNG]","desc":"Né chết + hồi 50% HP khi nhận sát thương chí mạng","price":15000,"type":"skill","skill_id":20},
     26:{"name":"🎫 Vé Reset Quest","desc":"Reset 1 quest (chọn số)","price":500,"type":"consumable","effect":{}},
 }

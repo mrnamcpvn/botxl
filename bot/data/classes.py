@@ -57,7 +57,7 @@ CLASSES = {
         "hp_base": 160, "hp_scale": 16,
         "atk_base": 10, "atk_scale": 3,
         "def_base": 18, "def_scale": 4,
-        "desc": "Thoát chết ở 40% HP, giữ 1 máu | +HP +DEF",
+        "desc": "Né chết hồi 70% HP (50%→70%) | +HP +DEF",
         "price": 20000,
         "perk": "last_stand_boost"
     },
@@ -79,7 +79,7 @@ PERK_DESCRIPTIONS = {
     "cd_reduce": "CD gốc tất cả skill giảm -1",
     "lifesteal_boost": "Hút máu +30% hiệu quả",
     "rage_boost": "Rage tích +50% nhanh hơn, sát thương rage ×2.5",
-    "last_stand_boost": "Thoát chết kích hoạt ở 40% HP",
+    "last_stand_boost": "Né chết hồi 70% HP thay vì 50%",
     "random_buff": "Random buff mỗi turn",
 }
 

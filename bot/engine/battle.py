@@ -419,20 +419,26 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             damage = int(damage * 1.5)
             is_crit = True
 
-        # Cheat Death (defender passive: né chết, giữ 1 HP)
+        # Cheat Death (defender passive: né chết + hồi 50% HP)
+        cheat_death_proc = False
         if def_passive["type"] == "cheat_death":
-            threshold = def_passive.get("hp_threshold", 30)
-            if get_class_perk(def_class) == "last_stand_boost":
-                threshold = 40
-            current_hp = defender.get("hp", 0)
-            if current_hp <= def_eff["hp_max"] * threshold / 100 and damage >= current_hp:
-                damage = max(0, current_hp - 1)
-                result_lines.append(f"💎 CHƯA CHẾT ĐÃ SỐNG LẠI! Thoát chết!")
+            if damage >= defender.get("hp", 0):
+                damage = max(0, defender.get("hp", 0) - 1)
+                cheat_death_proc = True
 
         # Apply damage
         defender["hp"] = max(0, defender.get("hp", 0) - damage)
         attacker["damage_dealt"] = attacker.get("damage_dealt", 0) + damage
         defender["damage_taken"] = defender.get("damage_taken", 0) + damage
+
+        # Cheat death heal (hồi 50% HP sau khi né chết)
+        if cheat_death_proc:
+            heal_pct = 50
+            if get_class_perk(def_class) == "last_stand_boost":
+                heal_pct = 70
+            heal = int(def_eff["hp_max"] * heal_pct / 100)
+            defender["hp"] = min(def_eff["hp_max"], defender["hp"] + heal)
+            result_lines.append(f"💎 CHƯA CHẾT ĐÃ SỐNG LẠI! Thoát chết + hồi {heal}HP!")
 
         result_lines.append(f"{skill.get('icon', '')} **{skill['name']}**")
         if damage > 0:
