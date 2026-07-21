@@ -346,14 +346,69 @@ class QuestCog(commands.Cog):
         try:
             row = await (await db.execute("SELECT amount FROM player_vip_coins WHERE player_id=?", (sid,))).fetchone()
             coins = row[0] if row else 0
+            charms = 0
+            crow = await (await db.execute("SELECT quantity FROM inventory WHERE player_id=? AND item_id=?", (sid, 27))).fetchone()
+            if crow:
+                charms = crow[0]
             embed = discord.Embed(
                 title="🪙 VIP Coin",
-                description=f"Bạn có **{coins}** VIP Coin\n\n🛒 VIP Shop (sắp ra mắt):\n• Đá thần khí x5: 10 VIP\n• Trang bị 5★: 30 VIP\n• Waifu SVIP: 50 VIP",
+                description=f"Bạn có **{coins}** VIP Coin | 🍀 Bùa May Mắn: **{charms}** cái\n\n"
+                            f"🛒 **VIP Shop** (`/vipshop`):\n"
+                            f"• 🍀 Bùa May Mắn: **30 VIP** — +30% tỉ lệ ghép đồ",
                 color=0xffd700)
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.reply(embed=embed)
             else:
                 await ctx_or_int.response.send_message(embed=embed)
+        finally:
+            await db.close()
+
+    @commands.command(name="vipshop", aliases=["vshop"])
+    async def vipshop_cmd(self, ctx):
+        await self._show_vipshop(ctx, str(ctx.author.id), "!")
+
+    @app_commands.command(name="vipshop", description="🛒 Xem shop VIP")
+    async def slash_vipshop(self, interaction: discord.Interaction):
+        await self._show_vipshop(interaction, str(interaction.user.id), "/")
+
+    async def _show_vipshop(self, ctx_or_int, sid: str, prefix: str):
+        db = await get_db()
+        try:
+            row = await (await db.execute("SELECT amount FROM player_vip_coins WHERE player_id=?", (sid,))).fetchone()
+            coins = row[0] if row else 0
+            embed = discord.Embed(
+                title="🛒 VIP Shop",
+                description=f"🪙 VIP Coin: **{coins}**\n\n"
+                            f"• 🍀 **Bùa May Mắn** — 30 VIP\n"
+                            f"　Dùng `{prefix}vipbuy mayman` để mua",
+                color=0xffd700)
+            if isinstance(ctx_or_int, commands.Context):
+                await ctx_or_int.reply(embed=embed)
+            else:
+                await ctx_or_int.response.send_message(embed=embed)
+        finally:
+            await db.close()
+
+    @commands.command(name="vipbuy")
+    async def vipbuy_cmd(self, ctx, item: str = None):
+        await self._vipbuy(ctx, str(ctx.author.id), item, "!")
+
+    async def _vipbuy(self, ctx_or_int, sid: str, item: str, prefix: str):
+        if item != "mayman":
+            await self._reply(ctx_or_int, f"❌ {prefix}vipbuy mayman")
+            return
+        db = await get_db()
+        try:
+            row = await (await db.execute("SELECT amount FROM player_vip_coins WHERE player_id=?", (sid,))).fetchone()
+            coins = row[0] if row else 0
+            if coins < 30:
+                await self._reply(ctx_or_int, f"😅 Cần 30 VIP Coin, có {coins}!")
+                return
+            await db.execute("UPDATE player_vip_coins SET amount=amount-30 WHERE player_id=?", (sid,))
+            await db.execute("INSERT OR REPLACE INTO inventory (player_id, item_id, quantity) VALUES (?, 27, COALESCE((SELECT quantity FROM inventory WHERE player_id=? AND item_id=27), 0) + 1)",
+                             (sid, sid))
+            await db.commit()
+            await self._reply(ctx_or_int, "✅ Mua 🍀 Bùa May Mắn thành công!")
         finally:
             await db.close()
 

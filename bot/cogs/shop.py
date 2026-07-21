@@ -588,18 +588,34 @@ class ShopCog(commands.Cog):
                 return
 
             coin_cost, success_rate = merge_cost
-            pc = await db.execute("SELECT coins FROM players WHERE id=?", (uid,))
-            pr = await pc.fetchone()
-            if not pr or pr[0] < coin_cost:
-                await self._reply(ctx_or_int, f"😅 Cần {coin_cost}🪙!")
-                return
 
-            await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (coin_cost, uid))
-            for r in rows:
-                await db.execute("DELETE FROM player_equipment WHERE id=?", (r["id"],))
+            # Auto-use Lucky Charm
+            charm_cursor = await db.execute("SELECT quantity FROM inventory WHERE player_id=? AND item_id=27", (uid,))
+            charm_row = await charm_cursor.fetchone()
+            has_charm = charm_row and charm_row[0] > 0
+            if has_charm and success_rate < 1.0:
+                success_rate = min(1.0, success_rate + 0.30)
+                new_qty = charm_row[0] - 1
+                if new_qty <= 0:
+                    await db.execute("DELETE FROM inventory WHERE player_id=? AND item_id=27", (uid,))
+                else:
+                    await db.execute("UPDATE inventory SET quantity=? WHERE player_id=? AND item_id=27", (new_qty, uid))
 
             import random
             if random.random() < success_rate:
+                target_star = star + 1
+                items = [e for eid, e in EQUIPMENT.items() if e["star"] == target_star]
+                if items:
+                    chosen = random.choice(items)
+                    eid = [k for k, v in EQUIPMENT.items() if v == chosen][0]
+                    await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                                     (uid, eid))
+                    await db.commit()
+                    stars_icon = STAR_LABELS.get(target_star, "⭐")
+                    msg = f"✅ Ghép thành công! Nhận {stars_icon} **{chosen['name']}**!"
+                    if has_charm:
+                        msg += "\n🍀 Đã dùng Bùa May Mắn!"
+                    await self._reply(ctx_or_int, msg)
                 target_star = star + 1
                 items = [e for eid, e in EQUIPMENT.items() if e["star"] == target_star]
                 if items:
