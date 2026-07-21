@@ -131,7 +131,7 @@ def generate_dungeon_npc(floor: int) -> dict:
     npc_level = floor + 5
     hp = 100 + npc_level * 25
     atk = 10 + npc_level * 5
-    defense = 5 + npc_level * 2
+    defense = 5 + npc_level * 3
     names = [
         "Quái Vật Bóng Tối", "Thú Dữ Vực Sâu", "Linh Hồn Lạc Lối",
         "Xác Sống Vô Hồn", "Quỷ Dữ Bóng Đêm", "Rồng Đen Hắc Ám",
@@ -151,9 +151,9 @@ def generate_dungeon_npc(floor: int) -> dict:
     }
     if floor in boss_names:
         name = boss_names[floor]
-        hp = int(hp * 5)
-        atk = int(atk * 5)
-        defense = int(defense * 5)
+        hp = int(hp * 7)
+        atk = int(atk * 7)
+        defense = int(defense * 7)
     else:
         hp = int(hp * 3)
         atk = int(atk * 3)
