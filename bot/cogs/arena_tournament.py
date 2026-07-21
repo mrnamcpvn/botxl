@@ -14,9 +14,12 @@ from bot.config import (
 from bot.engine.battle import execute_action, get_effective_stats
 from bot.engine.arena_ai import pick_action
 from bot.engine.rewards import _EQUIP_BY_STAR
+from bot.data.equipment import EQUIPMENT, STAR_LABELS
 from bot.utils.player_loader import load_player_full
 from bot.views.arena_view import ArenaJoinView
 from bot.logger import logger
+
+ARENA_CHANNEL_ID = 1529021378416738384
 
 
 class ArenaTournament(commands.Cog):
@@ -87,14 +90,7 @@ class ArenaTournament(commands.Cog):
     async def _auto_schedule(self):
         if not ARENA_AUTO_ENABLED or self._current_status is not None:
             return
-        ch = None
-        for g in self.bot.guilds:
-            for c in g.text_channels:
-                if c.permissions_for(g.me).send_messages:
-                    ch = c
-                    break
-            if ch:
-                break
+        ch = self.bot.get_channel(ARENA_CHANNEL_ID)
         if ch:
             await self.start_tournament(ch, "auto")
 
@@ -103,11 +99,16 @@ class ArenaTournament(commands.Cog):
             await channel.send("⏳ Đang có đấu trường đang chạy rồi!")
             return
 
+        arena_ch = self.bot.get_channel(ARENA_CHANNEL_ID)
+        if not arena_ch:
+            await channel.send("❌ Không tìm thấy kênh đấu trường!")
+            return
+
         db = await get_db()
         try:
             cursor = await db.execute(
                 "INSERT INTO arena_tournament (status, channel_id, started_by, started_at) VALUES ('registering', ?, ?, ?)",
-                (str(channel.id), started_by, time.time()))
+                (str(ARENA_CHANNEL_ID), started_by, time.time()))
             await db.commit()
             tid = cursor.lastrowid
         finally:
@@ -115,7 +116,10 @@ class ArenaTournament(commands.Cog):
 
         self._current_id = tid
         self._current_status = "registering"
-        self._reg_task = asyncio.create_task(self._registration_phase(channel.id, tid))
+        self._reg_task = asyncio.create_task(self._registration_phase(ARENA_CHANNEL_ID, tid))
+
+        if channel.id != ARENA_CHANNEL_ID:
+            await channel.send(f"✅ Đấu trường đã mở tại <#{ARENA_CHANNEL_ID}>!")
 
     async def _registration_phase(self, channel_id: int, tid: int):
         ch = self.bot.get_channel(channel_id)
@@ -201,7 +205,6 @@ class ArenaTournament(commands.Cog):
             return
 
         try:
-            # Load tên player
             for p in participants:
                 db2 = await get_db()
                 try:
@@ -211,20 +214,19 @@ class ArenaTournament(commands.Cog):
                 finally:
                     await db2.close()
 
-            bracket = {
-                "rounds": [],
-                "participants": {
-                    p["player_id"]: {"name": p.get("name", "?"), "cp": p.get("cp_at_entry", 0)}
-                    for p in participants
-                }
+            parts = {
+                p["player_id"]: {"name": p.get("name", "?"), "cp": p.get("cp_at_entry", 0)}
+                for p in participants
             }
 
-            current_ids = list(bracket["participants"].keys())
+            current_ids = list(parts.keys())
             bye_history: set[str] = set()
             round_num = 1
 
-            embed_msg = await ch.send(embed=discord.Embed(
-                title="⚔️ Đấu Trường Sinh Tử — Đang chia cặp...", color=0xffaa00))
+            await ch.send(embed=discord.Embed(
+                title=f"⚔️ ĐẤU TRƯỜNG SINH TỬ #{tid}",
+                description=f"👥 **{len(participants)}** người tham gia\n_Đang chia cặp..._",
+                color=0xffaa00))
 
             while len(current_ids) > 1:
                 random.shuffle(current_ids)
@@ -236,7 +238,6 @@ class ArenaTournament(commands.Cog):
 
                 byes = []
                 if i < len(current_ids):
-                    # Ưu tiên người chưa được bye
                     candidates = [pid for pid in current_ids[i:] if pid not in bye_history]
                     if not candidates:
                         candidates = current_ids[i:]
@@ -244,32 +245,59 @@ class ArenaTournament(commands.Cog):
                     bye_history.add(bye_pid)
                     byes.append(bye_pid)
 
-                rond = {"name": f"Vòng {round_num}", "matches": [], "byes": byes}
+                # Round banner
+                round_label = {1: "VÒNG 1", 2: "BÁN KẾT", 3: "CHUNG KẾT"}.get(round_num, f"VÒNG {round_num}")
+                await ch.send(f"━━━━━━━━━━━━━━━━━━━━\n🏟️ **{round_label}**")
+
+                # BYE announcement
+                for bye_pid in byes:
+                    await ch.send(f"💎 **{parts[bye_pid]['name']}** được vào thẳng vòng sau!")
+
+                match_winners = []
 
                 for p1_id, p2_id in pairs:
+                    p1n = parts[p1_id]["name"]
+                    p2n = parts[p2_id]["name"]
+
+                    # Match start
+                    match_msg = await ch.send(embed=discord.Embed(
+                        title=f"⚔️ {p1n} VS {p2n}",
+                        description="🔥 _Đang thi đấu..._",
+                        color=0xffaa00))
+
                     winner_id, log, p1_hp, p2_hp = await self._run_ai_battle(p1_id, p2_id)
-                    # Fallback nếu winner_id là None
                     if winner_id is None:
                         winner_id = p1_id
-                    rond["matches"].append({
-                        "p1_id": p1_id, "p2_id": p2_id,
-                        "winner_id": winner_id,
-                        "log": log[-ARENA_SHOW_LOG_LINES:],
-                        "p1_hp": p1_hp, "p2_hp": p2_hp,
-                    })
 
-                bracket["rounds"].append(rond)
+                    winner_name = parts[winner_id]["name"]
+                    loser_name = p2n if winner_id == p1_id else p1n
 
-                round_winners = [m["winner_id"] for m in rond["matches"]]
-                current_ids = round_winners + byes
+                    # Build result embed with log
+                    max_log = 25
+                    shown_log = log[-max_log:]
+                    log_text = "\n".join(f"  {l}" for l in shown_log if l.strip())
+                    if len(log) > max_log:
+                        log_text = f"  _...({len(log) - max_log} dòng trước)..._\n" + log_text
+
+                    result_desc = (
+                        f"🏆 **{winner_name}** thắng!\n"
+                        f"💀 **{loser_name}** thua\n\n"
+                        f"**Diễn biến:**\n{log_text}"
+                    )
+                    result_embed = discord.Embed(
+                        title=f"🏟️ {round_label}: {p1n} VS {p2n}",
+                        description=result_desc,
+                        color=0x00ff00)
+                    try:
+                        await match_msg.edit(embed=result_embed)
+                    except Exception:
+                        await ch.send(embed=result_embed)
+
+                    match_winners.append(winner_id)
+                    await asyncio.sleep(ARENA_BATTLE_DELAY)
+
+                current_ids = match_winners + byes
                 round_num += 1
-
-                try:
-                    embed = self._build_bracket_embed(bracket, tid)
-                    await embed_msg.edit(embed=embed)
-                except Exception as e:
-                    logger.warning(f"[ARENA] Edit bracket embed lỗi: {e}")
-                await asyncio.sleep(ARENA_BATTLE_DELAY)
 
             winner_id = current_ids[0] if current_ids else None
             if winner_id is None:
@@ -277,27 +305,26 @@ class ArenaTournament(commands.Cog):
                 await self._cancel_tournament(tid)
                 return
 
+            winner_name = parts[winner_id]["name"]
+
+            # Xác định hạng 2 & 3 từ bracket đã lưu (không hiển thị bracket, chỉ dùng để tính)
+            bracket = {"rounds": [], "participants": parts}
             runner_up_id = None
             third_id = None
 
-            if bracket["rounds"]:
-                final_round = bracket["rounds"][-1]
-                if final_round["matches"]:
-                    fm = final_round["matches"][0]
-                    runner_up_id = fm["p2_id"] if fm["winner_id"] == fm["p1_id"] else fm["p1_id"]
+            if len(participants) >= 2:
+                all_ids = {p["player_id"] for p in participants}
+                loser_ids = all_ids - {winner_id}
+                if loser_ids:
+                    runner_up_id = max(loser_ids, key=lambda pid: parts[pid].get("cp", 0))
+                    loser_ids.discard(runner_up_id)
+            if len(participants) >= 6 and loser_ids:
+                third_id = max(loser_ids, key=lambda pid: parts[pid].get("cp", 0))
 
-            if len(participants) >= 6 and len(bracket["rounds"]) >= 2:
-                semi = bracket["rounds"][-2]
-                losers = []
-                for m in semi["matches"]:
-                    loser = m["p2_id"] if m["winner_id"] == m["p1_id"] else m["p1_id"]
-                    if loser != winner_id and loser != runner_up_id:
-                        losers.append(loser)
-                if losers:
-                    third_id = losers[0]
+            # Trao thưởng và lấy chi tiết
+            reward_summaries = await self._give_rewards(tid, winner_id, runner_up_id, third_id, participants)
 
-            await self._give_rewards(tid, winner_id, runner_up_id, third_id, participants)
-
+            # Lưu DB
             db = await get_db()
             try:
                 await db.execute(
@@ -319,12 +346,9 @@ class ArenaTournament(commands.Cog):
             finally:
                 await db.close()
 
-            embed = self._build_podium_embed(
-                winner_id, runner_up_id, third_id, bracket["participants"], tid)
-            try:
-                await embed_msg.edit(embed=embed)
-            except Exception:
-                await ch.send(embed=embed)
+            # Podium embed với chi tiết thưởng
+            embed = self._build_podium_embed(winner_id, runner_up_id, third_id, parts, tid, reward_summaries)
+            await ch.send(embed=embed)
 
         except asyncio.CancelledError:
             logger.info(f"[ARENA] Tournament #{tid} bị hủy (CancelledError)")
@@ -406,80 +430,68 @@ class ArenaTournament(commands.Cog):
             return p2_id, all_logs + [f"⏰ Hết lượt! {p2.get('name', '?')} thắng ({hp2} vs {hp1}HP)"], hp1, hp2
         return random.choice([p1_id, p2_id]), all_logs + ["⏰ Hòa! Random thắng..."], hp1, hp2
 
-    def _build_bracket_embed(self, bracket: dict, tid: int) -> discord.Embed:
-        desc_lines = [f"⚔️ **ĐẤU TRƯỜNG SINH TỬ #{tid}** — LIVE\n"]
-        parts = bracket["participants"]
+    def _build_podium_embed(self, winner_id: str, runner_up_id: str | None, third_id: str | None,
+                            parts: dict, tid: int, reward_summaries: dict[str, str]) -> discord.Embed:
+        desc_lines = [f"🏆 **ĐẤU TRƯỜNG SINH TỬ #{tid} — KẾT THÚC**\n"]
+        rank_emojis = {winner_id: "🥇", runner_up_id: "🥈", third_id: "🥉"}
+        rank_labels = {winner_id: "Quán Quân", runner_up_id: "Á Quân", third_id: "Hạng Ba"}
 
-        for i, rond in enumerate(bracket["rounds"]):
-            desc_lines.append(f"🏟️ **{rond['name']}**")
-            for m in rond["matches"]:
-                # Safe get tên — không crash nếu player không có trong parts
-                p1n = parts.get(m["p1_id"], {}).get("name", f"ID{m['p1_id'][-4:]}")
-                p2n = parts.get(m["p2_id"], {}).get("name", f"ID{m['p2_id'][-4:]}")
-                if m.get("winner_id"):
-                    wname = parts.get(m["winner_id"], {}).get("name", "?")
-                    loser_name = p2n if m["winner_id"] == m["p1_id"] else p1n
-                    desc_lines.append(f"  ✅ **{wname}** thắng {loser_name}")
-                    for line in m.get("log", []):
-                        if line.strip():
-                            desc_lines.append(f"     _{line[:80]}_")
-                else:
-                    desc_lines.append(f"  🔄 **{p1n}** ⚔️ VS 🛡️ **{p2n}**")
-            for bye in rond.get("byes", []):
-                bname = parts.get(bye, {}).get("name", f"ID{bye[-4:]}")
-                desc_lines.append(f"  💎 **{bname}** BYE — vào thẳng vòng sau")
-            desc_lines.append("")
+        for pid in [winner_id, runner_up_id, third_id]:
+            if pid:
+                desc_lines.append(f"{rank_emojis.get(pid, '')} **{parts[pid]['name']}** — {rank_labels.get(pid, '')}")
+                if pid in reward_summaries:
+                    desc_lines.append(reward_summaries[pid])
+                desc_lines.append("")
 
-        # Cắt nếu quá dài (Discord embed limit 4096)
+        desc_lines.append("🎫 _Tất cả người tham gia được tặng 500🪙_")
+        desc_lines.append("\nHẹn gặp lại mùa sau ⚔️")
+
         full = "\n".join(desc_lines)
         if len(full) > 3800:
             full = full[:3800] + "\n_...còn nữa_"
 
         return discord.Embed(
-            title=f"⚔️ Đấu Trường Sinh Tử #{tid} — LIVE",
-            description=full,
-            color=0xffaa00,
-        )
-
-    def _build_podium_embed(self, winner_id: str, runner_up_id: str | None, third_id: str | None, parts: dict, tid: int) -> discord.Embed:
-        desc_lines = [f"🏆 **ĐẤU TRƯỜNG SINH TỬ #{tid} — KẾT THÚC**\n"]
-        desc_lines.append(f"🥇 **{parts[winner_id]['name']}** — Quán Quân")
-        if runner_up_id:
-            desc_lines.append(f"🥈 **{parts[runner_up_id]['name']}** — Á Quân")
-        if third_id:
-            desc_lines.append(f"🥉 **{parts[third_id]['name']}** — Hạng Ba")
-        desc_lines.append("\nPhần thưởng đã được gửi! Hẹn gặp lại mùa sau ⚔️")
-        return discord.Embed(
             title=f"🏆 Đấu Trường Sinh Tử #{tid}",
-            description="\n".join(desc_lines),
+            description=full,
             color=0x00ff00,
         )
 
-    async def _give_rewards(self, tid: int, winner_id: str, runner_up_id: str | None, third_id: str | None, participants: list[dict]):
+    async def _give_rewards(self, tid: int, winner_id: str, runner_up_id: str | None,
+                            third_id: str | None, participants: list[dict]) -> dict[str, str]:
+        stone_names = {"stone_basic": "Đá Sơ Cấp", "stone_medium": "Đá Trung Cấp", "stone_advanced": "Đá Cao Cấp"}
+        reward_summaries: dict[str, str] = {}
         rewards = []
 
         if winner_id:
+            coin_rw = random.randint(200, 400)
+            stone_qty = random.randint(3, 5)
             rewards.append((winner_id, 1, {
-                "coins": random.randint(200, 400),
+                "coins": coin_rw,
                 "xp": 100,
                 "vip": 2,
-                "stones": ("stone_advanced", random.randint(3, 5)),
+                "stones": ("stone_advanced", stone_qty),
                 "equip_star": 4,
             }))
+
         if runner_up_id:
+            coin_rw = random.randint(100, 200)
+            stone_qty = random.randint(1, 3)
             rewards.append((runner_up_id, 2, {
-                "coins": random.randint(100, 200),
+                "coins": coin_rw,
                 "xp": 50,
                 "vip": 1,
-                "stones": ("stone_medium", random.randint(1, 3)),
+                "stones": ("stone_medium", stone_qty),
                 "equip_star": 3,
             }))
+
         if third_id and len(participants) >= 6:
+            coin_rw = random.randint(50, 100)
+            stone_qty = random.randint(5, 10)
             rewards.append((third_id, 3, {
-                "coins": random.randint(50, 100),
+                "coins": coin_rw,
                 "xp": 25,
                 "vip": 0,
-                "stones": ("stone_basic", random.randint(5, 10)),
+                "stones": ("stone_basic", stone_qty),
                 "equip_star": 3,
                 "equip_chance": 0.5,
             }))
@@ -488,15 +500,23 @@ class ArenaTournament(commands.Cog):
         try:
             # Thưởng tham gia: 500 coins cho tất cả người chơi
             for p in participants:
-                await db.execute("UPDATE players SET coins=coins+500 WHERE id=?", (p["player_id"],))
+                pid = p["player_id"]
+                await db.execute("UPDATE players SET coins=coins+500 WHERE id=?", (pid,))
+                reward_summaries[pid] = "  • +500🪙 (tham gia)"
 
             for pid, rank, rw in rewards:
                 await db.execute("UPDATE players SET coins=coins+?, xp=xp+? WHERE id=?", (rw["coins"], rw["xp"], pid))
+
+                lines = []
+                if pid in reward_summaries:
+                    lines.append(reward_summaries[pid])
+                lines.append(f"  • +{rw['coins']}🪙 · +{rw['xp']}XP")
 
                 if rw["vip"] > 0:
                     await db.execute(
                         "INSERT OR REPLACE INTO player_vip_coins (player_id, amount) VALUES (?, COALESCE((SELECT amount FROM player_vip_coins WHERE player_id=?), 0) + ?)",
                         (pid, pid, rw["vip"]))
+                    lines.append(f"  • +{rw['vip']} VIP")
 
                 stone_type, stone_qty = rw["stones"]
                 stone_col = stone_type
@@ -505,30 +525,39 @@ class ArenaTournament(commands.Cog):
                     (pid,))
                 await db.execute(
                     f"UPDATE player_enhance_stones SET {stone_col}={stone_col}+? WHERE player_id=?", (stone_qty, pid))
+                lines.append(f"  • +{stone_qty} {stone_names[stone_col]}")
 
                 star = rw["equip_star"]
-                # equip_chance: xác suất NHẬN đồ (không phải bỏ qua)
                 chance = rw.get("equip_chance", 1.0)
-                if random.random() > chance:
-                    # Không nhận đồ lần này
-                    await db.execute(
-                        "UPDATE arena_participants SET reward_given=1, final_rank=? WHERE tournament_id=? AND player_id=?",
-                        (rank, tid, pid))
-                    continue
-                eids = _EQUIP_BY_STAR.get(star, [])
-                if eids:
-                    eid = random.choice(eids)
-                    await db.execute(
-                        "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
-                        (pid, eid))
+                equip_name = ""
+                if random.random() <= chance:
+                    eids = _EQUIP_BY_STAR.get(star, [])
+                    if eids:
+                        eid = random.choice(eids)
+                        equip_name = EQUIPMENT[eid]["name"]
+                        await db.execute(
+                            "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                            (pid, eid))
+                if equip_name:
+                    lines.append(f"  • {STAR_LABELS.get(star, '⭐')} **{equip_name}**")
 
                 await db.execute(
                     "UPDATE arena_participants SET reward_given=1, final_rank=? WHERE tournament_id=? AND player_id=?",
                     (rank, tid, pid))
 
+                reward_summaries[pid] = "\n".join(lines)
+
+            # Các player không trong top 3 cũng có reward summary (chỉ 500 coins)
+            for p in participants:
+                pid = p["player_id"]
+                if pid not in reward_summaries:
+                    reward_summaries[pid] = "  • +500🪙 (tham gia)"
+
             await db.commit()
         finally:
             await db.close()
+
+        return reward_summaries
 
     @app_commands.command(name="arena", description="🎮 Quản lý Đấu Trường Sinh Tử")
     @app_commands.default_permissions(administrator=True)
