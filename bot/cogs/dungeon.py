@@ -220,7 +220,8 @@ def calc_dungeon_rewards(floor: int) -> dict:
 
 class DungeonView(discord.ui.View):
     def __init__(self, cog, player_id: str, floor: int, player_pdata: dict,
-                 npc_pdata: dict, player_name: str, accumulated_rewards: dict):
+                 npc_pdata: dict, player_name: str, accumulated_rewards: dict,
+                 run_id: str = ""):
         super().__init__(timeout=180)
         self.cog = cog
         self.player_id = player_id
@@ -230,6 +231,7 @@ class DungeonView(discord.ui.View):
         self.player_name = player_name
         self.accumulated_rewards = accumulated_rewards
         self.finished = False
+        self._run_id = run_id
 
         pdata = player_pdata
         atk = get_equipped_skill(pdata, "attack")
@@ -275,7 +277,10 @@ class DungeonView(discord.ui.View):
         if not self.finished:
             self.finished = True
             sid = self.player_id
-            session = self.cog.sessions.pop(sid, None)
+            session = self.cog.sessions.get(sid)
+            if not session or session.get("_run_id") != self._run_id:
+                return
+            self.cog.sessions.pop(sid, None)
             if session:
                 db = await get_db()
                 try:
@@ -473,6 +478,7 @@ class DungeonCog(commands.Cog):
 
             embed = _dungeon_header_embed(floor, display_name, pdata, npc_data, extra_msg)
 
+            run_id = str(time.time())
             session = {
                 "player_pdata": pdata,
                 "npc_pdata": npc_data,
@@ -481,10 +487,11 @@ class DungeonCog(commands.Cog):
                 "floor": floor,
                 "flags": {"turn_count": 0},
                 "accumulated_rewards": rewards,
+                "_run_id": run_id,
             }
             self.sessions[sid] = session
 
-            view = DungeonView(self, sid, floor, pdata, npc_data, display_name, rewards)
+            view = DungeonView(self, sid, floor, pdata, npc_data, display_name, rewards, run_id)
 
             if isinstance(ctx_or_int, commands.Context):
                 msg = await ctx_or_int.reply(embed=embed, view=view)
@@ -631,8 +638,9 @@ class DungeonCog(commands.Cog):
             session["floor"], session["player_name"], player, npc, result_lines
         )
         new_view = DungeonView(self, view.player_id, session["floor"],
-                               player, npc, session["player_name"],
-                               session["accumulated_rewards"])
+                                player, npc, session["player_name"],
+                                session["accumulated_rewards"],
+                                session.get("_run_id", ""))
         await session["_message"].edit(embed=embed, view=new_view)
         flags.pop("_turn_in_progress", None)
 
@@ -700,7 +708,8 @@ class DungeonCog(commands.Cog):
             embed = _dungeon_battle_embed(next_floor, session["player_name"], player, npc_data, result_lines)
 
             new_view = DungeonView(self, sid, next_floor, player, npc_data,
-                                   session["player_name"], acc)
+                                    session["player_name"], acc,
+                                    session.get("_run_id", ""))
             await session["_message"].edit(embed=embed, view=new_view)
         else:
             result_lines.append(f"\n💀 Thua! Nhận thưởng đã tích lũy...")
