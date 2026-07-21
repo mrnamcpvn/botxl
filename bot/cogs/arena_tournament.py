@@ -21,6 +21,7 @@ from bot.views.arena_view import ArenaJoinView
 from bot.logger import logger
 
 ARENA_CHANNEL_ID = 1529021378416738384
+ARENA_SCHEDULE_HOURS = [8, 10, 14, 16]
 
 
 class ArenaTournament(commands.Cog):
@@ -30,6 +31,7 @@ class ArenaTournament(commands.Cog):
         self._current_status: str | None = None
         self._reg_task: asyncio.Task | None = None
         self._fight_task: asyncio.Task | None = None
+        self._last_hour: int | None = None
 
     async def cog_load(self):
         # Dùng create_task để không block cog_load — wait_until_ready() cần event loop đã chạy
@@ -87,10 +89,23 @@ class ArenaTournament(commands.Cog):
             if t:
                 t.cancel()
 
-    @tasks.loop(seconds=ARENA_INTERVAL)
+    @tasks.loop(seconds=60)
     async def _auto_schedule(self):
+        now = time.localtime()
+        current_hour = now.tm_hour
+        current_min = now.tm_min
+
         if not ARENA_AUTO_ENABLED or self._current_status is not None:
             return
+
+        if current_hour not in ARENA_SCHEDULE_HOURS:
+            return
+
+        # Chỉ trigger 1 lần trong khung giờ (trong 5 phút đầu)
+        if self._last_hour == current_hour or current_min > 5:
+            return
+
+        self._last_hour = current_hour
         ch = self.bot.get_channel(ARENA_CHANNEL_ID)
         if ch:
             await self.start_tournament(ch, "auto")
