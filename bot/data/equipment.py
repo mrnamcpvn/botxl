@@ -1,7 +1,7 @@
 # ★1=Blue ★2=Green ★3=Yellow ★4=Purple ★5=Red ★6=Gold(Legendary)
-STAR_COLORS = {1: 0x4488ff, 2: 0x44ff44, 3: 0xffcc00, 4: 0xaa44ff, 5: 0xff4444, 6: 0xff69b4}
-STAR_LABELS = {1: "🔵", 2: "🟢", 3: "🟡", 4: "🟣", 5: "🔴", 6: "💗"}
-STAR_NAMES = {1: "Thường", 2: "Cao Cấp", 3: "Hiếm", 4: "Sử Thi", 5: "Huyền Thoại", 6: "Thần Thoại"}
+STAR_COLORS = {1: 0x4488ff, 2: 0x44ff44, 3: 0xffcc00, 4: 0xaa44ff, 5: 0xff4444, 6: 0xff69b4, 7: 0xffd700}
+STAR_LABELS = {1: "🔵", 2: "🟢", 3: "🟡", 4: "🟣", 5: "🔴", 6: "💗", 7: "👑"}
+STAR_NAMES = {1: "Thường", 2: "Cao Cấp", 3: "Hiếm", 4: "Sử Thi", 5: "Huyền Thoại", 6: "Thần Thoại", 7: "Vũ Trụ"}
 SLOT_NAMES = {
     "weapon": "🗡️ Vũ Khí", "armor": "🛡️ Áo Giáp", "boots": "👢 Giày",
     "gloves": "🧤 Bao Tay", "belt": "🎗️ Dây Lưng", "ring": "💍 Nhẫn"
@@ -15,6 +15,7 @@ SET_BONUSES = {
     4: {"name": "Sử Thi", "hp_pct": 15, "atk_pct": 10, "crit": 5},
     5: {"name": "Huyền Thoại", "hp_pct": 20, "atk_pct": 15, "crit": 8},
     6: {"name": "Thần Thoại", "hp_pct": 30, "atk_pct": 20, "crit": 10, "dodge": 5},
+    7: {"name": "Vũ Trụ", "hp_pct": 50, "atk_pct": 35, "def_pct": 25, "crit": 15, "dodge": 10},
 }
 
 EQUIPMENT = {
@@ -179,6 +180,14 @@ EQUIPMENT = {
     # ⭐6 💗 THẦN THOẠI NHẪN
     650: {"name":"💎 Nhẫn Vũ Trụ","slot":"ring","star":6,"stats":{"attack_min":44,"attack_max":64,"defense":20,"hp":160,"spd":10,"crit":16}},
     651: {"name":"💎 Nhẫn Hủy Diệt","slot":"ring","star":6,"stats":{"attack_min":56,"attack_max":56,"hp":120,"pierce":40,"dodge":20}},
+
+    # ═══════ ⭐7 👑 VŨ TRỤ (Hidden - chỉ có từ ghép) ═══════
+    701: {"name":"👑 Hư Vô Thần Kiếm","slot":"weapon","star":7,"stats":{"attack_min":120,"attack_max":180,"crit":20,"pierce":15,"spd":10}},
+    702: {"name":"👑 Vạn Giới Chiến Giáp","slot":"armor","star":7,"stats":{"defense":120,"hp":800,"reflect":10,"regen":10}},
+    703: {"name":"👑 Thời Không Chiến Hài","slot":"boots","star":7,"stats":{"spd":60,"dodge":15,"hp":200}},
+    704: {"name":"👑 Hủy Diệt Thần Quyền","slot":"gloves","star":7,"stats":{"attack_min":80,"attack_max":120,"crit":20,"pierce":20}},
+    705: {"name":"👑 Vĩnh Hằng Chi Đới","slot":"belt","star":7,"stats":{"hp":1200,"defense":60,"regen":15}},
+    706: {"name":"👑 Sáng Thế Chi Nhẫn","slot":"ring","star":7,"stats":{"attack_min":60,"attack_max":80,"defense":30,"hp":300,"spd":10,"crit":15,"dodge":10}},
 }
 
 

@@ -78,6 +78,15 @@ ARTIFACT_STONE_DUNGEON_CHANCE = 0.03
 
 GLOBAL_HP_MULT = 2
 GLOBAL_DEF_MULT = 2
+
+EQUIP_MERGE_COSTS = {
+    1: (500, 0.70),
+    2: (1000, 0.60),
+    3: (2000, 0.50),
+    4: (5000, 0.50),
+    5: (10000, 0.50),
+    6: (50000, 1.00),
+}
 ARTIFACT_UPGRADE_COSTS = {
     1: (0, 100000),
     2: (10, 100000),

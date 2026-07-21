@@ -38,6 +38,10 @@ class ShopCog(commands.Cog):
     async def sell_cmd(self, ctx, item_id: str = None):
         await self._sell(ctx, ctx.author, item_id, "!")
 
+    @commands.command(name="ghep", aliases=["merge"])
+    async def ghep_cmd(self, ctx, id1: str = None, id2: str = None, id3: str = None):
+        await self._merge(ctx, ctx.author, id1, id2, id3, "!")
+
     @commands.command(name="inv", aliases=["inventory"])
     async def inv_cmd(self, ctx):
         await self._show_inv(ctx, ctx.author, "!")
@@ -407,6 +411,11 @@ class ShopCog(commands.Cog):
     async def slash_sell(self, interaction: discord.Interaction, item_id: str):
         await self._sell(interaction, interaction.user, item_id, "/")
 
+    @app_commands.command(name="ghep", description="🔨 Ghép 3 trang bị cùng sao để lên sao cao hơn")
+    @app_commands.describe(id1="ID trang bị 1", id2="ID trang bị 2", id3="ID trang bị 3")
+    async def slash_merge(self, interaction: discord.Interaction, id1: str, id2: str, id3: str):
+        await self._merge(interaction, interaction.user, id1, id2, id3, "/")
+
     @slash_sell.autocomplete("item_id")
     async def sell_autocomplete(self, interaction: discord.Interaction, current: str):
         uid = str(interaction.user.id)
@@ -529,6 +538,88 @@ class ShopCog(commands.Cog):
         finally:
             await db.close()
 
+    async def _merge(self, ctx_or_int, user, id1, id2, id3, prefix):
+        if not id1 or not id2 or not id3:
+            await self._reply(ctx_or_int, f"❌ {prefix}ghep <id1> <id2> <id3>")
+            return
+        try:
+            ids = [int(x.strip()) for x in (id1, id2, id3)]
+        except:
+            await self._reply(ctx_or_int, "❌ ID không hợp lệ!")
+            return
+
+        uid = str(user.id)
+        db = await get_db()
+        try:
+            rows = []
+            stars = []
+            for eid in ids:
+                cursor = await db.execute(
+                    "SELECT id, item_id, enhance, equipped FROM player_equipment WHERE id=? AND player_id=?",
+                    (eid, uid))
+                row = await cursor.fetchone()
+                if not row:
+                    await self._reply(ctx_or_int, f"❌ Không tìm thấy ID {eid}!")
+                    return
+                r = dict(row)
+                if r["equipped"]:
+                    await self._reply(ctx_or_int, "❌ Tháo trang bị ra trước khi ghép!")
+                    return
+                eiid = r["item_id"]
+                if eiid not in EQUIPMENT:
+                    await self._reply(ctx_or_int, "❌ Chỉ ghép được trang bị!")
+                    return
+                rows.append(r)
+                stars.append(EQUIPMENT[eiid]["star"])
+
+            if len(set(stars)) != 1:
+                await self._reply(ctx_or_int, "❌ 3 trang bị phải cùng sao!")
+                return
+
+            star = stars[0]
+            if star >= 7:
+                await self._reply(ctx_or_int, "❌ Đã đạt sao tối đa!")
+                return
+
+            from bot.config import EQUIP_MERGE_COSTS
+            merge_cost = EQUIP_MERGE_COSTS.get(star)
+            if not merge_cost:
+                await self._reply(ctx_or_int, "❌ Không thể ghép sao này!")
+                return
+
+            coin_cost, success_rate = merge_cost
+            pc = await db.execute("SELECT coins FROM players WHERE id=?", (uid,))
+            pr = await pc.fetchone()
+            if not pr or pr[0] < coin_cost:
+                await self._reply(ctx_or_int, f"😅 Cần {coin_cost}🪙!")
+                return
+
+            await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (coin_cost, uid))
+            for r in rows:
+                await db.execute("DELETE FROM player_equipment WHERE id=?", (r["id"],))
+
+            import random
+            if random.random() < success_rate:
+                target_star = star + 1
+                items = [e for eid, e in EQUIPMENT.items() if e["star"] == target_star]
+                if items:
+                    chosen = random.choice(items)
+                    eid = [k for k, v in EQUIPMENT.items() if v == chosen][0]
+                    await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                                     (uid, eid))
+                    await db.commit()
+                    stars_icon = STAR_LABELS.get(target_star, "⭐")
+                    await self._reply(ctx_or_int, f"✅ Ghép thành công! Nhận {stars_icon} **{chosen['name']}**!")
+                else:
+                    await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (coin_cost, uid))
+                    await db.commit()
+                    await self._reply(ctx_or_int, "❌ Lỗi hệ thống!")
+            else:
+                await db.commit()
+                await self._reply(ctx_or_int, f"💥 Ghép thất bại! Mất 3 trang bị + {coin_cost}🪙")
+        finally:
+            await db.close()
+
     @commands.command(name="equipment", aliases=["equipments", "trangbi"])
     async def equipment_cmd(self, ctx, slot: str = None):
         slot = (slot or "weapon").lower()
@@ -576,7 +667,7 @@ class EquipCatalogView(discord.ui.View):
 
 
 def _catalog_embed(slot_filter: str = "weapon") -> discord.Embed:
-    items = [(eid, e) for eid, e in EQUIPMENT.items() if e["slot"] == slot_filter]
+    items = [(eid, e) for eid, e in EQUIPMENT.items() if e["slot"] == slot_filter and e["star"] < 7]
     items.sort(key=lambda x: x[1]["star"], reverse=True)
     best_star = items[0][1]["star"] if items else 0
     embed_color = STAR_COLORS.get(best_star, 0x00aaff)
