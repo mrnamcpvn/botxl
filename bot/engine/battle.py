@@ -345,7 +345,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         # Class perk: defend_reduce
         def_class = defender.get("class_id", "banxabong")
         if get_class_perk(def_class) == "defend_reduce" and defending:
-            damage = int(damage * 0.9)
+            damage = int(damage * 0.8)
 
         # Class perk: first_strike
         atk_class = attacker.get("class_id", "banxabong")
@@ -389,7 +389,10 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         if atk_passive["type"] == "rage":
             rage_key = f"{attacker['id']}_rage_dmg"
             if flags.get(rage_key, 0) > 0:
-                rage_bonus = int(flags.pop(rage_key, 0) * atk_passive.get("rage_multiplier", 2.0))
+                rage_mult = atk_passive.get("rage_multiplier", 2.0)
+                if get_class_perk(atk_class) == "rage_boost":
+                    rage_mult = 2.5
+                rage_bonus = int(flags.pop(rage_key, 0) * rage_mult)
                 damage += rage_bonus
                 result_lines.append(f"💢 PHẪN NỘ! +{rage_bonus} dmg!")
 
@@ -425,7 +428,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         if def_passive2["type"] == "rage":
             rage_pct = def_passive2.get("rage_pct", 50)
             if get_class_perk(def_class) == "rage_boost":
-                rage_pct = int(rage_pct * 1.25)
+                rage_pct = int(rage_pct * 1.5)
             rage_accum_key = f"{defender['id']}_rage_dmg"
             flags[rage_accum_key] = flags.get(rage_accum_key, 0) + int(damage * rage_pct / 100)
 
@@ -443,7 +446,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         if skill.get("type") == "lifesteal":
             lifesteal_pct = skill.get("lifesteal_pct", 50)
             if get_class_perk(attacker.get("class_id", "")) == "lifesteal_boost":
-                lifesteal_pct = int(lifesteal_pct * 1.2)
+                lifesteal_pct = int(lifesteal_pct * 1.3)
             heal = int(damage * lifesteal_pct / 100)
             attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal)
             result_lines.append(f"🩡 H\u00fat {heal} HP!")

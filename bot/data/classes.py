@@ -9,19 +9,19 @@ CLASSES = {
     },
     "xola": {
         "name": "Xỏ Lá", "icon": "🤓",
-        "hp_base": 180, "hp_scale": 18,
+        "hp_base": 200, "hp_scale": 20,
         "atk_base": 6, "atk_scale": 2,
-        "def_base": 20, "def_scale": 5,
-        "desc": "Trâu bò nhưng đánh như muỗi đốt cột",
+        "def_base": 22, "def_scale": 6,
+        "desc": "Siêu trâu, thủ giảm 20% dmg | +HP +DEF -ATK",
         "price": 5000,
         "perk": "defend_reduce"
     },
     "sieunhan": {
         "name": "Siêu Nhân Xà Phòng", "icon": "💪",
         "hp_base": 80, "hp_scale": 8,
-        "atk_base": 18, "atk_scale": 5,
+        "atk_base": 22, "atk_scale": 6,
         "def_base": 4, "def_scale": 1,
-        "desc": "Có mỗi sức mạnh, còn lại toàn xương",
+        "desc": "Đòn đầu ×1.5 sát thương | +ATK -HP -DEF",
         "price": 5000,
         "perk": "first_strike"
     },
@@ -30,34 +30,34 @@ CLASSES = {
         "hp_base": 90, "hp_scale": 9,
         "atk_base": 14, "atk_scale": 4,
         "def_base": 6, "def_scale": 2,
-        "desc": "Từ bi hỉ xả, đấm 1 phát 1000 năm địa ngục",
+        "desc": "CD giảm gấp đôi mỗi turn | skill hồi nhanh",
         "price": 5000,
         "perk": "cd_reduce"
     },
     "muoi": {
         "name": "Con Muỗi", "icon": "🦟",
-        "hp_base": 110, "hp_scale": 10,
-        "atk_base": 12, "atk_scale": 3,
+        "hp_base": 115, "hp_scale": 11,
+        "atk_base": 16, "atk_scale": 4,
         "def_base": 6, "def_scale": 1,
-        "desc": "Hút máu, khó đập, dễ chết sau bàn tay",
+        "desc": "Hút 80% dmg gây ra thành HP | +ATK +SPD",
         "price": 10000,
         "perk": "lifesteal_boost"
     },
     "chodien": {
         "name": "Chó Điên", "icon": "🐕",
-        "hp_base": 140, "hp_scale": 14,
-        "atk_base": 15, "atk_scale": 4,
-        "def_base": 6, "def_scale": 1,
-        "desc": "Càng ăn đòn càng hăng, cắn xé tất cả",
+        "hp_base": 150, "hp_scale": 15,
+        "atk_base": 18, "atk_scale": 5,
+        "def_base": 8, "def_scale": 2,
+        "desc": "Càng đánh càng mạnh, rage ×2.5 | +HP +ATK",
         "price": 10000,
         "perk": "rage_boost"
     },
     "baque": {
         "name": "Ba Que", "icon": "🥢",
-        "hp_base": 130, "hp_scale": 13,
+        "hp_base": 160, "hp_scale": 16,
         "atk_base": 10, "atk_scale": 3,
-        "def_base": 14, "def_scale": 3,
-        "desc": "Xỏ lá bằng tăm tre, chuyên chọc gậy bánh xe",
+        "def_base": 18, "def_scale": 4,
+        "desc": "Thoát chết ở 40% HP, giữ 1 máu | +HP +DEF",
         "price": 20000,
         "perk": "last_stand_boost"
     },
@@ -74,12 +74,12 @@ CLASSES = {
 }
 
 PERK_DESCRIPTIONS = {
-    "defend_reduce": "Nhận ít dmg hơn 10% nếu đang phòng thủ",
+    "defend_reduce": "Nhận ít dmg hơn 20% nếu đang phòng thủ",
     "first_strike": "Đòn tấn công đầu trận ×1.5",
-    "cd_reduce": "Cooldown tất cả skill -1",
-    "lifesteal_boost": "Hút máu +20% hiệu quả",
-    "rage_boost": "Rage tích +25% nhanh hơn",
-    "last_stand_boost": "Last stand kích hoạt ở 40% HP",
+    "cd_reduce": "Cooldown tất cả skill -2 mỗi turn (×2)",
+    "lifesteal_boost": "Hút máu +30% hiệu quả",
+    "rage_boost": "Rage tích +50% nhanh hơn, sát thương rage ×2.5",
+    "last_stand_boost": "Thoát chết kích hoạt ở 40% HP",
     "random_buff": "Random buff mỗi turn",
 }
 
