@@ -93,7 +93,7 @@ def _npc_battle_embed(player_name: str, pdata: dict, npc_data: dict,
 class NPCBattleView(discord.ui.View):
     def __init__(self, cog, player_id: str, npc_id: str, player_pdata: dict, npc_pdata: dict,
                  npc_name: str, player_name: str, first_is_player: bool):
-        super().__init__(timeout=None)
+        super().__init__(timeout=60)   # 60 giây không thao tác → tự thua
         self.cog = cog
         self.player_id = player_id
         self.npc_id = npc_id
@@ -104,6 +104,7 @@ class NPCBattleView(discord.ui.View):
         self.first_is_player = first_is_player
         self.turn_count = 0
         self.finished = False
+        self.message: discord.Message | None = None  # lưu để edit khi timeout
 
         pdata = player_pdata
         atk = get_equipped_skill(pdata, "attack")
@@ -138,6 +139,43 @@ class NPCBattleView(discord.ui.View):
         async def callback(interaction: discord.Interaction):
             await self.cog._handle_npc_move(interaction, self, move_type)
         return callback
+
+    async def on_timeout(self):
+        """Quá 60s không thao tác → tự thua NPC, dọn session."""
+        if self.finished:
+            return
+        self.finished = True
+        sid = self.player_id
+
+        # Dọn session
+        self.cog.sessions.pop(sid, None)
+
+        # Ghi lại battle_time vào DB (tính như thua)
+        db = await get_db()
+        try:
+            await db.execute(
+                "UPDATE players SET losses=losses+1, last_battle_time=? WHERE id=?",
+                (time.time(), sid))
+            await db.commit()
+        except Exception:
+            pass
+        finally:
+            await db.close()
+
+        # Edit message báo timeout nếu có
+        if self.message:
+            try:
+                embed = discord.Embed(
+                    title="⏰ HẾT THỜI GIAN!",
+                    description=(
+                        f"**{self.player_name}** không thao tác trong 60 giây!\n"
+                        f"💀 **{self.npc_name}** thắng do người chơi bỏ trận."
+                    ),
+                    color=0xff4444,
+                )
+                await self.message.edit(embed=embed, view=None)
+            except Exception:
+                pass
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.player_id:
@@ -357,9 +395,11 @@ class NPCCog(commands.Cog):
                                  npc_data["name"], display_name, True)
 
             if isinstance(ctx_or_int, discord.ext.commands.Context):
-                await ctx_or_int.send(embed=embed, view=view)
+                msg = await ctx_or_int.send(embed=embed, view=view)
+                view.message = msg
             else:
                 await ctx_or_int.response.send_message(embed=embed, view=view)
+                view.message = await ctx_or_int.original_response()
         finally:
             await db.close()
 

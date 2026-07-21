@@ -421,9 +421,32 @@ class AdminCog(commands.Cog):
             await db.execute("DELETE FROM active_battles")
             await db.execute("DELETE FROM battle_status")
             await db.commit()
-            await self._reply(ctx_or_int, f"🧹 Đã dọn: {ch_num} challenge + {bt_num} battle kẹt!")
         finally:
             await db.close()
+
+        # Clear in-memory sessions (NPC + Dungeon) — không có trong DB
+        npc_num = 0
+        dg_num = 0
+        npc_cog = self.bot.cogs.get("NPCCog")
+        if npc_cog and hasattr(npc_cog, "sessions"):
+            npc_num = len(npc_cog.sessions)
+            npc_cog.sessions.clear()
+
+        dg_cog = self.bot.cogs.get("DungeonCog")
+        if dg_cog and hasattr(dg_cog, "sessions"):
+            dg_num = len(dg_cog.sessions)
+            dg_cog.sessions.clear()
+
+        parts = [
+            f"🗡️ {ch_num} challenge",
+            f"⚔️ {bt_num} PvP battle",
+        ]
+        if npc_num:
+            parts.append(f"👾 {npc_num} NPC session")
+        if dg_num:
+            parts.append(f"🏰 {dg_num} Dungeon session")
+
+        await self._reply(ctx_or_int, f"🧹 Đã dọn: {' + '.join(parts)}")
 
     @commands.command(name="giveall")
     async def giveall_cmd(self, ctx, amount: str = None):

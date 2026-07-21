@@ -294,11 +294,49 @@ class ArenaTournament(commands.Cog):
 
                     await asyncio.sleep(1.5)
 
-                    winner_id, log, p1_hp, p2_hp = await self._run_ai_battle(p1_id, p2_id)
+                    # Stream từng turn — hiện live HP chính xác
+                    winner_id = p1_id  # fallback
+                    p1_hp_final = 0
+                    p2_hp_final = 0
+                    all_logs: list[str] = []
+                    live_log_buf: list[str] = []
+                    LINES_PER_UPDATE = 4   # cập nhật embed sau mỗi 4 dòng log
+
+                    async for turn_data in self._stream_ai_battle(p1_id, p2_id):
+                        cur_p1_hp = turn_data["p1_hp"]
+                        cur_p2_hp = turn_data["p2_hp"]
+                        live_log_buf.extend(turn_data["logs"])
+                        all_logs.extend(turn_data["logs"])
+
+                        if turn_data["finished"]:
+                            winner_id   = turn_data["winner_id"] or p1_id
+                            p1_hp_final = cur_p1_hp
+                            p2_hp_final = cur_p2_hp
+                            break
+
+                        # Cập nhật embed live khi đủ LINES_PER_UPDATE dòng
+                        if len(live_log_buf) >= LINES_PER_UPDATE:
+                            shown = "\n".join(f"  {l}" for l in live_log_buf[-12:] if l.strip())
+                            try:
+                                await match_msg.edit(embed=discord.Embed(
+                                    title=f"⚔️ {p1n}  VS  {p2n}",
+                                    description=(
+                                        f"❤️ **{p1n}** `{cur_p1_hp}HP`  ⚡  **{p2n}** `{cur_p2_hp}HP`\n\n"
+                                        f"**Diễn biến:**\n{shown}"
+                                    ),
+                                    color=round_color))
+                            except Exception:
+                                pass
+                            await asyncio.sleep(ARENA_BATTLE_DELAY)
+                            live_log_buf.clear()
+
                     if winner_id is None:
                         winner_id = p1_id
 
-                    loser_id = p2_id if winner_id == p1_id else p1_id
+                    loser_id    = p2_id if winner_id == p1_id else p1_id
+                    p1_hp       = p1_hp_final
+                    p2_hp       = p2_hp_final
+                    log         = all_logs
                     winner_name = parts[winner_id]["name"]
                     loser_name  = parts[loser_id]["name"]
 
@@ -324,39 +362,9 @@ class ArenaTournament(commands.Cog):
                         logger.warning(f"[ARENA] ELO update lỗi: {e}")
                         elo_line = ""
 
-                    # Hiển thị log từng block — delay để dễ theo dõi
-                    filtered_log = [l for l in log if l.strip()]
-                    block_size = 5
-
-                    # Track live HP từng block: winner HP tăng/giảm, loser về 0 cuối
-                    cur_p1_hp = p1_hp if winner_id == p1_id else 0
-                    cur_p2_hp = p2_hp if winner_id == p2_id else 0
-
-                    for block_idx, block_start in enumerate(range(0, len(filtered_log), block_size)):
-                        block = filtered_log[block_start:block_start + block_size]
-                        block_text = "\n".join(f"  {l}" for l in block)
-
-                        # Cuối block cuối cùng → hiện HP kết thúc thực tế
-                        is_last_block = (block_start + block_size >= len(filtered_log))
-                        show_p1_hp = p1_hp if is_last_block else "..."
-                        show_p2_hp = p2_hp if is_last_block else "..."
-
-                        status_desc = (
-                            f"⚔️ **{p1n}** `{show_p1_hp}HP` ⚡ **{p2n}** `{show_p2_hp}HP`\n\n"
-                            f"**Diễn biến ({block_start+1}-{min(block_start+block_size, len(filtered_log))}/{len(filtered_log)}):**\n"
-                            f"{block_text}"
-                        )
-                        try:
-                            await match_msg.edit(embed=discord.Embed(
-                                title=f"🏟️ {p1n} VS {p2n}",
-                                description=status_desc,
-                                color=round_color))
-                        except Exception:
-                            pass
-                        await asyncio.sleep(ARENA_BATTLE_DELAY)
-
-                    # Kết quả cuối
+                    # Kết quả cuối — hiện tóm tắt
                     max_show = 8
+                    filtered_log = [l for l in log if l.strip()]
                     shown = filtered_log[-max_show:]
                     log_text = "\n".join(f"  {l}" for l in shown)
                     if len(filtered_log) > max_show:
@@ -463,10 +471,15 @@ class ArenaTournament(commands.Cog):
             self._current_id = None
             self._current_status = None
 
-    async def _run_ai_battle(self, p1_id: str, p2_id: str) -> tuple[str | None, list[str], int, int]:
+    async def _stream_ai_battle(self, p1_id: str, p2_id: str):
         """
-        Chạy trận AI battle. Mỗi lần gọi đều load fresh từ DB và full HP.
-        Trả về (winner_id, log_lines, final_p1_hp, final_p2_hp).
+        Async generator — yield từng turn để display live HP.
+        Mỗi lần yield: dict với keys:
+          - type: "turn" | "result"
+          - logs: list[str]   — các dòng log của turn này
+          - p1_hp, p2_hp: int — HP hiện tại sau turn
+          - finished: bool
+          - winner_id: str | None  (chỉ khi finished=True)
         """
         db = await get_db()
         try:
@@ -476,14 +489,19 @@ class ArenaTournament(commands.Cog):
             await db.close()
 
         if not p1 or not p2:
-            winner = p1_id if p1 and not p2 else (p2_id if p2 else p1_id)
-            return winner, ["⚠️ Đối thủ không tồn tại, auto-thắng."], \
-                   p1.get("hp", 0) if p1 else 0, p2.get("hp", 0) if p2 else 0
+            winner = p1_id if p1 else p2_id
+            yield {
+                "type": "result", "logs": ["⚠️ Đối thủ không tồn tại, auto-thắng."],
+                "p1_hp": p1.get("hp", 0) if p1 else 0,
+                "p2_hp": p2.get("hp", 0) if p2 else 0,
+                "finished": True, "winner_id": winner,
+            }
+            return
 
         p1["id"] = p1_id
         p2["id"] = p2_id
 
-        # Full HP cho cả 2 trước khi bắt đầu — không phụ thuộc HP trong DB
+        # Full HP cho cả 2
         eff1 = get_effective_stats(p1)
         eff2 = get_effective_stats(p2)
         p1["hp"] = eff1["hp_max"]
@@ -494,69 +512,98 @@ class ArenaTournament(commands.Cog):
         # Quyết định ai đi trước theo SPD
         spd1 = eff1.get("spd", 0)
         spd2 = eff2.get("spd", 0)
-        if spd1 > spd2:
-            turn = 0
-        elif spd2 > spd1:
-            turn = 1
-        else:
-            turn = random.randint(0, 1)
+        if spd1 > spd2:   turn = 0
+        elif spd2 > spd1: turn = 1
+        else:             turn = random.randint(0, 1)
 
         flags: dict = {"turn_count": 0}
         all_logs: list[str] = []
-        max_turns = 80  # tăng lên để tránh trận dài bị cắt giữa chừng
+        max_turns = 80
 
         for _ in range(max_turns):
-            current = p1 if turn == 0 else p2
-            opponent = p2 if turn == 0 else p1
-
-            # Kiểm tra HP trước mỗi lượt — dừng ngay nếu ai đã 0 HP
+            # Guard: kiểm tra HP trước lượt
             if p1.get("hp", 0) <= 0:
                 p1["hp"] = 0
                 all_logs.append(f"💀 **{p1.get('name', p1_id)}** đã hết máu!")
-                return p2_id, all_logs, 0, p2.get("hp", 0)
+                yield {
+                    "type": "result", "logs": all_logs,
+                    "p1_hp": 0, "p2_hp": p2.get("hp", 0),
+                    "finished": True, "winner_id": p2_id,
+                }
+                return
             if p2.get("hp", 0) <= 0:
                 p2["hp"] = 0
                 all_logs.append(f"💀 **{p2.get('name', p2_id)}** đã hết máu!")
-                return p1_id, all_logs, p1.get("hp", 0), 0
+                yield {
+                    "type": "result", "logs": all_logs,
+                    "p1_hp": p1.get("hp", 0), "p2_hp": 0,
+                    "finished": True, "winner_id": p1_id,
+                }
+                return
 
+            current = p1 if turn == 0 else p2
+
+            # Xử lý choáng
             if flags.get(f"{current['id']}_stunned", False):
                 flags.pop(f"{current['id']}_stunned", None)
-                all_logs.append(f"🌑 {current.get('name', '?')} choáng, mất lượt!")
+                stun_log = [f"🌑 **{current.get('name', '?')}** choáng, mất lượt!"]
+                all_logs.extend(stun_log)
                 for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
                     if current.get(cdkey, 0) > 0:
                         current[cdkey] -= 1
+                yield {
+                    "type": "turn", "logs": stun_log,
+                    "p1_hp": p1.get("hp", 0), "p2_hp": p2.get("hp", 0),
+                    "finished": False, "winner_id": None,
+                }
                 turn = 1 - turn
                 continue
 
-            action = pick_action(current, opponent, flags)
+            action = pick_action(current, p2 if turn == 0 else p1, flags)
             result = await execute_action(p1, p2, turn, action, flags)
-            all_logs.extend(result["log_messages"])
-
-            # Cập nhật p1/p2 từ result
             p1 = result["p1"]
             p2 = result["p2"]
 
+            turn_logs = result["log_messages"]
+            all_logs.extend(turn_logs)
+
             if result["finished"]:
                 winner_id = result["winner_id"]
-                # Đảm bảo HP người thua = 0
-                if winner_id == p1_id:
-                    p2["hp"] = 0
-                else:
-                    p1["hp"] = 0
-                return winner_id, all_logs, p1.get("hp", 0), p2.get("hp", 0)
+                if winner_id == p1_id: p2["hp"] = 0
+                else: p1["hp"] = 0
+                yield {
+                    "type": "result", "logs": all_logs,
+                    "p1_hp": p1.get("hp", 0), "p2_hp": p2.get("hp", 0),
+                    "finished": True, "winner_id": winner_id,
+                }
+                return
 
+            # Yield turn bình thường
+            yield {
+                "type": "turn", "logs": turn_logs,
+                "p1_hp": p1.get("hp", 0), "p2_hp": p2.get("hp", 0),
+                "finished": False, "winner_id": None,
+            }
             turn = 1 - turn
 
-        # Hết max_turns → xét HP
+        # Hết max_turns
         hp1 = max(0, p1.get("hp", 0))
         hp2 = max(0, p2.get("hp", 0))
         if hp1 > hp2:
-            return p1_id, all_logs + [f"⏰ Hết lượt! **{p1.get('name', '?')}** thắng ({hp1} vs {hp2}HP)"], hp1, 0
+            winner_id = p1_id
+            p2["hp"] = 0
         elif hp2 > hp1:
-            return p2_id, all_logs + [f"⏰ Hết lượt! **{p2.get('name', '?')}** thắng ({hp2} vs {hp1}HP)"], 0, hp2
-        # Hòa — random
-        winner = random.choice([p1_id, p2_id])
-        return winner, all_logs + ["⏰ Hòa điểm! Random chọn người thắng..."], hp1, hp2
+            winner_id = p2_id
+            p1["hp"] = 0
+        else:
+            winner_id = random.choice([p1_id, p2_id])
+        yield {
+            "type": "result",
+            "logs": all_logs + [f"⏰ Hết lượt! {'Hòa' if hp1 == hp2 else ''} → **{parts[winner_id]['name'] if winner_id in parts else winner_id}** thắng"],
+            "p1_hp": max(0, p1.get("hp", 0)),
+            "p2_hp": max(0, p2.get("hp", 0)),
+            "finished": True, "winner_id": winner_id,
+        }
 
     async def _apply_elo_match(self, winner_id: str, loser_id: str,
                                 is_final: bool = False, is_semi: bool = False) -> tuple[int, int, int, int]:
