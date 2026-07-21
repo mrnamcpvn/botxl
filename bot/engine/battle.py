@@ -151,8 +151,8 @@ def get_effective_stats(pdata: dict) -> dict:
         if set_bonus.get("dodge"):
             dodge += set_bonus["dodge"]
 
-    hp_max = int(hp_max * GLOBAL_HP_MULT)
-    defense = int(defense * GLOBAL_DEF_MULT)
+    hp_max = int(hp_max * GLOBAL_HP_MULT) if not pdata.get("_npc_override") else hp_max
+    defense = int(defense * GLOBAL_DEF_MULT) if not pdata.get("_npc_override") else defense
 
     return {
         "hp_max": hp_max,

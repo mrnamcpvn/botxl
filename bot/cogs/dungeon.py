@@ -131,7 +131,7 @@ def generate_dungeon_npc(floor: int) -> dict:
     npc_level = floor + 5
     hp = 100 + npc_level * 25
     atk = 10 + npc_level * 5
-    defense = 5 + npc_level * 3
+    defense = 5 + npc_level * 2
     names = [
         "Quái Vật Bóng Tối", "Thú Dữ Vực Sâu", "Linh Hồn Lạc Lối",
         "Xác Sống Vô Hồn", "Quỷ Dữ Bóng Đêm", "Rồng Đen Hắc Ám",
@@ -151,9 +151,9 @@ def generate_dungeon_npc(floor: int) -> dict:
     }
     if floor in boss_names:
         name = boss_names[floor]
-        hp = int(hp * 10)
-        atk = int(atk * 10)
-        defense = int(defense * 10)
+        hp = int(hp * 5)
+        atk = int(atk * 5)
+        defense = int(defense * 5)
     else:
         hp = int(hp * 3)
         atk = int(atk * 3)
@@ -446,6 +446,9 @@ class DungeonCog(commands.Cog):
 
             eff = get_effective_stats(pdata)
 
+            # Full heal at dungeon entry
+            pdata["hp"] = eff["hp_max"]
+
             npc_data = generate_dungeon_npc(floor)
             npc_data["equipped"] = {}
             npc_data["_equip_items"] = {}
@@ -479,7 +482,7 @@ class DungeonCog(commands.Cog):
     def _npc_ai_move(self, npc: dict) -> str:
         hp_pct = npc["hp"] / max(npc["hp_max"], 1) * 100
         if hp_pct < 30:
-            return random.choices(["attack", "special", "defense"], weights=[20, 15, 65])[0]
+            return random.choices(["attack", "special", "defense"], weights=[35, 25, 40])[0]
         elif hp_pct < 60:
             return random.choices(["attack", "special", "defense"], weights=[35, 30, 35])[0]
         else:
@@ -636,6 +639,14 @@ class DungeonCog(commands.Cog):
                 await db.commit()
             finally:
                 await db.close()
+
+            # Heal between floors: 50% after boss, 25% after regular
+            player = session["player_pdata"]
+            eff = get_effective_stats(player)
+            heal_pct = 50 if floor % 10 == 0 else 25
+            heal_amt = int(eff["hp_max"] * heal_pct / 100)
+            player["hp"] = min(eff["hp_max"], player.get("hp", 0) + heal_amt)
+            result_lines.append(f"💚 Hồi {heal_pct}% HP (+{heal_amt}) sau tầng {floor}!")
 
             next_floor = floor + 1
             if next_floor > DUNGEON_MAX_FLOOR:
