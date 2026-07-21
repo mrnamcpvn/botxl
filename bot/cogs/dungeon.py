@@ -305,8 +305,8 @@ class DungeonView(discord.ui.View):
                         stars = STAR_LABELS.get(eq["star"], "⭐")
                         desc += f"\n⚒️ {stars} **{eq['name']}**"
                     embed = discord.Embed(title="🏰 Bí Cảnh Vực Sâu", description=desc, color=0xff8800)
-                    if self.message:
-                        await self.message.edit(embed=embed, view=None)
+                    if "_message" in session:
+                        await session["_message"].edit(embed=embed, view=None)
                 finally:
                     await db.close()
 
