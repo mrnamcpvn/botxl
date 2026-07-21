@@ -225,7 +225,7 @@ def build_npc_page(page: int) -> discord.Embed:
         view = NPCListView(0)
         await ctx.send(embed=embed, view=view)
 
-    @app_commands.command(name="npc", description="📜 Xem danh sách NPC")
+    @app_commands.command(name="npclist", description="📜 Xem danh sách NPC")
     async def slash_npc_list(self, interaction: discord.Interaction):
         try:
             embed = build_npc_page(0)
