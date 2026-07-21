@@ -138,6 +138,28 @@ TABLES = [
         player_id TEXT PRIMARY KEY,
         amount INTEGER DEFAULT 0
     )""",
+    """CREATE TABLE IF NOT EXISTS arena_tournament (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        status TEXT NOT NULL DEFAULT 'registering',
+        channel_id TEXT NOT NULL,
+        started_by TEXT NOT NULL,
+        started_at REAL NOT NULL,
+        bracket_json TEXT,
+        winner_id TEXT,
+        runner_up_id TEXT,
+        third_id TEXT,
+        finished_at REAL,
+        created_at TEXT DEFAULT (datetime('now','+7 hours'))
+    )""",
+    """CREATE TABLE IF NOT EXISTS arena_participants (
+        tournament_id INTEGER REFERENCES arena_tournament(id),
+        player_id TEXT NOT NULL,
+        cp_at_entry INTEGER DEFAULT 0,
+        eliminated_round INTEGER DEFAULT 0,
+        final_rank INTEGER DEFAULT 0,
+        reward_given INTEGER DEFAULT 0,
+        PRIMARY KEY (tournament_id, player_id)
+    )""",
 ]
 
 MIGRATIONS = [
@@ -252,6 +274,8 @@ async def _create_indexes(db):
         "CREATE INDEX IF NOT EXISTS idx_challenges_challenger ON challenges(challenger_id)",
         "CREATE INDEX IF NOT EXISTS idx_player_skill_slots_player ON player_skill_slots(player_id)",
         "CREATE INDEX IF NOT EXISTS idx_battle_status_battle ON battle_status(battle_id)",
+        "CREATE INDEX IF NOT EXISTS idx_arena_tournament_status ON arena_tournament(status)",
+        "CREATE INDEX IF NOT EXISTS idx_arena_participants_tournament ON arena_participants(tournament_id)",
     ]
     for sql in indexes:
         try:
