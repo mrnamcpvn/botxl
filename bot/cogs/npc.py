@@ -177,15 +177,11 @@ class NPCListView(discord.ui.View):
 
     def _make_nav(self, delta: int):
         async def cb(interaction: discord.Interaction):
-            await interaction.response.defer()
             self.page += delta
             embed = build_npc_page(self.page)
             total_pages = (len(NPC_DEFINITIONS) + 9) // 10
             self._update_buttons(total_pages)
-            try:
-                await interaction.edit_original_response(embed=embed, view=self)
-            except:
-                await interaction.message.edit(embed=embed, view=self)
+            await interaction.response.edit_message(embed=embed, view=self)
         return cb
 
 
