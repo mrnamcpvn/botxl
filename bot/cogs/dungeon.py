@@ -294,6 +294,19 @@ class DungeonView(discord.ui.View):
                         await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (sid, eq["eid"]))
                     await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
                     await db.commit()
+
+                    # Build reward summary
+                    desc = f"⏰ **Hết thời gian ở tầng {self.floor}!**\n\n🏃 Đã nhận thưởng tích lũy:\n"
+                    desc += f"💰 **{acc['coins']}**🪙"
+                    for sk, label in [("stone_basic", "Đá sơ cấp"), ("stone_medium", "Đá trung cấp"), ("stone_advanced", "Đá cao cấp")]:
+                        if acc["stones"].get(sk, 0) > 0:
+                            desc += f"\n💎 **{acc['stones'][sk]}** {label}"
+                    for eq in acc["equipment"]:
+                        stars = STAR_LABELS.get(eq["star"], "⭐")
+                        desc += f"\n⚒️ {stars} **{eq['name']}**"
+                    embed = discord.Embed(title="🏰 Bí Cảnh Vực Sâu", description=desc, color=0xff8800)
+                    if self.message:
+                        await self.message.edit(embed=embed, view=None)
                 finally:
                     await db.close()
 
