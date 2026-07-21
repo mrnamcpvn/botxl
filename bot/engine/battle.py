@@ -55,6 +55,8 @@ def get_effective_stats(pdata: dict) -> dict:
             enhance_bonus = ENHANCE_BONUS_PER_LEVEL
             if EQUIPMENT[item_id]["star"] == 6:
                 enhance_bonus = 0.12
+            elif EQUIPMENT[item_id]["star"] >= 7:
+                enhance_bonus = 0.15
             mult = 1 + enhance * enhance_bonus
             for k, v in EQUIPMENT[item_id]["stats"].items():
                 val = int(v * mult)

@@ -182,12 +182,12 @@ EQUIPMENT = {
     651: {"name":"💎 Nhẫn Hủy Diệt","slot":"ring","star":6,"stats":{"attack_min":56,"attack_max":56,"hp":120,"pierce":40,"dodge":20}},
 
     # ═══════ ⭐7 👑 VŨ TRỤ (Hidden - chỉ có từ ghép) ═══════
-    701: {"name":"👑 Hư Vô Thần Kiếm","slot":"weapon","star":7,"stats":{"attack_min":120,"attack_max":180,"crit":20,"pierce":15,"spd":10}},
-    702: {"name":"👑 Vạn Giới Chiến Giáp","slot":"armor","star":7,"stats":{"defense":120,"hp":800,"reflect":10,"regen":10}},
-    703: {"name":"👑 Thời Không Chiến Hài","slot":"boots","star":7,"stats":{"spd":60,"dodge":15,"hp":200}},
-    704: {"name":"👑 Hủy Diệt Thần Quyền","slot":"gloves","star":7,"stats":{"attack_min":80,"attack_max":120,"crit":20,"pierce":20}},
-    705: {"name":"👑 Vĩnh Hằng Chi Đới","slot":"belt","star":7,"stats":{"hp":1200,"defense":60,"regen":15}},
-    706: {"name":"👑 Sáng Thế Chi Nhẫn","slot":"ring","star":7,"stats":{"attack_min":60,"attack_max":80,"defense":30,"hp":300,"spd":10,"crit":15,"dodge":10}},
+    701: {"name":"👑 Hư Vô Thần Kiếm","slot":"weapon","star":7,"stats":{"attack_min":160,"attack_max":240,"crit":40,"pierce":40,"spd":20}},
+    702: {"name":"👑 Vạn Giới Chiến Giáp","slot":"armor","star":7,"stats":{"defense":200,"hp":800,"reflect":20,"regen":20}},
+    703: {"name":"👑 Thời Không Chiến Hài","slot":"boots","star":7,"stats":{"spd":90,"dodge":30,"hp":200}},
+    704: {"name":"👑 Hủy Diệt Thần Quyền","slot":"gloves","star":7,"stats":{"attack_min":140,"attack_max":200,"crit":40,"pierce":40}},
+    705: {"name":"👑 Vĩnh Hằng Chi Đới","slot":"belt","star":7,"stats":{"hp":1200,"defense":100,"regen":20}},
+    706: {"name":"👑 Sáng Thế Chi Nhẫn","slot":"ring","star":7,"stats":{"attack_min":120,"attack_max":160,"defense":40,"hp":400,"spd":20,"crit":30,"dodge":20}},
 }
 
 
