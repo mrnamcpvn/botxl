@@ -22,6 +22,13 @@ def stat_to_pct(raw: int, stat_name: str) -> int:
     return min(int(raw / divisor), cap)
 
 
+def _apply_cd(attacker: dict, skill: dict) -> int:
+    cd = skill.get("cooldown", 0)
+    if cd > 0 and get_class_perk(attacker.get("class_id", "")) == "cd_reduce":
+        cd -= 1
+    return cd
+
+
 def calc_class_stat(base: int, scale: int, level: int) -> int:
     return base + scale * (level - 1)
 
@@ -217,7 +224,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             heal_amt = int(atk_eff["hp_max"] * heal_pct / 100)
             attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal_amt)
             result_lines.append(f"🛡️ **{skill['name']}** — \u00d73 DEF + h\u1ed3i {heal_amt}HP! \u2602\ufe0f")
-            attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+            attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
 
         elif skill["type"] == "heal":
             heal_pct = skill.get("heal_pct", 40)
@@ -228,7 +235,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 attacker.pop(kb, None)
             flags[f"{attacker['id']}_stunned"] = False
             result_lines.append(f"💚 **{skill['name']}** — h\u1ed3i **{attacker['hp'] - old} HP**!")
-            attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+            attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
 
         elif skill["type"] == "shield":
             sh_pct = skill.get("shield_pct", 35)
@@ -237,7 +244,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             flags[f"{a_id}_shield_hp"] = sh_amt
             flags[f"{a_id}_shield_pop_heal"] = skill.get("shield_pop_heal", 15)
             result_lines.append(f"🛡️ **{skill['name']}** — khi\u00ean {sh_amt}HP! (+{skill.get('shield_pop_heal', 15)}% khi v\u1ee1)")
-            attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+            attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
 
         elif skill["type"] == "counter":
             c_mult = skill.get("multiplier", 0.2)
@@ -245,7 +252,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             flags[f"{a_id}_counter"] = c_mult
             flags[f"{a_id}_counter_active"] = True
             result_lines.append(f"🔄 **{skill['name']}** — gi\u1ea3m 80% dmg + ph\u1ea3n {int(c_mult*100)}%!")
-            attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+            attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
 
     # ─── DAMAGE moves (attack + special) ───
     else:
@@ -259,7 +266,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         if def_passive["type"] == "dodge":
             if random.random() < def_passive["dodge_chance"] / 100:
                 result_lines.append(f"🍀 **{defender.get('name', '???')} N\u00c9 \u0110\u00d2N!**")
-                attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+                attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
                 hp1 = p1.get("hp", 0)
                 hp2 = p2.get("hp", 0)
                 for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
@@ -279,7 +286,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         equip_dodge = stat_to_pct(def_eff.get("dodge", 0), "dodge")
         if equip_dodge > 0 and random.random() * 100 < equip_dodge:
             result_lines.append(f"💨 **{defender.get('name', '???')} NÉ ĐÒN ({equip_dodge}%)!**")
-            attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+            attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
             for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
                 for p in [p1, p2]:
                     if p.get(cdkey, 0) > 0:
@@ -466,7 +473,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         for p in [p1, p2]:
             flags.pop(f"{p['id']}_defending", None)
 
-        attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+        attacker[f"{cat}_cd"] = _apply_cd(attacker, skill)
 
     # ─── End of turn processing ───
 
@@ -490,10 +497,6 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
             if attacker.get(cdkey, 0) > 0:
                 attacker[cdkey] -= 1
-        if get_class_perk(attacker.get("class_id", "")) == "cd_reduce":
-            for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
-                if attacker.get(cdkey, 0) > 0:
-                    attacker[cdkey] -= 1
 
         # Regen passive for both
         for p in [p1, p2]:

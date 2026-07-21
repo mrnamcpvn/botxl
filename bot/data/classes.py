@@ -30,7 +30,7 @@ CLASSES = {
         "hp_base": 90, "hp_scale": 9,
         "atk_base": 14, "atk_scale": 4,
         "def_base": 6, "def_scale": 2,
-        "desc": "CD giảm gấp đôi mỗi turn | skill hồi nhanh",
+        "desc": "CD gốc tất cả skill -1 | skill hồi nhanh hơn",
         "price": 5000,
         "perk": "cd_reduce"
     },
@@ -76,7 +76,7 @@ CLASSES = {
 PERK_DESCRIPTIONS = {
     "defend_reduce": "Nhận ít dmg hơn 20% nếu đang phòng thủ",
     "first_strike": "Đòn tấn công đầu trận ×1.5",
-    "cd_reduce": "Cooldown giảm thêm -1 mỗi turn (tổng -2)",
+    "cd_reduce": "CD gốc tất cả skill giảm -1",
     "lifesteal_boost": "Hút máu +30% hiệu quả",
     "rage_boost": "Rage tích +50% nhanh hơn, sát thương rage ×2.5",
     "last_stand_boost": "Thoát chết kích hoạt ở 40% HP",
