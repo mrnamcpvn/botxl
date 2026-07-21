@@ -449,6 +449,87 @@ class ArenaTournament(commands.Cog):
         finally:
             await db.close()
 
+    @app_commands.command(name="arena", description="🎮 Quản lý Đấu Trường Sinh Tử")
+    @app_commands.default_permissions(administrator=True)
+    async def arena_admin(self, interaction: discord.Interaction, action: str):
+        action = action.lower()
+        if action == "start":
+            if self._current_status is not None:
+                await interaction.response.send_message("⏳ Đang có đấu trường chạy rồi!", ephemeral=True)
+                return
+            await interaction.response.send_message("✅ Đang mở đấu trường...", ephemeral=True)
+            await self.start_tournament(interaction.channel, str(interaction.user.id))
+
+        elif action == "stop":
+            if self._current_id is None:
+                await interaction.response.send_message("🤷 Không có đấu trường nào đang chạy.", ephemeral=True)
+                return
+            await self._cancel_tournament(self._current_id)
+            if self._reg_task:
+                self._reg_task.cancel()
+            if self._fight_task:
+                self._fight_task.cancel()
+            await interaction.response.send_message("🛑 Đã hủy đấu trường.", ephemeral=True)
+
+        elif action == "toggle":
+            import bot.config as cfg
+            cfg.ARENA_AUTO_ENABLED = not cfg.ARENA_AUTO_ENABLED
+            if cfg.ARENA_AUTO_ENABLED:
+                if not self._auto_schedule.is_running():
+                    self._auto_schedule.start()
+            else:
+                if self._auto_schedule.is_running():
+                    self._auto_schedule.cancel()
+            status = "BẬT" if cfg.ARENA_AUTO_ENABLED else "TẮT"
+            await interaction.response.send_message(f"🔁 Auto-schedule: **{status}**", ephemeral=True)
+
+        elif action == "status":
+            if self._current_id:
+                status = self._current_status or "?"
+                await interaction.response.send_message(f"📊 Tournament #{self._current_id} — **{status}**", ephemeral=True)
+            else:
+                await interaction.response.send_message("📊 Không có đấu trường đang chạy.", ephemeral=True)
+
+        else:
+            await interaction.response.send_message("Dùng: `start`, `stop`, `toggle`, `status`", ephemeral=True)
+
+    @arena_admin.autocomplete("action")
+    async def arena_action_autocomplete(self, interaction: discord.Interaction, current: str):
+        options = ["start", "stop", "toggle", "status"]
+        return [app_commands.Choice(name=o, value=o) for o in options if current.lower() in o.lower()]
+
+    @app_commands.command(name="arenahistory", description="📜 Lịch sử Đấu Trường Sinh Tử")
+    async def arena_history(self, interaction: discord.Interaction):
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, winner_id, runner_up_id, third_id, finished_at FROM arena_tournament WHERE status='done' ORDER BY id DESC LIMIT 5")
+            rows = await cursor.fetchall()
+        finally:
+            await db.close()
+
+        if not rows:
+            await interaction.response.send_message("📜 Chưa có mùa giải nào!", ephemeral=True)
+            return
+
+        lines = []
+        for r in rows:
+            r = dict(r)
+            lines.append(f"#{r['id']} — {r.get('finished_at', '?')}")
+            if r.get("winner_id"):
+                lines.append(f"  🥇 <@{r['winner_id']}>")
+            if r.get("runner_up_id"):
+                lines.append(f"  🥈 <@{r['runner_up_id']}>")
+            if r.get("third_id"):
+                lines.append(f"  🥉 <@{r['third_id']}>")
+
+        embed = discord.Embed(
+            title="📜 Lịch Sử Đấu Trường Sinh Tử",
+            description="\n".join(lines),
+            color=0x3498db,
+        )
+        await interaction.response.send_message(embed=embed)
+
     async def _cancel_tournament(self, tid: int):
         db = await get_db()
         try:
