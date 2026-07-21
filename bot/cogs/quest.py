@@ -7,8 +7,7 @@ from bot.database import get_db
 from bot.data.quests import QUESTS, QUESTS_PER_DAY, QUEST_POOL, QUEST_RESET_COST
 from bot.data.shop_items import SHOP_ITEMS
 
-
-QUESTS_PER_DAY = 5
+# Dùng QUESTS_PER_DAY từ data/quests.py — không định nghĩa lại ở đây
 QUEST_RESET_ITEM_ID = 26
 
 
@@ -206,44 +205,71 @@ class QuestCog(commands.Cog):
                 if rd["completed"]:
                     completed += 1
 
-            # Auto-claim completed quests + bonus
+            # Auto-claim các quest đã hoàn thành nhưng chưa nhận
             claim_msgs = []
-            bonus_given = False
             for qd in quests_data:
                 if qd["completed"] and not qd["claimed"]:
                     q = QUESTS.get(qd["quest_id"], {})
                     qd["claimed"] = True
+                    reward_parts = []
                     if q.get("reward_coins"):
                         await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (q["reward_coins"], sid))
+                        reward_parts.append(f"+{q['reward_coins']}🪙")
                     if q.get("reward_xp"):
                         await db.execute("UPDATE players SET xp=xp+? WHERE id=?", (q["reward_xp"], sid))
+                        reward_parts.append(f"+{q['reward_xp']}XP")
                     if q.get("reward_stone"):
-                        sk = {"basic":"stone_basic","medium":"stone_medium","advanced":"stone_advanced"}.get(q["reward_stone"], q["reward_stone"])
+                        sk = {"basic": "stone_basic", "medium": "stone_medium", "advanced": "stone_advanced"}.get(
+                            q["reward_stone"], q["reward_stone"])
                         sq = q.get("reward_stone_qty", 1)
-                        await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
-                        await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
+                        await db.execute(
+                            "INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)",
+                            (sid,))
+                        await db.execute(
+                            f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
+                        stone_label = {"stone_basic": "Đá SB", "stone_medium": "Đá TC", "stone_advanced": "Đá CC"}.get(sk, sk)
+                        reward_parts.append(f"+{sq} {stone_label}")
                     if q.get("reward_artifact"):
-                        await db.execute("INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + ?)",
-                                         (sid, sid, sid, q["reward_artifact"]))
-                    await db.execute("UPDATE daily_quests SET claimed=1 WHERE player_id=? AND quest_id=? AND date=?",
-                                     (sid, qd["quest_id"], today))
-                    await db.execute("INSERT OR REPLACE INTO player_vip_coins (player_id, amount) VALUES (?, COALESCE((SELECT amount FROM player_vip_coins WHERE player_id=?), 0) + 1)",
-                                     (sid, sid))
-                    claim_msgs.append(f"🎉 **{q.get('name','?')}**: +{q.get('reward_coins',0)}🪙 +1 VIP")
-
-            if completed >= QUESTS_PER_DAY:
-                all_claimed = await (await db.execute(
-                    "SELECT COUNT(*) FROM daily_quests WHERE player_id=? AND date=? AND claimed=1", (sid, today))).fetchone()
-                if all_claimed[0] >= QUESTS_PER_DAY:
-                    bonus_already = await (await db.execute("SELECT 1 FROM daily_quests WHERE player_id=? AND date=? AND claimed=1 LIMIT 1", (sid, today))).fetchone()
-                    bonus_given = True
+                        await db.execute(
+                            "INSERT OR REPLACE INTO player_artifact (player_id, star, stone_count) VALUES (?, COALESCE((SELECT star FROM player_artifact WHERE player_id=?), 0), COALESCE((SELECT stone_count FROM player_artifact WHERE player_id=?), 0) + ?)",
+                            (sid, sid, sid, q["reward_artifact"]))
+                        reward_parts.append(f"+{q['reward_artifact']} Đá TK")
+                    await db.execute(
+                        "UPDATE daily_quests SET claimed=1 WHERE player_id=? AND quest_id=? AND date=?",
+                        (sid, qd["quest_id"], today))
+                    await db.execute(
+                        "INSERT OR REPLACE INTO player_vip_coins (player_id, amount) VALUES (?, COALESCE((SELECT amount FROM player_vip_coins WHERE player_id=?), 0) + 1)",
+                        (sid, sid))
+                    reward_parts.append("+1 VIP")
+                    if reward_parts:
+                        claim_msgs.append(f"🎉 **{q.get('name', '?')}**: {' · '.join(reward_parts)}")
 
             if claim_msgs:
                 await db.commit()
 
+            # Kiểm tra bonus hoàn thành tất cả quest (chỉ cấp 1 lần/ngày)
+            bonus_claimed = False
+            if completed >= QUESTS_PER_DAY:
+                # Đếm số quest đã claimed sau auto-claim ở trên
+                claimed_count = await (await db.execute(
+                    "SELECT COUNT(*) FROM daily_quests WHERE player_id=? AND date=? AND claimed=1",
+                    (sid, today))).fetchone()
+                # Bonus đã được cấp nếu tất cả quest đều claimed
+                bonus_claimed = (claimed_count[0] >= QUESTS_PER_DAY)
+
+            desc_lines = [f"✅ Hoàn thành: **{completed}/{QUESTS_PER_DAY}**"]
+            if claim_msgs:
+                desc_lines.append("\n**🎁 Vừa nhận thưởng:**")
+                desc_lines.extend(claim_msgs)
+            if completed >= QUESTS_PER_DAY and not bonus_claimed:
+                desc_lines.append("\n🌟 Bấm **Nhận Thưởng Hoàn Thành** để nhận bonus!")
+            elif bonus_claimed:
+                desc_lines.append("\n✅ Đã nhận thưởng hoàn thành hôm nay")
+            desc_lines.append(f"\n🎫 Reset: `{prefix}questreset <số>` (cần Vé Reset Quest)")
+
             embed = discord.Embed(
                 title=f"📋 Nhiệm Vụ Hàng Ngày — {display_name}",
-                description=f"✅ Hoàn thành: **{completed}/{QUESTS_PER_DAY}**\n🎫 Reset: `{prefix}questreset <số>` (cần Vé Reset Quest)",
+                description="\n".join(desc_lines),
                 color=0xffaa00)
 
             for i, qd in enumerate(quests_data):
@@ -263,7 +289,7 @@ class QuestCog(commands.Cog):
             vip_cursor = await db.execute("SELECT amount FROM player_vip_coins WHERE player_id=?", (sid,))
             vip_row = await vip_cursor.fetchone()
             vip_coins = vip_row[0] if vip_row else 0
-            embed.set_footer(text=f"🪙 VIP Coins: {vip_coins} | Reset quest cần Vé Reset Quest (shop)")
+            embed.set_footer(text=f"🪙 VIP Coins: {vip_coins} | Quest reset lúc 0:00 hàng ngày")
 
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.reply(embed=embed)

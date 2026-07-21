@@ -215,9 +215,18 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
     skill = SKILLS_DB.get(action["skill_id"], SKILLS_DB[1])
     cat = action["type"]
 
+    # Cache stats một lần cho toàn bộ turn — tránh gọi lại nhiều lần trong cùng 1 action
+    _eff_cache: dict[str, dict] = {}
+
+    def _eff(p: dict) -> dict:
+        pid = p.get("id", id(p))
+        if pid not in _eff_cache:
+            _eff_cache[pid] = get_effective_stats(p)
+        return _eff_cache[pid]
+
     # ─── DEFENSE moves ───
     if cat == "defense":
-        atk_eff = get_effective_stats(attacker)
+        atk_eff = _eff(attacker)
         if skill["type"] == "defend":
             flags[f"{attacker['id']}_defending"] = True
             heal_pct = skill.get("heal_pct", 8)
@@ -228,7 +237,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
         elif skill["type"] == "heal":
             heal_pct = skill.get("heal_pct", 40)
-            heal_amt = int(atk_eff["hp_max"] * heal_pct / 100)
+            heal_amt = int(_eff(attacker)["hp_max"] * heal_pct / 100)
             old = attacker.get("hp", 0)
             attacker["hp"] = min(atk_eff["hp_max"], attacker["hp"] + heal_amt)
             for kb in ["_burn", "_def_reduced"]:
@@ -256,8 +265,8 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
     # ─── DAMAGE moves (attack + special) ───
     else:
-        atk_eff = get_effective_stats(attacker)
-        def_eff = get_effective_stats(defender)
+        atk_eff = _eff(attacker)
+        def_eff = _eff(defender)
         atk_buffs = attacker.get("buffs", {})
         def_buffs = defender.get("buffs", {})
 
@@ -498,25 +507,25 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             if attacker.get(cdkey, 0) > 0:
                 attacker[cdkey] -= 1
 
-        # Regen passive for both
+        # Regen passive for both — dùng cache _eff thay vì gọi lại get_effective_stats
         for p in [p1, p2]:
-            eff = get_effective_stats(p)
+            eff = _eff(p)
             pid = p.get("skill_equipped", {}).get("passive")
             pskill = SKILLS_DB.get(pid)
             if pskill and pskill.get("type") == "regen":
                 reg = int(eff["hp_max"] * pskill["regen_pct"] / 100)
                 p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
 
-        # Burn tick
+        # Burn tick — dùng cache _eff
         for p in [p1, p2]:
-            eff = get_effective_stats(p)
+            eff = _eff(p)
             key = f"{p['id']}_burn"
             burn = flags.get(key)
             if burn and burn.get("turns", 0) > 0:
                 bd = int(eff["hp_max"] * burn["pct"] / 100)
                 p["hp"] = max(0, p.get("hp", 0) - bd)
                 burn["turns"] -= 1
-                result_lines.append(f"🔥 B\u1ecfng! {p.get('name', '???')} -{bd}HP ({burn['turns']}t)")
+                result_lines.append(f"🔥 Bỏng! {p.get('name', '???')} -{bd}HP ({burn['turns']}t)")
                 if burn["turns"] <= 0:
                     flags.pop(key, None)
 

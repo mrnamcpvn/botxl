@@ -8,6 +8,8 @@ DB_PATH = os.path.join(DATA_DIR, "botxl.db")
 TOKEN = os.getenv("TOKEN") or "YOUR_BOT_TOKEN_HERE"
 WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY") or "botxl-secret-key-change-me"
 
+QUIZ_CHANNEL_ID = int(os.getenv("QUIZ_CHANNEL_ID") or "1040459995319373864")
+
 HP_REGEN_PCT = 10
 HP_REGEN_INTERVAL = 30
 
