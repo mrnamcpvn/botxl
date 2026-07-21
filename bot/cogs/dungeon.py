@@ -221,7 +221,7 @@ def calc_dungeon_rewards(floor: int) -> dict:
 class DungeonView(discord.ui.View):
     def __init__(self, cog, player_id: str, floor: int, player_pdata: dict,
                  npc_pdata: dict, player_name: str, accumulated_rewards: dict):
-        super().__init__(timeout=60)
+        super().__init__(timeout=180)
         self.cog = cog
         self.player_id = player_id
         self.floor = floor
@@ -334,6 +334,7 @@ class DungeonCog(commands.Cog):
 
     @app_commands.command(name="bicanh", description="🏰 Vào bí cảnh Vực Sâu Xỏ Lá")
     async def slash_bicanh(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         await self._bicanh_entry(interaction, str(interaction.user.id),
                                  interaction.user.display_name, "/")
 
@@ -474,6 +475,8 @@ class DungeonCog(commands.Cog):
 
             if isinstance(ctx_or_int, commands.Context):
                 await ctx_or_int.reply(embed=embed, view=view)
+            elif ctx_or_int.response.is_done():
+                await ctx_or_int.edit_original_response(embed=embed, view=view)
             else:
                 await ctx_or_int.response.send_message(embed=embed, view=view)
         finally:
@@ -526,9 +529,16 @@ class DungeonCog(commands.Cog):
     async def _execute_dungeon_turn(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
                                      player_move_type: str):
+        flags = session["flags"]
+
+        # Prevent concurrent turns (double-click guard)
+        if flags.get("_turn_in_progress"):
+            await interaction.followup.send("⏳ Đợi lượt trước xử lý xong đã!", ephemeral=True)
+            return
+        flags["_turn_in_progress"] = True
+
         player = session["player_pdata"]
         npc = session["npc_pdata"]
-        flags = session["flags"]
         result_lines = []
 
         if player_move_type == "basic":
@@ -540,6 +550,7 @@ class DungeonCog(commands.Cog):
                 sk = get_equipped_skill(player, cat)
                 await interaction.followup.send(
                     f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
+                flags.pop("_turn_in_progress", None)
                 return
             skill = get_equipped_skill(player, cat)
             skill_id = None
@@ -556,6 +567,7 @@ class DungeonCog(commands.Cog):
         result_lines.extend(result["log_messages"])
 
         if result["finished"]:
+            flags.pop("_turn_in_progress", None)
             await self._finish_dungeon_floor(interaction, session, view, player["hp"] > 0, result_lines)
             return
 
@@ -606,6 +618,7 @@ class DungeonCog(commands.Cog):
                                player, npc, session["player_name"],
                                session["accumulated_rewards"])
         await interaction.edit_original_response(embed=embed, view=new_view)
+        flags.pop("_turn_in_progress", None)
 
     async def _finish_dungeon_floor(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,
@@ -737,6 +750,8 @@ class DungeonCog(commands.Cog):
     async def _reply(self, ctx_or_int, msg, ephemeral=False):
         if isinstance(ctx_or_int, commands.Context):
             await ctx_or_int.reply(msg)
+        elif ctx_or_int.response.is_done():
+            await ctx_or_int.followup.send(msg, ephemeral=ephemeral)
         else:
             await ctx_or_int.response.send_message(msg, ephemeral=ephemeral)
 
