@@ -13,6 +13,7 @@ from bot.config import (
 )
 from bot.engine.battle import execute_action, get_effective_stats
 from bot.engine.arena_ai import pick_action
+from bot.engine.ranking import calculate_elo_tournament
 from bot.engine.rewards import _EQUIP_BY_STAR
 from bot.data.equipment import EQUIPMENT, STAR_LABELS
 from bot.utils.player_loader import load_player_full
@@ -307,16 +308,43 @@ class ArenaTournament(commands.Cog):
                     elif is_semi:
                         semi_losers.append(loser_id)
 
-                    # Hiển thị log từng phần — delay để dễ theo dõi
-                    # Gộp log thành các block 5 dòng, cách nhau 2 giây
+                    # Tính và lưu ELO ngay sau trận
+                    try:
+                        w_elo_old, w_elo_new, l_elo_old, l_elo_new = await self._apply_elo_match(
+                            winner_id, loser_id, is_final=is_final, is_semi=is_semi)
+                        w_elo_diff = w_elo_new - w_elo_old
+                        l_elo_diff = l_elo_new - l_elo_old
+                        elo_line = (
+                            f"📈 **{winner_name}**: {w_elo_old} → **{w_elo_new}** "
+                            f"({'+'if w_elo_diff >= 0 else ''}{w_elo_diff})\n"
+                            f"📉 **{loser_name}**: {l_elo_old} → **{l_elo_new}** "
+                            f"({'+'if l_elo_diff >= 0 else ''}{l_elo_diff})"
+                        )
+                    except Exception as e:
+                        logger.warning(f"[ARENA] ELO update lỗi: {e}")
+                        elo_line = ""
+
+                    # Hiển thị log từng block — delay để dễ theo dõi
                     filtered_log = [l for l in log if l.strip()]
                     block_size = 5
-                    for block_start in range(0, len(filtered_log), block_size):
+
+                    # Track live HP từng block: winner HP tăng/giảm, loser về 0 cuối
+                    cur_p1_hp = p1_hp if winner_id == p1_id else 0
+                    cur_p2_hp = p2_hp if winner_id == p2_id else 0
+
+                    for block_idx, block_start in enumerate(range(0, len(filtered_log), block_size)):
                         block = filtered_log[block_start:block_start + block_size]
                         block_text = "\n".join(f"  {l}" for l in block)
+
+                        # Cuối block cuối cùng → hiện HP kết thúc thực tế
+                        is_last_block = (block_start + block_size >= len(filtered_log))
+                        show_p1_hp = p1_hp if is_last_block else "..."
+                        show_p2_hp = p2_hp if is_last_block else "..."
+
                         status_desc = (
-                            f"⚔️ **{p1n}** `{p1_hp}HP` ⚡ **{p2n}** `{p2_hp}HP`\n\n"
-                            f"**Diễn biến:**\n{block_text}"
+                            f"⚔️ **{p1n}** `{show_p1_hp}HP` ⚡ **{p2n}** `{show_p2_hp}HP`\n\n"
+                            f"**Diễn biến ({block_start+1}-{min(block_start+block_size, len(filtered_log))}/{len(filtered_log)}):**\n"
+                            f"{block_text}"
                         )
                         try:
                             await match_msg.edit(embed=discord.Embed(
@@ -340,6 +368,8 @@ class ArenaTournament(commands.Cog):
                         f"❤️ {p1n}: `{p1_hp}HP` | {p2n}: `{p2_hp}HP`\n\n"
                         f"**Diễn biến cuối:**\n{log_text}"
                     )
+                    if elo_line:
+                        result_desc += f"\n\n**ELO:**\n{elo_line}"
                     try:
                         await match_msg.edit(embed=discord.Embed(
                             title=f"{'🏆 CHUNG KẾT' if is_final else round_label}: {p1n} VS {p2n}",
@@ -434,6 +464,10 @@ class ArenaTournament(commands.Cog):
             self._current_status = None
 
     async def _run_ai_battle(self, p1_id: str, p2_id: str) -> tuple[str | None, list[str], int, int]:
+        """
+        Chạy trận AI battle. Mỗi lần gọi đều load fresh từ DB và full HP.
+        Trả về (winner_id, log_lines, final_p1_hp, final_p2_hp).
+        """
         db = await get_db()
         try:
             p1 = await load_player_full(db, p1_id, reset_cd=True)
@@ -443,11 +477,13 @@ class ArenaTournament(commands.Cog):
 
         if not p1 or not p2:
             winner = p1_id if p1 and not p2 else (p2_id if p2 else p1_id)
-            return winner, ["⚠️ Đối thủ không tồn tại, auto-thắng."], p1.get("hp", 0) if p1 else 0, p2.get("hp", 0) if p2 else 0
+            return winner, ["⚠️ Đối thủ không tồn tại, auto-thắng."], \
+                   p1.get("hp", 0) if p1 else 0, p2.get("hp", 0) if p2 else 0
 
         p1["id"] = p1_id
         p2["id"] = p2_id
 
+        # Full HP cho cả 2 trước khi bắt đầu — không phụ thuộc HP trong DB
         eff1 = get_effective_stats(p1)
         eff2 = get_effective_stats(p2)
         p1["hp"] = eff1["hp_max"]
@@ -455,6 +491,7 @@ class ArenaTournament(commands.Cog):
         p1["hp_max"] = eff1["hp_max"]
         p2["hp_max"] = eff2["hp_max"]
 
+        # Quyết định ai đi trước theo SPD
         spd1 = eff1.get("spd", 0)
         spd2 = eff2.get("spd", 0)
         if spd1 > spd2:
@@ -466,11 +503,21 @@ class ArenaTournament(commands.Cog):
 
         flags: dict = {"turn_count": 0}
         all_logs: list[str] = []
-        max_turns = 60
+        max_turns = 80  # tăng lên để tránh trận dài bị cắt giữa chừng
 
         for _ in range(max_turns):
             current = p1 if turn == 0 else p2
             opponent = p2 if turn == 0 else p1
+
+            # Kiểm tra HP trước mỗi lượt — dừng ngay nếu ai đã 0 HP
+            if p1.get("hp", 0) <= 0:
+                p1["hp"] = 0
+                all_logs.append(f"💀 **{p1.get('name', p1_id)}** đã hết máu!")
+                return p2_id, all_logs, 0, p2.get("hp", 0)
+            if p2.get("hp", 0) <= 0:
+                p2["hp"] = 0
+                all_logs.append(f"💀 **{p2.get('name', p2_id)}** đã hết máu!")
+                return p1_id, all_logs, p1.get("hp", 0), 0
 
             if flags.get(f"{current['id']}_stunned", False):
                 flags.pop(f"{current['id']}_stunned", None)
@@ -485,18 +532,61 @@ class ArenaTournament(commands.Cog):
             result = await execute_action(p1, p2, turn, action, flags)
             all_logs.extend(result["log_messages"])
 
+            # Cập nhật p1/p2 từ result
+            p1 = result["p1"]
+            p2 = result["p2"]
+
             if result["finished"]:
-                return result["winner_id"], all_logs, p1.get("hp", 0), p2.get("hp", 0)
+                winner_id = result["winner_id"]
+                # Đảm bảo HP người thua = 0
+                if winner_id == p1_id:
+                    p2["hp"] = 0
+                else:
+                    p1["hp"] = 0
+                return winner_id, all_logs, p1.get("hp", 0), p2.get("hp", 0)
 
             turn = 1 - turn
 
-        hp1 = p1.get("hp", 0)
-        hp2 = p2.get("hp", 0)
+        # Hết max_turns → xét HP
+        hp1 = max(0, p1.get("hp", 0))
+        hp2 = max(0, p2.get("hp", 0))
         if hp1 > hp2:
-            return p1_id, all_logs + [f"⏰ Hết lượt! {p1.get('name', '?')} thắng ({hp1} vs {hp2}HP)"], hp1, hp2
+            return p1_id, all_logs + [f"⏰ Hết lượt! **{p1.get('name', '?')}** thắng ({hp1} vs {hp2}HP)"], hp1, 0
         elif hp2 > hp1:
-            return p2_id, all_logs + [f"⏰ Hết lượt! {p2.get('name', '?')} thắng ({hp2} vs {hp1}HP)"], hp1, hp2
-        return random.choice([p1_id, p2_id]), all_logs + ["⏰ Hòa! Random thắng..."], hp1, hp2
+            return p2_id, all_logs + [f"⏰ Hết lượt! **{p2.get('name', '?')}** thắng ({hp2} vs {hp1}HP)"], 0, hp2
+        # Hòa — random
+        winner = random.choice([p1_id, p2_id])
+        return winner, all_logs + ["⏰ Hòa điểm! Random chọn người thắng..."], hp1, hp2
+
+    async def _apply_elo_match(self, winner_id: str, loser_id: str,
+                                is_final: bool = False, is_semi: bool = False) -> tuple[int, int, int, int]:
+        """
+        Tính và lưu ELO sau 1 trận tournament.
+        Trả về (old_winner_elo, new_winner_elo, old_loser_elo, new_loser_elo).
+        """
+        db = await get_db()
+        try:
+            w_row = await (await db.execute(
+                "SELECT elo FROM players WHERE id=?", (winner_id,))).fetchone()
+            l_row = await (await db.execute(
+                "SELECT elo FROM players WHERE id=?", (loser_id,))).fetchone()
+
+            if not w_row or not l_row:
+                return 1000, 1000, 1000, 1000
+
+            w_elo_old = w_row[0] or 1000
+            l_elo_old = l_row[0] or 1000
+
+            w_elo_new, l_elo_new = calculate_elo_tournament(
+                w_elo_old, l_elo_old, is_final=is_final, is_semi=is_semi)
+
+            await db.execute("UPDATE players SET elo=? WHERE id=?", (w_elo_new, winner_id))
+            await db.execute("UPDATE players SET elo=? WHERE id=?", (l_elo_new, loser_id))
+            await db.commit()
+
+            return w_elo_old, w_elo_new, l_elo_old, l_elo_new
+        finally:
+            await db.close()
 
     def _build_podium_embed(self, winner_id: str, runner_up_id: str | None, third_id: str | None,
                             parts: dict, tid: int, reward_summaries: dict[str, str]) -> discord.Embed:
