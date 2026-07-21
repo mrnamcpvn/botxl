@@ -152,15 +152,59 @@ class NPCCog(commands.Cog):
         self.sessions = {}
 
     def _npc_embed(self, member) -> discord.Embed:
-        embed = discord.Embed(title="👾 BẢNG NPC", color=0x9966ff,
-                              description="Dùng `!npc <số>` hoặc `/npc challenge <số>` để thách đấu!")
-        for nid, npc in NPC_DEFINITIONS.items():
-            cls = CLASSES.get(npc["class_id"], CLASSES["banxabong"])
-            embed.add_field(
-                name=f"`{nid}` {npc['name']} {cls['icon']} Lv.{npc['level']}",
-                value=f"❤️ `{npc['hp_max']}` ⚔️ `{npc['attack_min']}-{npc['attack_max']}` 🛡️ `{npc['defense']}`",
-                inline=False)
-        return embed
+        return build_npc_page(0)
+
+
+class NPCListView(discord.ui.View):
+    def __init__(self, page: int = 0):
+        super().__init__(timeout=120)
+        self.page = page
+        total_pages = (len(NPC_DEFINITIONS) + 9) // 10
+        self._update_buttons(total_pages)
+
+    def _update_buttons(self, total_pages):
+        self.clear_items()
+        prev_btn = discord.ui.Button(emoji="◀", style=discord.ButtonStyle.secondary, disabled=(self.page <= 0), row=0)
+        prev_btn.callback = self._make_nav(-1)
+        self.add_item(prev_btn)
+
+        page_btn = discord.ui.Button(label=f"Trang {self.page+1}/{total_pages}", style=discord.ButtonStyle.primary, disabled=True, row=0)
+        self.add_item(page_btn)
+
+        next_btn = discord.ui.Button(emoji="▶", style=discord.ButtonStyle.secondary, disabled=(self.page >= total_pages - 1), row=0)
+        next_btn.callback = self._make_nav(1)
+        self.add_item(next_btn)
+
+    def _make_nav(self, delta: int):
+        async def cb(interaction: discord.Interaction):
+            self.page += delta
+            embed = build_npc_page(self.page)
+            total_pages = (len(NPC_DEFINITIONS) + 9) // 10
+            self._update_buttons(total_pages)
+            await interaction.response.edit_message(embed=embed, view=self)
+        return cb
+
+
+def build_npc_page(page: int) -> discord.Embed:
+    npc_ids = sorted(NPC_DEFINITIONS.keys(), key=int)
+    total = len(npc_ids)
+    total_pages = (total + 9) // 10
+    start = page * 10
+    end = min(start + 10, total)
+
+    embed = discord.Embed(title="👾 BẢNG NPC", color=0x9966ff,
+                          description=f"Dùng `!npc <số>` hoặc `/npc challenge <số>` để thách đấu!\n"
+                                      f"📋 Tổng: **{total}** NPC | Trang **{page+1}/{total_pages}**")
+
+    for i in range(start, end):
+        nid = npc_ids[i]
+        npc = NPC_DEFINITIONS[nid]
+        cls = CLASSES.get(npc["class_id"], CLASSES["banxabong"])
+        embed.add_field(
+            name=f"`{nid}` {npc['name']} {cls['icon']} Lv.{npc['level']}",
+            value=f"❤️ `{npc['hp_max']:,}` ⚔️ `{npc['attack_min']}-{npc['attack_max']}` 🛡️ `{npc['defense']}`".replace(",", "."),
+            inline=False)
+    return embed
 
     def _npc_ai_move(self, npc: dict) -> str:
         hp_pct = npc["hp"] / max(npc["hp_max"], 1) * 100
@@ -176,16 +220,15 @@ class NPCCog(commands.Cog):
         if npc_id:
             await self._start_npc_battle(ctx, str(ctx.author.id), npc_id, ctx.author.display_name, "!")
             return
-        try:
-            embed = self._npc_embed(ctx.author)
-            await ctx.send(embed=embed)
-        except Exception as e:
-            await ctx.reply(f"❌ Lỗi: {e}")
+        embed = build_npc_page(0)
+        view = NPCListView(0)
+        await ctx.send(embed=embed, view=view)
 
     @app_commands.command(name="npc", description="📜 Xem danh sách NPC")
     async def slash_npc_list(self, interaction: discord.Interaction):
-        embed = self._npc_embed(interaction.user)
-        await interaction.response.send_message(embed=embed)
+        embed = build_npc_page(0)
+        view = NPCListView(0)
+        await interaction.response.send_message(embed=embed, view=view)
 
     @app_commands.command(name="npc_challenge", description="⚔️ Thách đấu NPC")
     @app_commands.describe(npc_id="Số NPC (xem /npc)")
