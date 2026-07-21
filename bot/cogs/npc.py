@@ -227,15 +227,21 @@ def build_npc_page(page: int) -> discord.Embed:
 
     @app_commands.command(name="npc", description="📜 Xem danh sách NPC")
     async def slash_npc_list(self, interaction: discord.Interaction):
-        embed = build_npc_page(0)
-        view = NPCListView(0)
-        await interaction.response.send_message(embed=embed, view=view)
+        try:
+            embed = build_npc_page(0)
+            view = NPCListView(0)
+            await interaction.response.send_message(embed=embed, view=view)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Lỗi: {e}", ephemeral=True)
 
     @app_commands.command(name="npc_challenge", description="⚔️ Thách đấu NPC")
     @app_commands.describe(npc_id="Số NPC (xem /npc)")
     async def slash_npc_challenge(self, interaction: discord.Interaction, npc_id: str):
-        await self._start_npc_battle(interaction, str(interaction.user.id), npc_id,
-                                     interaction.user.display_name, "/")
+        try:
+            await self._start_npc_battle(interaction, str(interaction.user.id), npc_id,
+                                         interaction.user.display_name, "/")
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Lỗi: {e}", ephemeral=True)
 
     @slash_npc_challenge.autocomplete("npc_id")
     async def npc_challenge_autocomplete(self, interaction: discord.Interaction, current: str):
