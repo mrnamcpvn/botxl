@@ -225,14 +225,10 @@ def build_npc_page(page: int) -> discord.Embed:
         view = NPCListView(0)
         await ctx.send(embed=embed, view=view)
 
-    @app_commands.command(name="npclist", description="📜 Xem danh sách NPC")
+    @app_commands.command(name="npclist", description="Xem danh sach NPC")
     async def slash_npc_list(self, interaction: discord.Interaction):
-        try:
-            embed = build_npc_page(0)
-            view = NPCListView(0)
-            await interaction.response.send_message(embed=embed, view=view)
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Lỗi: {e}", ephemeral=True)
+        embed = discord.Embed(title="NPC List", description="Use /npc_challenge <id>", color=0x9966ff)
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="npc_challenge", description="⚔️ Thách đấu NPC")
     @app_commands.describe(npc_id="Số NPC (xem /npc)")
