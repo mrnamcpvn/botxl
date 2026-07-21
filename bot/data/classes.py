@@ -76,7 +76,7 @@ CLASSES = {
 PERK_DESCRIPTIONS = {
     "defend_reduce": "Nhận ít dmg hơn 20% nếu đang phòng thủ",
     "first_strike": "Đòn tấn công đầu trận ×1.5",
-    "cd_reduce": "Cooldown tất cả skill -2 mỗi turn (×2)",
+    "cd_reduce": "Cooldown giảm thêm -1 mỗi turn (tổng -2)",
     "lifesteal_boost": "Hút máu +30% hiệu quả",
     "rage_boost": "Rage tích +50% nhanh hơn, sát thương rage ×2.5",
     "last_stand_boost": "Thoát chết kích hoạt ở 40% HP",
