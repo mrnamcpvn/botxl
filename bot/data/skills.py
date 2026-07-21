@@ -2,8 +2,8 @@ SKILLS_DB = {
     # ═══════ ATTACK SKILLS ═══════
     1: {"name":"👊 Cú Đấm Ba Que","desc":"Đòn cơ bản, CD thấp","category":"attack","type":"damage","multiplier":1.0,"cooldown":0,"price":0,"rarity":"common","icon":"👊"},
      2: {"name":"⚔️ Chém Treo Đầu Dê","desc":"2 đòn × 1.0x dmg","category":"attack","type":"multi_hit","hits":2,"multiplier":1.0,"cooldown":1,"price":2000,"rarity":"uncommon","icon":"⚔️"},
-    3: {"name":"💀 Nổi Điên Bán Thịt Chó","desc":"2.5x dmg, tự mất 10% HP","category":"attack","type":"damage","multiplier":2.5,"self_dmg_pct":10,"cooldown":2,"price":3500,"rarity":"rare","icon":"💀"},
-    4: {"name":"🌀 Đạp Bay Nón Bảo Hiểm","desc":"3 đòn × 1.0x, -30% DEF địch","category":"attack","type":"multi_hit","hits":3,"multiplier":1.0,"def_reduce_pct":30,"cooldown":2,"price":8000,"rarity":"epic","icon":"🌀"},
+    3: {"name":"💀 Nổi Điên Bán Thịt Chó","desc":"2.5x dmg, tự mất 10% HP","category":"attack","type":"damage","multiplier":2.5,"self_dmg_pct":10,"cooldown":3,"price":3500,"rarity":"rare","icon":"💀"},
+    4: {"name":"🌀 Đạp Bay Nón Bảo Hiểm","desc":"3 đòn × 1.0x, -30% DEF địch","category":"attack","type":"multi_hit","hits":3,"multiplier":1.0,"def_reduce_pct":30,"cooldown":3,"price":8000,"rarity":"epic","icon":"🌀"},
     # ═══════ SPECIAL SKILLS ═══════
     5: {"name":"🔥 Chọc Gậy Bánh Xe","desc":"1.8x dmg, 5% legendary 5x","category":"special","type":"damage","multiplier":1.8,"legendary_chance":5,"legendary_mult":5.0,"cooldown":3,"price":0,"rarity":"common","icon":"🔥"},
     6: {"name":"🩸 Hút Máu Bán Muỗi","desc":"1.8x dmg + hồi 50% dmg","category":"special","type":"lifesteal","multiplier":1.8,"lifesteal_pct":50,"cooldown":3,"price":3500,"rarity":"rare","icon":"🩸"},
