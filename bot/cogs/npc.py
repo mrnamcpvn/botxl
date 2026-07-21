@@ -144,32 +144,37 @@ class NPCBattleView(discord.ui.View):
         """Quá 60s không thao tác → tự thua NPC, dọn session."""
         if self.finished:
             return
+        # Kiểm tra session còn tồn tại không — nếu đã kết thúc bình thường thì không làm gì
+        session = self.cog.sessions.get(self.player_id)
+        if session is None:
+            # Session đã được dọn (trận kết thúc bình thường) → không gửi thêm gì
+            return
         self.finished = True
         sid = self.player_id
 
         # Dọn session
         self.cog.sessions.pop(sid, None)
 
-        # Ghi lại battle_time vào DB (tính như thua)
+        # Ghi lại vào DB (tính như thua, KHÔNG set last_battle_time để không gây cooldown)
         db = await get_db()
         try:
             await db.execute(
-                "UPDATE players SET losses=losses+1, last_battle_time=? WHERE id=?",
-                (time.time(), sid))
+                "UPDATE players SET losses=losses+1 WHERE id=?", (sid,))
             await db.commit()
         except Exception:
             pass
         finally:
             await db.close()
 
-        # Edit message báo timeout nếu có
+        # Edit message báo timeout
         if self.message:
             try:
                 embed = discord.Embed(
                     title="⏰ HẾT THỜI GIAN!",
                     description=(
                         f"**{self.player_name}** không thao tác trong 60 giây!\n"
-                        f"💀 **{self.npc_name}** thắng do người chơi bỏ trận."
+                        f"💀 **{self.npc_name}** thắng do người chơi bỏ trận.\n\n"
+                        f"_Dùng `!npc` để đánh lại_"
                     ),
                     color=0xff4444,
                 )
@@ -519,6 +524,7 @@ class NPCCog(commands.Cog):
 
     async def _finish_npc_battle(self, interaction, session, view, player, npc, result_lines, player_wins):
         view.finished = True
+        view.stop()   # Hủy timeout timer — tránh on_timeout fire sau khi trận đã kết thúc
         sid = view.player_id
         result_lines.append("\n" + ("-" * 20))
 
