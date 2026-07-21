@@ -202,7 +202,8 @@ def build_npc_page(page: int) -> discord.Embed:
         cls = CLASSES.get(npc["class_id"], CLASSES["banxabong"])
         embed.add_field(
             name=f"`{nid}` {npc['name']} {cls['icon']} Lv.{npc['level']}",
-            value=f"❤️ `{npc['hp_max']:,}` ⚔️ `{npc['attack_min']}-{npc['attack_max']}` 🛡️ `{npc['defense']}`".replace(",", "."),
+            value=f"❤️ `{npc['hp_max']:,}` ⚔️ `{npc['attack_min']}-{npc['attack_max']}` 🛡️ `{npc['defense']}`\n"
+                  f"🎯 {npc.get('trait', '')}".replace(",", "."),
             inline=False)
     return embed
 
