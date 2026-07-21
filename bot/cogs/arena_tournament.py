@@ -486,6 +486,10 @@ class ArenaTournament(commands.Cog):
 
         db = await get_db()
         try:
+            # Thưởng tham gia: 500 coins cho tất cả người chơi
+            for p in participants:
+                await db.execute("UPDATE players SET coins=coins+500 WHERE id=?", (p["player_id"],))
+
             for pid, rank, rw in rewards:
                 await db.execute("UPDATE players SET coins=coins+?, xp=xp+? WHERE id=?", (rw["coins"], rw["xp"], pid))
 
