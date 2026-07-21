@@ -487,11 +487,14 @@ class DungeonCog(commands.Cog):
             view = DungeonView(self, sid, floor, pdata, npc_data, display_name, rewards)
 
             if isinstance(ctx_or_int, commands.Context):
-                await ctx_or_int.reply(embed=embed, view=view)
+                msg = await ctx_or_int.reply(embed=embed, view=view)
             elif ctx_or_int.response.is_done():
                 await ctx_or_int.edit_original_response(embed=embed, view=view)
+                msg = await ctx_or_int.original_response()
             else:
                 await ctx_or_int.response.send_message(embed=embed, view=view)
+                msg = await ctx_or_int.original_response()
+            session["_message"] = msg
         finally:
             await db.close()
 
@@ -630,7 +633,7 @@ class DungeonCog(commands.Cog):
         new_view = DungeonView(self, view.player_id, session["floor"],
                                player, npc, session["player_name"],
                                session["accumulated_rewards"])
-        await interaction.edit_original_response(embed=embed, view=new_view)
+        await session["_message"].edit(embed=embed, view=new_view)
         flags.pop("_turn_in_progress", None)
 
     async def _finish_dungeon_floor(self, interaction: discord.Interaction,
@@ -698,7 +701,7 @@ class DungeonCog(commands.Cog):
 
             new_view = DungeonView(self, sid, next_floor, player, npc_data,
                                    session["player_name"], acc)
-            await interaction.edit_original_response(embed=embed, view=new_view)
+            await session["_message"].edit(embed=embed, view=new_view)
         else:
             result_lines.append(f"\n💀 Thua! Nhận thưởng đã tích lũy...")
             await self._collect_rewards(interaction, session, sid, result_lines)
@@ -758,7 +761,7 @@ class DungeonCog(commands.Cog):
 
         floor = session.get("floor", 0)
         embed = _dungeon_reward_embed(acc, floor, "Nhận Thưởng Bí Cảnh")
-        await interaction.edit_original_response(embed=embed, view=None)
+        await session["_message"].edit(embed=embed, view=None)
 
     async def _reply(self, ctx_or_int, msg, ephemeral=False):
         if isinstance(ctx_or_int, commands.Context):
