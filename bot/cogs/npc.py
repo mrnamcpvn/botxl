@@ -146,13 +146,6 @@ class NPCBattleView(discord.ui.View):
         return True
 
 
-class NPCCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.sessions = {}
-
-    def _npc_embed(self, member) -> discord.Embed:
-        return build_npc_page(0)
 
 
 class NPCListView(discord.ui.View):
@@ -206,6 +199,15 @@ def build_npc_page(page: int) -> discord.Embed:
                   f"🎯 {npc.get('trait', '')}".replace(",", "."),
             inline=False)
     return embed
+
+
+class NPCCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.sessions = {}
+
+    def _npc_embed(self, member) -> discord.Embed:
+        return build_npc_page(0)
 
     def _npc_ai_move(self, npc: dict) -> str:
         hp_pct = npc["hp"] / max(npc["hp_max"], 1) * 100
