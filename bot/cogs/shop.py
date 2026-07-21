@@ -589,6 +589,15 @@ class ShopCog(commands.Cog):
 
             coin_cost, success_rate = merge_cost
 
+            # Coin check
+            coins_cursor = await db.execute("SELECT coins FROM players WHERE id=?", (uid,))
+            coins_row = await coins_cursor.fetchone()
+            player_coins = coins_row[0] if coins_row else 0
+            if player_coins < coin_cost:
+                await self._reply(ctx_or_int,
+                    f"😅 Nghèo! Cần **{coin_cost}🪙**, có **{player_coins}🪙**")
+                return
+
             # Auto-use Lucky Charm
             charm_cursor = await db.execute("SELECT quantity FROM inventory WHERE player_id=? AND item_id=27", (uid,))
             charm_row = await charm_cursor.fetchone()
@@ -601,6 +610,12 @@ class ShopCog(commands.Cog):
                 else:
                     await db.execute("UPDATE inventory SET quantity=? WHERE player_id=? AND item_id=27", (new_qty, uid))
 
+            # Deduct coins before roll (always lost)
+            await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (coin_cost, uid))
+            # Delete the 3 input items
+            for r in rows:
+                await db.execute("DELETE FROM player_equipment WHERE id=?", (r["id"],))
+
             import random
             if random.random() < success_rate:
                 target_star = star + 1
@@ -612,24 +627,14 @@ class ShopCog(commands.Cog):
                                      (uid, eid))
                     await db.commit()
                     stars_icon = STAR_LABELS.get(target_star, "⭐")
-                    msg = f"✅ Ghép thành công! Nhận {stars_icon} **{chosen['name']}**!"
+                    msg = f"✅ Ghép thành công! Nhận {stars_icon} **{chosen['name']}**! ({coin_cost}🪙)"
                     if has_charm:
                         msg += "\n🍀 Đã dùng Bùa May Mắn!"
                     await self._reply(ctx_or_int, msg)
-                target_star = star + 1
-                items = [e for eid, e in EQUIPMENT.items() if e["star"] == target_star]
-                if items:
-                    chosen = random.choice(items)
-                    eid = [k for k, v in EQUIPMENT.items() if v == chosen][0]
-                    await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
-                                     (uid, eid))
-                    await db.commit()
-                    stars_icon = STAR_LABELS.get(target_star, "⭐")
-                    await self._reply(ctx_or_int, f"✅ Ghép thành công! Nhận {stars_icon} **{chosen['name']}**!")
                 else:
                     await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (coin_cost, uid))
                     await db.commit()
-                    await self._reply(ctx_or_int, "❌ Lỗi hệ thống!")
+                    await self._reply(ctx_or_int, "❌ Lỗi hệ thống! Đã hoàn tiền.")
             else:
                 await db.commit()
                 await self._reply(ctx_or_int, f"💥 Ghép thất bại! Mất 3 trang bị + {coin_cost}🪙")
