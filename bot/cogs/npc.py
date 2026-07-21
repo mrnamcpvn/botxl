@@ -227,10 +227,11 @@ class NPCCog(commands.Cog):
         view = NPCListView(0)
         await ctx.send(embed=embed, view=view)
 
-    @app_commands.command(name="npclist", description="Xem danh sach NPC")
-    async def slash_npc_list(self, interaction: discord.Interaction):
-        embed = discord.Embed(title="NPC List", description="Use /npc_challenge <id>", color=0x9966ff)
-        await interaction.response.send_message(embed=embed)
+    @app_commands.command(name="npc", description="📜 Xem danh sách NPC")
+    async def slash_npc(self, interaction: discord.Interaction):
+        embed = build_npc_page(0)
+        view = NPCListView(0)
+        await interaction.response.send_message(embed=embed, view=view)
 
     @app_commands.command(name="npc_challenge", description="⚔️ Thách đấu NPC")
     @app_commands.describe(npc_id="Số NPC (xem /npc)")
