@@ -7,6 +7,20 @@ from bot.data.equipment import EQUIPMENT, SET_BONUSES
 from bot.data.classes import CLASSES
 from bot.config import HP_REGEN_INTERVAL, HP_REGEN_PCT, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT, GLOBAL_DEF_MULT
 
+# Conversion: raw equipment stat → battle-effective percentage
+# raw can reach 500-700 at absolute endgame, so divisors are tuned for balance
+BATTLE_STAT_DIVISORS = {"crit": 3, "pierce": 7, "dodge": 5}
+BATTLE_STAT_CAPS     = {"crit": 50, "pierce": 35, "dodge": 25}
+
+
+def stat_to_pct(raw: int, stat_name: str) -> int:
+    """Convert raw accumulated stat to effective battle percentage."""
+    if raw <= 0:
+        return 0
+    divisor = BATTLE_STAT_DIVISORS.get(stat_name, 5)
+    cap = BATTLE_STAT_CAPS.get(stat_name, 100)
+    return min(int(raw / divisor), cap)
+
 
 def calc_class_stat(base: int, scale: int, level: int) -> int:
     return base + scale * (level - 1)
@@ -261,6 +275,24 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                     "winner_id": None,
                 }
 
+        # Equipment-based dodge (NÉ)
+        equip_dodge = stat_to_pct(def_eff.get("dodge", 0), "dodge")
+        if equip_dodge > 0 and random.random() * 100 < equip_dodge:
+            result_lines.append(f"💨 **{defender.get('name', '???')} NÉ ĐÒN ({equip_dodge}%)!**")
+            attacker[f"{cat}_cd"] = skill.get("cooldown", 0)
+            for cdkey in ["attack_cd", "special_cd", "defense_cd"]:
+                for p in [p1, p2]:
+                    if p.get(cdkey, 0) > 0:
+                        p[cdkey] -= 1
+            result_lines.append(f"❤️ {p1.get('name','?')}:`{p1.get('hp',0)}/{p1.get('hp_max',100)}`")
+            result_lines.append(f"❤️ {p2.get('name','?')}:`{p2.get('hp',0)}/{p2.get('hp_max',100)}`")
+            return {
+                "p1": p1, "p2": p2,
+                "log_messages": result_lines,
+                "finished": False,
+                "winner_id": None,
+            }
+
         # Calculate base damage
         mult = skill.get("multiplier", 1.0)
         if skill.get("type") == "multi_hit":
@@ -301,6 +333,12 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             result_lines.append(f"🌀 -{skill['def_reduce_pct']}% DEF!")
         if skill.get("pierce_pct"):
             eff_def = int(eff_def * (100 - skill["pierce_pct"]) / 100)
+
+        # Equipment-based pierce (XUYÊN)
+        equip_pierce = stat_to_pct(atk_eff.get("pierce", 0), "pierce")
+        if equip_pierce > 0:
+            eff_def = int(eff_def * (100 - equip_pierce) / 100)
+            result_lines.append(f"🔱 XUYÊN {equip_pierce}% DEF!")
 
         damage = max(base_dmg // 4, base_dmg - eff_def)
 
@@ -362,7 +400,14 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             if flags.get(rage_key, 0) > 0:
                 rage_bonus = int(flags.pop(rage_key, 0) * atk_passive.get("rage_multiplier", 2.0))
                 damage += rage_bonus
-                result_lines.append(f"💢 PH\u1eaaN N\u1ed8! +{rage_bonus} dmg!")
+                result_lines.append(f"💢 PHẪN NỘ! +{rage_bonus} dmg!")
+
+        # Equipment-based crit (CRIT) - final multiplier after all modifiers
+        equip_crit = stat_to_pct(atk_eff.get("crit", 0), "crit")
+        is_crit = False
+        if equip_crit > 0 and random.random() * 100 < equip_crit:
+            damage = int(damage * 1.5)
+            is_crit = True
 
         # Apply damage
         defender["hp"] = max(0, defender.get("hp", 0) - damage)
@@ -371,7 +416,8 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
 
         result_lines.append(f"{skill.get('icon', '')} **{skill['name']}**")
         if damage > 0:
-            result_lines.append(f"💥 **{damage}** dmg!")
+            crit_tag = " 💥CHÍ MẠNG!" if is_crit else ""
+            result_lines.append(f"💥 **{damage}** dmg!{crit_tag}")
 
         # Rage accumulation on defender
         def_passive2 = get_equipped_skill(defender, "passive")
