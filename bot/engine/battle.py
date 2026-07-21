@@ -354,15 +354,6 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             if turn_count == 0:
                 damage = int(damage * 1.5)
 
-        # Last Stand (defender passive)
-        if def_passive["type"] == "last_stand":
-            threshold = def_passive.get("hp_threshold", 30)
-            if get_class_perk(def_class) == "last_stand_boost":
-                threshold = 40
-            if defender.get("hp", 0) <= def_eff["hp_max"] * threshold / 100:
-                damage = int(damage * (100 - def_passive["dmg_reduce_pct"]) / 100)
-                result_lines.append(f"💎 GI\u00c1P B\u1ea4T T\u1eec! -{def_passive['dmg_reduce_pct']}% dmg!")
-
         # Counter — 80% damage reduction
         d_id = defender["id"]
         original_damage = damage
@@ -408,6 +399,16 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         if equip_crit > 0 and random.random() * 100 < equip_crit:
             damage = int(damage * 1.5)
             is_crit = True
+
+        # Cheat Death (defender passive: né chết, giữ 1 HP)
+        if def_passive["type"] == "cheat_death":
+            threshold = def_passive.get("hp_threshold", 30)
+            if get_class_perk(def_class) == "last_stand_boost":
+                threshold = 40
+            current_hp = defender.get("hp", 0)
+            if current_hp <= def_eff["hp_max"] * threshold / 100 and damage >= current_hp:
+                damage = max(0, current_hp - 1)
+                result_lines.append(f"💎 CHƯA CHẾT ĐÃ SỐNG LẠI! Thoát chết!")
 
         # Apply damage
         defender["hp"] = max(0, defender.get("hp", 0) - damage)

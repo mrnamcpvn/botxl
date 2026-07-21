@@ -22,7 +22,7 @@ SKILLS_DB = {
     17: {"name":"💚 Nhỏ Nước Muối","desc":"Hồi 5% max HP mỗi turn","category":"passive","type":"regen","regen_pct":5,"price":3500,"rarity":"rare","icon":"💚"},
     18: {"name":"🍀 Vía Ông Địa","desc":"15% né đòn hoàn toàn","category":"passive","type":"dodge","dodge_chance":15,"price":4000,"rarity":"epic","icon":"🍀"},
     19: {"name":"💢 Điên Không Kịp Thở","desc":"Tích 50% dmg nhận → trả 2x","category":"passive","type":"rage","rage_pct":50,"rage_multiplier":2.0,"price":4000,"rarity":"epic","icon":"💢"},
-    20: {"name":"💎 Chưa Chết Đã Sống Lại","desc":"HP<30%: giảm 50% dmg nhận","category":"passive","type":"last_stand","hp_threshold":30,"dmg_reduce_pct":50,"price":15000,"rarity":"legendary","icon":"💎"},
+    20: {"name":"💎 Chưa Chết Đã Sống Lại","desc":"HP<30%: né chết, giữ 1 HP","category":"passive","type":"cheat_death","hp_threshold":30,"price":15000,"rarity":"legendary","icon":"💎"},
 }
 
 CATEGORY_LABELS = {"attack":"💥 Xỏ Lá","special":"🔥 Đặc Biệt","defense":"🛡️ Chống Xỏ Lá","passive":"💎 Bị Động"}
