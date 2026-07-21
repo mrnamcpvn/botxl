@@ -88,7 +88,7 @@ class Arena(commands.Cog):
         finally:
             await db.close()
 
-    @commands.command(name="trogiup", aliases=["help", "h"])
+    @commands.command(name="trogiup", aliases=["h"])
     async def help_cmd(self, ctx):
         embed = discord.Embed(title="⚔️ Đấu Trường Ba Que Xỏ Lá", color=0xff6600,
                               description="Game đấm nhau bằng xỏ lá, khịa nhau, chọc gậy bánh xe!")
