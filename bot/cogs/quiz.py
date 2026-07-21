@@ -147,7 +147,7 @@ class QuizCog(commands.Cog):
 
             # Random bonus drop
             roll = random.random()
-            if roll < 0.15:
+            if roll < 0.20:
                 stone = random.choice(["stone_basic", "stone_medium", "stone_advanced"])
                 stone_labels = {
                     "stone_basic": "Đá Sơ Cấp",
@@ -163,7 +163,7 @@ class QuizCog(commands.Cog):
                     (stone_qty, sid))
                 reward_parts.append(f"💎 +{stone_qty} {stone_labels[stone]}")
 
-            elif roll < 0.20:
+            elif roll < 0.30:
                 consumable_ids = [i for i, it in SHOP_ITEMS.items() if it["type"] == "consumable"]
                 consumable = random.choice(consumable_ids)
                 await db.execute(
@@ -171,7 +171,7 @@ class QuizCog(commands.Cog):
                     (sid, consumable, sid, consumable))
                 reward_parts.append(f"🧪 +{SHOP_ITEMS[consumable]['name']}")
 
-            elif roll < 0.40:
+            elif roll < 0.55:
                 # Dùng lookup table từ rewards.py — O(1) thay vì O(n)
                 r = random.randint(1, _TOTAL_WEIGHT)
                 star = 1

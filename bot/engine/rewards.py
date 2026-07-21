@@ -3,7 +3,7 @@ import random
 from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, DROP_WEIGHTS
 
-DROP_CHANCE = 0.08
+DROP_CHANCE = 0.15
 
 # Build lookup tables một lần khi module load — tránh O(n) scan mỗi drop
 _CONSUMABLE_IDS: list[int] = [i for i, it in SHOP_ITEMS.items() if it["type"] == "consumable"]

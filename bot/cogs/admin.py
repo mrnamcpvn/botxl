@@ -489,6 +489,23 @@ class LootDropView(discord.ui.View):
         self.equip_id = equip_id
         self.equip_name = equip_name
         self.claimed = False
+        self.message: discord.Message | None = None
+        # Disable button 2s trước khi cho lụm
+        btn = self.children[0]
+        btn.disabled = True
+        btn.label = "⏳ Chờ 2s..."
+        asyncio.ensure_future(self._enable_btn())
+
+    async def _enable_btn(self):
+        await asyncio.sleep(2)
+        try:
+            btn = self.children[0]
+            btn.disabled = False
+            btn.label = "LỤM!"
+            if self.message:
+                await self.message.edit(view=self)
+        except Exception:
+            pass
 
     @discord.ui.button(emoji="🤲", label="LỤM!", style=discord.ButtonStyle.success)
     async def loot_btn(self, interaction: discord.Interaction, button: discord.Button):
