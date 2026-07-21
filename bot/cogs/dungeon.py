@@ -274,57 +274,61 @@ class DungeonView(discord.ui.View):
         self.add_item(btn_def)
 
     async def on_timeout(self):
-        if not self.finished:
-            self.finished = True
-            sid = self.player_id
-            session = self.cog.sessions.get(sid)
-            if not session or session.get("_run_id") != self._run_id:
-                return
-            self.cog.sessions.pop(sid, None)
-            if session:
-                db = await get_db()
-                try:
-                    acc = session["accumulated_rewards"]
-                    player = session["player_pdata"]
-                    now = time.time()
-                    await db.execute("UPDATE players SET hp=?, last_battle_time=?, last_hp_update=? WHERE id=?",
-                                     (max(0, player.get("hp", 0)), now, now, sid))
-                    if acc["coins"] > 0:
-                        await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
-                    for sk, sq in acc["stones"].items():
-                        if sq > 0 and sk in ("stone_basic", "stone_medium", "stone_advanced"):
-                            await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
-                            await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
-                    for eq in acc["equipment"]:
-                        await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (sid, eq["eid"]))
-                    await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
-                    await db.commit()
+        if self.finished or getattr(self, '_handling', False):
+            return
+        self.finished = True
+        sid = self.player_id
+        session = self.cog.sessions.get(sid)
+        if not session or session.get("_run_id") != self._run_id:
+            return
+        self.cog.sessions.pop(sid, None)
+        if session:
+            db = await get_db()
+            try:
+                acc = session["accumulated_rewards"]
+                player = session["player_pdata"]
+                now = time.time()
+                await db.execute("UPDATE players SET hp=?, last_battle_time=?, last_hp_update=? WHERE id=?",
+                                 (max(0, player.get("hp", 0)), now, now, sid))
+                if acc["coins"] > 0:
+                    await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (acc["coins"], sid))
+                for sk, sq in acc["stones"].items():
+                    if sq > 0 and sk in ("stone_basic", "stone_medium", "stone_advanced"):
+                        await db.execute("INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (sid,))
+                        await db.execute(f"UPDATE player_enhance_stones SET {sk}={sk}+? WHERE player_id=?", (sq, sid))
+                for eq in acc["equipment"]:
+                    await db.execute("INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)", (sid, eq["eid"]))
+                await db.execute("UPDATE dungeon_progress SET accumulated_rewards='' WHERE player_id=?", (sid,))
+                await db.commit()
 
-                    # Build reward summary
-                    desc = f"⏰ **Hết thời gian ở tầng {self.floor}!**\n\n🏃 Đã nhận thưởng tích lũy:\n"
-                    desc += f"💰 **{acc['coins']}**🪙"
-                    for sk, label in [("stone_basic", "Đá sơ cấp"), ("stone_medium", "Đá trung cấp"), ("stone_advanced", "Đá cao cấp")]:
-                        if acc["stones"].get(sk, 0) > 0:
-                            desc += f"\n💎 **{acc['stones'][sk]}** {label}"
-                    for eq in acc["equipment"]:
-                        stars = STAR_LABELS.get(eq["star"], "⭐")
-                        desc += f"\n⚒️ {stars} **{eq['name']}**"
-                    embed = discord.Embed(title="🏰 Bí Cảnh Vực Sâu", description=desc, color=0xff8800)
-                    if "_message" in session:
-                        await session["_message"].edit(embed=embed, view=None)
-                finally:
-                    await db.close()
+                # Build reward summary
+                desc = f"⏰ **Hết thời gian ở tầng {self.floor}!**\n\n🏃 Đã nhận thưởng tích lũy:\n"
+                desc += f"💰 **{acc['coins']}**🪙"
+                for sk, label in [("stone_basic", "Đá sơ cấp"), ("stone_medium", "Đá trung cấp"), ("stone_advanced", "Đá cao cấp")]:
+                    if acc["stones"].get(sk, 0) > 0:
+                        desc += f"\n💎 **{acc['stones'][sk]}** {label}"
+                for eq in acc["equipment"]:
+                    stars = STAR_LABELS.get(eq["star"], "⭐")
+                    desc += f"\n⚒️ {stars} **{eq['name']}**"
+                embed = discord.Embed(title="🏰 Bí Cảnh Vực Sâu", description=desc, color=0xff8800)
+                if "_message" in session:
+                    await session["_message"].edit(embed=embed, view=None)
+            finally:
+                await db.close()
 
     async def _fight_callback(self, interaction: discord.Interaction):
+        self._handling = True
         await interaction.response.defer()
         await self.cog._handle_dungeon_fight(interaction, self)
 
     async def _stop_callback(self, interaction: discord.Interaction):
+        self._handling = True
         await interaction.response.defer()
         await self.cog._handle_dungeon_stop(interaction, self)
 
     def _make_move_callback(self, move_type: str):
         async def callback(interaction: discord.Interaction):
+            self._handling = True
             await interaction.response.defer()
             await self.cog._handle_dungeon_move(interaction, self, move_type)
         return callback
