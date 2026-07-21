@@ -205,6 +205,7 @@ class ArenaTournament(commands.Cog):
             return
 
         try:
+            # Load tên player
             for p in participants:
                 db2 = await get_db()
                 try:
@@ -219,14 +220,25 @@ class ArenaTournament(commands.Cog):
                 for p in participants
             }
 
+            # current_ids = danh sách người còn trong giải
             current_ids = list(parts.keys())
             bye_history: set[str] = set()
             round_num = 1
 
+            # Track để xác định đúng runner_up và third
+            # runner_up  = người thua trận CHUNG KẾT (vòng cuối còn 2 người)
+            # third      = người thua trận BÁN KẾT có CP cao hơn (nếu >= 6 người)
+            final_loser_id: str | None = None
+            semi_losers: list[str] = []
+
+            rounds_data: list[dict] = []  # lưu lại để bracket_json
+
             await ch.send(embed=discord.Embed(
                 title=f"⚔️ ĐẤU TRƯỜNG SINH TỬ #{tid}",
-                description=f"👥 **{len(participants)}** người tham gia\n_Đang chia cặp..._",
+                description=f"👥 **{len(participants)}** người tham gia\n_Đang chia cặp vòng 1..._",
                 color=0xffaa00))
+
+            await asyncio.sleep(2)
 
             while len(current_ids) > 1:
                 random.shuffle(current_ids)
@@ -245,92 +257,148 @@ class ArenaTournament(commands.Cog):
                     bye_history.add(bye_pid)
                     byes.append(bye_pid)
 
-                # Round banner
-                round_label = {1: "VÒNG 1", 2: "BÁN KẾT", 3: "CHUNG KẾT"}.get(round_num, f"VÒNG {round_num}")
-                await ch.send(f"━━━━━━━━━━━━━━━━━━━━\n🏟️ **{round_label}**")
+                # Xác định tên vòng
+                remaining_after = len([m for m in pairs]) + len(byes)  # số người còn lại sau vòng này
+                is_final = (len(pairs) == 1 and not byes)
+                is_semi  = (len(pairs) == 2 and not byes) or (len(pairs) == 1 and len(byes) == 1 and remaining_after == 2)
+                if is_final:
+                    round_label = "⚔️ CHUNG KẾT"
+                    round_color = 0xff0000
+                elif is_semi:
+                    round_label = "🔥 BÁN KẾT"
+                    round_color = 0xff6600
+                else:
+                    round_label = f"🏟️ VÒNG {round_num}"
+                    round_color = 0xffaa00
+
+                await ch.send(f"━━━━━━━━━━━━━━━━━━━━\n**{round_label}** — {len(pairs)} trận")
 
                 # BYE announcement
                 for bye_pid in byes:
                     await ch.send(f"💎 **{parts[bye_pid]['name']}** được vào thẳng vòng sau!")
+                    await asyncio.sleep(0.5)
 
-                match_winners = []
+                round_winners = []
+                round_record = {"name": round_label, "matches": [], "byes": byes}
 
                 for p1_id, p2_id in pairs:
                     p1n = parts[p1_id]["name"]
                     p2n = parts[p2_id]["name"]
 
-                    # Match start
+                    # Announce match
                     match_msg = await ch.send(embed=discord.Embed(
-                        title=f"⚔️ {p1n} VS {p2n}",
+                        title=f"⚔️ {p1n}  VS  {p2n}",
                         description="🔥 _Đang thi đấu..._",
-                        color=0xffaa00))
+                        color=round_color))
+
+                    await asyncio.sleep(1.5)
 
                     winner_id, log, p1_hp, p2_hp = await self._run_ai_battle(p1_id, p2_id)
                     if winner_id is None:
                         winner_id = p1_id
 
+                    loser_id = p2_id if winner_id == p1_id else p1_id
                     winner_name = parts[winner_id]["name"]
-                    loser_name = p2n if winner_id == p1_id else p1n
+                    loser_name  = parts[loser_id]["name"]
 
-                    # Build result embed with log
-                    max_log = 25
-                    shown_log = log[-max_log:]
-                    log_text = "\n".join(f"  {l}" for l in shown_log if l.strip())
-                    if len(log) > max_log:
-                        log_text = f"  _...({len(log) - max_log} dòng trước)..._\n" + log_text
+                    # Track semi/final losers
+                    if is_final:
+                        final_loser_id = loser_id
+                    elif is_semi:
+                        semi_losers.append(loser_id)
+
+                    # Hiển thị log từng phần — delay để dễ theo dõi
+                    # Gộp log thành các block 5 dòng, cách nhau 2 giây
+                    filtered_log = [l for l in log if l.strip()]
+                    block_size = 5
+                    for block_start in range(0, len(filtered_log), block_size):
+                        block = filtered_log[block_start:block_start + block_size]
+                        block_text = "\n".join(f"  {l}" for l in block)
+                        status_desc = (
+                            f"⚔️ **{p1n}** `{p1_hp}HP` ⚡ **{p2n}** `{p2_hp}HP`\n\n"
+                            f"**Diễn biến:**\n{block_text}"
+                        )
+                        try:
+                            await match_msg.edit(embed=discord.Embed(
+                                title=f"🏟️ {p1n} VS {p2n}",
+                                description=status_desc,
+                                color=round_color))
+                        except Exception:
+                            pass
+                        await asyncio.sleep(ARENA_BATTLE_DELAY)
+
+                    # Kết quả cuối
+                    max_show = 8
+                    shown = filtered_log[-max_show:]
+                    log_text = "\n".join(f"  {l}" for l in shown)
+                    if len(filtered_log) > max_show:
+                        log_text = f"  _...({len(filtered_log) - max_show} dòng trước)..._\n" + log_text
 
                     result_desc = (
-                        f"🏆 **{winner_name}** thắng!\n"
+                        f"🏆 **{winner_name}** THẮNG!\n"
                         f"💀 **{loser_name}** thua\n\n"
-                        f"**Diễn biến:**\n{log_text}"
+                        f"❤️ {p1n}: `{p1_hp}HP` | {p2n}: `{p2_hp}HP`\n\n"
+                        f"**Diễn biến cuối:**\n{log_text}"
                     )
-                    result_embed = discord.Embed(
-                        title=f"🏟️ {round_label}: {p1n} VS {p2n}",
-                        description=result_desc,
-                        color=0x00ff00)
                     try:
-                        await match_msg.edit(embed=result_embed)
+                        await match_msg.edit(embed=discord.Embed(
+                            title=f"{'🏆 CHUNG KẾT' if is_final else round_label}: {p1n} VS {p2n}",
+                            description=result_desc,
+                            color=0x00ff00 if is_final else round_color))
                     except Exception:
-                        await ch.send(embed=result_embed)
+                        await ch.send(embed=discord.Embed(
+                            title=f"{round_label}: {p1n} VS {p2n}",
+                            description=result_desc, color=0x00ff00))
 
-                    match_winners.append(winner_id)
-                    await asyncio.sleep(ARENA_BATTLE_DELAY)
+                    round_winners.append(winner_id)
+                    round_record["matches"].append({
+                        "p1_id": p1_id, "p2_id": p2_id,
+                        "winner_id": winner_id, "loser_id": loser_id,
+                        "p1_hp": p1_hp, "p2_hp": p2_hp,
+                    })
 
-                current_ids = match_winners + byes
+                    # Delay giữa các trận trong cùng 1 vòng
+                    await asyncio.sleep(3)
+
+                rounds_data.append(round_record)
+
+                # CẬP NHẬT current_ids đúng: chỉ người THẮNG + BYE
+                current_ids = round_winners + byes
                 round_num += 1
 
+                # Announce người đi tiếp
+                if len(current_ids) > 1:
+                    next_names = " · ".join(parts[pid]["name"] for pid in current_ids)
+                    await ch.send(f"✅ Vào vòng sau: **{next_names}**")
+                    await asyncio.sleep(2)
+
+            # ── Kết quả cuối ──
             winner_id = current_ids[0] if current_ids else None
             if winner_id is None:
                 logger.error(f"[ARENA] Tournament #{tid} kết thúc không có winner!")
                 await self._cancel_tournament(tid)
                 return
 
-            winner_name = parts[winner_id]["name"]
+            # Xác định runner_up = người thua chung kết
+            # Xác định third = người thua bán kết có CP cao hơn (nếu >= 6 người)
+            runner_up_id: str | None = final_loser_id
 
-            # Xác định hạng 2 & 3 từ bracket đã lưu (không hiển thị bracket, chỉ dùng để tính)
-            bracket = {"rounds": [], "participants": parts}
-            runner_up_id = None
-            third_id = None
+            third_id: str | None = None
+            if len(participants) >= 6 and semi_losers:
+                # Người thua bán kết có CP cao hơn → hạng 3
+                third_id = max(semi_losers, key=lambda pid: parts[pid].get("cp", 0))
 
-            if len(participants) >= 2:
-                all_ids = {p["player_id"] for p in participants}
-                loser_ids = all_ids - {winner_id}
-                if loser_ids:
-                    runner_up_id = max(loser_ids, key=lambda pid: parts[pid].get("cp", 0))
-                    loser_ids.discard(runner_up_id)
-            if len(participants) >= 6 and loser_ids:
-                third_id = max(loser_ids, key=lambda pid: parts[pid].get("cp", 0))
-
-            # Trao thưởng và lấy chi tiết
+            # Trao thưởng
             reward_summaries = await self._give_rewards(tid, winner_id, runner_up_id, third_id, participants)
 
             # Lưu DB
+            bracket_json = json.dumps({"rounds": rounds_data, "participants": parts})
             db = await get_db()
             try:
                 await db.execute(
                     "UPDATE arena_tournament SET status='done', winner_id=?, runner_up_id=?, third_id=?, "
                     "finished_at=?, bracket_json=? WHERE id=?",
-                    (winner_id, runner_up_id, third_id, time.time(), json.dumps(bracket), tid))
+                    (winner_id, runner_up_id, third_id, time.time(), bracket_json, tid))
                 await db.execute(
                     "UPDATE arena_participants SET final_rank=1 WHERE tournament_id=? AND player_id=?",
                     (tid, winner_id))
@@ -346,7 +414,7 @@ class ArenaTournament(commands.Cog):
             finally:
                 await db.close()
 
-            # Podium embed với chi tiết thưởng
+            # Podium
             embed = self._build_podium_embed(winner_id, runner_up_id, third_id, parts, tid, reward_summaries)
             await ch.send(embed=embed)
 
