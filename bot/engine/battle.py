@@ -419,12 +419,14 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             damage = int(damage * 1.5)
             is_crit = True
 
-        # Cheat Death (defender passive: né chết + hồi 50% HP)
+        # Cheat Death (defender passive: né chết + hồi 50% HP — chỉ 1 lần/trận)
         cheat_death_proc = False
-        if def_passive["type"] == "cheat_death":
+        cd_key = f"{defender['id']}_cheat_death_used"
+        if def_passive["type"] == "cheat_death" and not flags.get(cd_key):
             if damage >= defender.get("hp", 0):
                 damage = max(0, defender.get("hp", 0) - 1)
                 cheat_death_proc = True
+                flags[cd_key] = True
 
         # Apply damage
         defender["hp"] = max(0, defender.get("hp", 0) - damage)
