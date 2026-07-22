@@ -577,6 +577,8 @@ class DungeonCog(commands.Cog):
                 cd_key = f"{cat}_cd"
                 if player.get(cd_key, 0) > 0:
                     sk = get_equipped_skill(player, cat)
+                    # Phải clear _turn_in_progress trước khi return
+                    flags.pop("_turn_in_progress", None)
                     await interaction.followup.send(
                         f"⏳ **{sk['name']}** đang hồi! Còn **{player[cd_key]}** turn.", ephemeral=True)
                     return
@@ -727,8 +729,12 @@ class DungeonCog(commands.Cog):
                     pass
         finally:
             # Luôn unlock turn flag dù có lỗi hay không
-            if session := self.sessions.get(sid):
-                session.get("flags", {}).pop("_turn_in_progress", None)
+            # Session có thể đã bị pop trong _finish_dungeon_floor, dùng flags local ref
+            flags.pop("_turn_in_progress", None)
+            # Cũng clear trong session nếu vẫn còn
+            live_session = self.sessions.get(sid)
+            if live_session and "flags" in live_session:
+                live_session["flags"].pop("_turn_in_progress", None)
 
     async def _finish_dungeon_floor(self, interaction: discord.Interaction,
                                      session: dict, view: DungeonView,

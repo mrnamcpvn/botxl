@@ -1284,6 +1284,9 @@ class Arena(commands.Cog):
         await _save_player_data_util(db, pid, pdata)
 
     async def _sync_role_mult(self, db, member: discord.Member):
+        # discord.User (DM context) không có .roles — bỏ qua
+        if not hasattr(member, "roles"):
+            return
         role_names = [r.name for r in member.roles]
         mult = 1.0
         for rn, rm in ROLE_MULTIPLIERS.items():

@@ -270,6 +270,9 @@ class AdminCog(commands.Cog):
             if not await cursor.fetchone():
                 await self._reply(ctx_or_int, "🤷 Player chưa đăng ký!")
                 return
+            if not hasattr(member, "roles"):
+                await self._reply(ctx_or_int, "⚠️ Không thể sync role: không phải Member trong guild!")
+                return
             role_names = [r.name for r in member.roles]
             mult = 1.0
             for rn, rm in ROLE_MULTIPLIERS.items():
