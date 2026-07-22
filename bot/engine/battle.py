@@ -112,6 +112,39 @@ def get_effective_stats(pdata: dict) -> dict:
             except:
                 pass
 
+    # Gem socket stats
+    from bot.config import GEM_TYPES
+    eq = pdata.get("equipped", {})
+    socket_data = pdata.get("_equip_sockets", {})
+    for slot, eq_id in eq.items():
+        sockets = socket_data.get(str(eq_id), {})
+        for sk in ["socket_1", "socket_2", "socket_3", "socket_4"]:
+            gem_str = sockets.get(sk, "")
+            if not gem_str or ":" not in gem_str:
+                continue
+            parts = gem_str.split(":")
+            gem_type = parts[0]
+            gem_level = int(parts[1]) if len(parts) > 1 else 1
+            if gem_type not in GEM_TYPES:
+                continue
+            levels = GEM_TYPES[gem_type]["levels"]
+            if gem_level < 1 or gem_level > len(levels):
+                continue
+            val = levels[gem_level - 1]
+            if gem_type == "hp":
+                hp_max += val
+            elif gem_type == "atk":
+                atk_min += val
+                atk_max += val
+            elif gem_type == "def":
+                defense += val
+            elif gem_type == "spd":
+                spd += val
+            elif gem_type == "crit":
+                crit += val
+            elif gem_type == "pierce":
+                pierce += val
+
     damage_pct = 0
     passive_id = pdata.get("skill_equipped", {}).get("passive")
     skill = SKILLS_DB.get(passive_id)
