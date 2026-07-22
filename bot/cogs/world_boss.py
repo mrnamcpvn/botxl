@@ -435,11 +435,197 @@ class WorldBoss(commands.Cog):
                 pass
 
     def _build_boss_embed(self, tid: int) -> discord.Embed:
-        return discord.Embed(title="🐉 Boss Thế Giới", description="Đang tải...", color=0xff0000)
+        if self._boss is None:
+            return discord.Embed(title="🐉 Boss Thế Giới", description="Đang tải...", color=0xff0000)
+
+        hp = max(0, self._boss["hp"])
+        hp_max = self._boss["hp_max"]
+        pct = hp / max(hp_max, 1) * 100
+        bar_len = 12
+        filled = max(0, min(bar_len, round(pct / 100 * bar_len)))
+        hp_bar = "🟥" * filled + "⬛" * (bar_len - filled)
+
+        lines = [
+            f"**Level:** {self._boss['level']}",
+            f"❤️ HP: `{hp}/{hp_max}` ({pct:.1f}%)",
+            hp_bar,
+            "",
+            "🏆 **BẢNG XẾP HẠNG SÁT THƯƠNG:**",
+        ]
+
+        sorted_players = sorted(
+            [(sid, ps) for sid, ps in self._players.items()],
+            key=lambda x: x[1]["damage"], reverse=True)
+
+        for rank, (sid, ps) in enumerate(sorted_players, 1):
+            emoji = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"{rank}.")
+            deaths = ps.get("deaths", 0)
+            deaths_str = f" 💀x{deaths}" if deaths > 0 else ""
+            cd_tag = ""
+            if ps.get("cd_until", 0) > time.time():
+                cd_tag = " ⏳"
+            lines.append(f"{emoji} **{ps['name']}** — {ps['damage']} dmg{deaths_str}{cd_tag}")
+
+        if not sorted_players:
+            lines.append("  *(đang tải...)*")
+
+        return discord.Embed(
+            title=f"🐉 BOSS THẾ GIỚI #{tid} — LIVE",
+            description="\n".join(lines),
+            color=0xff0000,
+        )
 
     async def _finish_boss(self, tid: int, ch: discord.TextChannel):
-        pass
+        sorted_players = sorted(
+            [(sid, ps) for sid, ps in self._players.items()],
+            key=lambda x: x[1]["damage"], reverse=True)
 
+        rewards = []
+        for rank, (pid, ps) in enumerate(sorted_players, 1):
+            rw = self._calc_boss_reward(rank, len(sorted_players))
+            rewards.append((pid, rank, rw, ps.get("name", "?")))
+
+        reward_summaries = await self._apply_boss_rewards(tid, rewards)
+
+        lines = [f"💀 **BOSS THẾ GIỚI #{tid} ĐÃ BỊ HẠ!**\n"]
+        lines.append(f"🐉 Level: {self._boss['level']} | HP: {self._boss['hp_max']}")
+
+        for pid, rank, rw, name in rewards[:10]:
+            emoji = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"{rank}.")
+            name_str = f"{emoji} **{name}** — {self._players[pid]['damage']} dmg"
+            if pid in reward_summaries:
+                name_str += f"\n{reward_summaries[pid]}"
+            lines.append(name_str)
+
+        lines.append(f"\n👥 **{len(sorted_players)}** người tham gia")
+
+        full = "\n".join(lines)
+        if len(full) > 3800:
+            full = full[:3800] + "\n_...còn nữa_"
+
+        embed = discord.Embed(
+            title="🐉 Boss Thế Giới Đã Bị Hạ!",
+            description=full,
+            color=0x00ff00)
+
+        if self._ranking_msg:
+            try:
+                await self._ranking_msg.edit(embed=embed)
+            except Exception:
+                await ch.send(embed=embed)
+        else:
+            await ch.send(embed=embed)
+
+        db = await get_db()
+        try:
+            await db.execute(
+                "UPDATE world_boss SET status='done', finished_at=? WHERE id=?", (time.time(), tid))
+            await db.commit()
+        finally:
+            await db.close()
+
+        self._boss = None
+        self._players.clear()
+
+    def _calc_boss_reward(self, rank: int, total: int) -> dict:
+        rw = {}
+        if rank == 1:
+            rw = {"coins": random.randint(800, 1000), "xp": 600,
+                  "stones": ("stone_advanced", random.randint(5, 8)),
+                  "equip_star": 4, "equip_count": 1}
+        elif rank == 2:
+            rw = {"coins": random.randint(600, 800), "xp": 450,
+                  "stones": ("stone_medium", random.randint(3, 5)),
+                  "equip_star": 3, "equip_count": 2}
+        elif rank == 3:
+            rw = {"coins": random.randint(400, 600), "xp": 300,
+                  "stones": ("stone_basic", random.randint(5, 10)),
+                  "equip_star": 3, "equip_count": 1}
+        elif rank <= 5:
+            rw = {"coins": random.randint(300, 500), "xp": random.randint(150, 240)}
+        elif rank <= 10:
+            rw = {"coins": random.randint(200, 300), "xp": random.randint(60, 120)}
+        else:
+            rw = {"coins": random.randint(100, 200), "xp": 30}
+        return rw
+
+    async def _apply_boss_rewards(self, tid: int, rewards: list) -> dict[str, str]:
+        summaries: dict[str, str] = {}
+        db = await get_db()
+        try:
+            for pid, rank, rw, name in rewards:
+                coins = rw.get("coins", 0)
+                xp = rw.get("xp", 0)
+                await db.execute("UPDATE players SET coins=coins+?, xp=xp+? WHERE id=?", (coins, xp, pid))
+
+                lines = [f"  • +{coins}🪙 · +{xp}XP"]
+
+                stones = rw.get("stones")
+                if stones:
+                    stone_type, stone_qty = stones
+                    stone_col = stone_type
+                    await db.execute(
+                        "INSERT OR IGNORE INTO player_enhance_stones (player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)", (pid,))
+                    await db.execute(
+                        f"UPDATE player_enhance_stones SET {stone_col}={stone_col}+? WHERE player_id=?", (stone_qty, pid))
+                    lines.append(f"  • +{stone_qty} {STONE_NAMES[stone_col]}")
+
+                equip_star = rw.get("equip_star")
+                equip_count = rw.get("equip_count", 0)
+                if equip_star and equip_count > 0:
+                    eids = _EQUIP_BY_STAR.get(equip_star, [])
+                    for _ in range(equip_count):
+                        if eids:
+                            eid = random.choice(eids)
+                            await db.execute(
+                                "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                                (pid, eid))
+                            lines.append(f"  • {STAR_LABELS.get(equip_star, '⭐')} **{EQUIPMENT[eid]['name']}**")
+
+                await db.execute(
+                    "UPDATE world_boss_participants SET reward_given=1, final_rank=? WHERE boss_id=? AND player_id=?",
+                    (rank, tid, pid))
+                summaries[pid] = "\n".join(lines)
+
+            await db.commit()
+        finally:
+            await db.close()
+        return summaries
+
+    async def _resume_fighting(self, channel_id: int, tid: int):
+        ch = self.bot.get_channel(channel_id)
+        if not ch:
+            await self._cancel_boss(tid)
+            return
+        self._current_status = "fighting"
+        self._fight_task = asyncio.create_task(self._resume_fight_loop(tid, ch))
+
+    async def _resume_fight_loop(self, tid: int, ch: discord.TextChannel):
+        try:
+            embed = self._build_boss_embed(tid)
+            self._ranking_msg = await ch.send(embed=embed)
+            for sid in list(self._players.keys()):
+                if "view" not in self._players[sid]:
+                    try:
+                        user = await self.bot.fetch_user(int(sid))
+                        view = BossBattleView(self, sid, self._players[sid].get("name", "?"))
+                        pvt = await user.send(embed=discord.Embed(
+                            title="⚔️ Đánh Boss!", description="Boss vẫn còn sống! Tiếp tục đánh!", color=0xff0000), view=view)
+                        view.message = pvt
+                        self._players[sid]["view"] = view
+                    except Exception:
+                        pass
+            while True:
+                await asyncio.sleep(1)
+                if self._boss["hp"] <= 0:
+                    break
+                if self._current_status != "fighting":
+                    return
+            await self._finish_boss(tid, ch)
+        except asyncio.CancelledError:
+            await self._cancel_boss(tid)
+        except Exception:
+            await self._cancel_boss(tid)
 
 class WorldBossJoinView(discord.ui.View):
     def __init__(self, boss_id: int, channel_id: int):
