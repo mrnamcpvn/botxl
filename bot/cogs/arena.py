@@ -296,6 +296,20 @@ class Arena(commands.Cog):
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
             pdata["_equip_hidden"] = equip_hidden
+            # Load gem socket data for stats
+            eq_ids = list(equip_items.keys())
+            socket_data = {}
+            if eq_ids:
+                sc = await db.execute(
+                    f"SELECT equip_instance_id, socket_1, socket_2, socket_3, socket_4 FROM equipment_sockets WHERE equip_instance_id IN ({','.join('?' for _ in eq_ids)})",
+                    [int(eid) for eid in eq_ids])
+                async for sr in sc:
+                    eid = sr[0]
+                    socket_data[str(eid)] = {
+                        "socket_1": sr[1] or "", "socket_2": sr[2] or "",
+                        "socket_3": sr[3] or "", "socket_4": sr[4] or "",
+                    }
+            pdata["_equip_sockets"] = socket_data
             from bot.data.equipment import SET_BONUSES
             stars_per_slot = {}
             for slot, eq_id in equipped.items():
@@ -899,6 +913,20 @@ class Arena(commands.Cog):
             pdata["_equip_items"] = equip_items
             pdata["_equip_enhances"] = equip_enhances
             pdata["_equip_hidden"] = equip_hidden
+            # Load gem socket data for stats
+            eq_ids = list(equip_items.keys())
+            socket_data = {}
+            if eq_ids:
+                sc = await db.execute(
+                    f"SELECT equip_instance_id, socket_1, socket_2, socket_3, socket_4 FROM equipment_sockets WHERE equip_instance_id IN ({','.join('?' for _ in eq_ids)})",
+                    [int(eid) for eid in eq_ids])
+                async for sr in sc:
+                    eid = sr[0]
+                    socket_data[str(eid)] = {
+                        "socket_1": sr[1] or "", "socket_2": sr[2] or "",
+                        "socket_3": sr[3] or "", "socket_4": sr[4] or "",
+                    }
+            pdata["_equip_sockets"] = socket_data
             from bot.data.equipment import SET_BONUSES
             stars_per_slot = {}
             for slot, eq_id in equipped.items():
