@@ -26,7 +26,7 @@ def get_equip_list():
     for eid, e in sorted(EQUIPMENT.items()):
         stars = STAR_LABELS.get(e["star"], "⭐")
         slot = SLOT_NAMES.get(e["slot"], e["slot"])
-        items.append({"id": eid, "name": f"{stars} {e['name']} ({slot})"})
+        items.append({"id": eid, "name": f"{stars} {e['name']} ({slot})", "star": e["star"]})
     return items
 
 def get_skill_list():
@@ -35,13 +35,7 @@ def get_skill_list():
 
 def get_gem_list():
     from bot.config import GEM_TYPES
-    gems = []
-    for gtype, info in GEM_TYPES.items():
-        for lv in range(1, 10):
-            val = info["levels"][lv - 1]
-            stat = info["stat"].upper()
-            gems.append({"type": gtype, "level": lv, "name": f"{info['name']} C{lv} (+{val} {stat})"})
-    return gems
+    return [{"type": gtype, "name": info["name"]} for gtype, info in GEM_TYPES.items()]
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):

@@ -42,10 +42,16 @@
                 <option value="{{ p.id }}">{{ p.name }} (Lv.{{ p.level }})</option>
                 {% endfor %}
             </select>
-            <select name="equip_id" required>
+            <select id="equip_star_filter" onchange="filterEquip()">
+                <option value="">⭐ Tất cả</option>
+                {% for s in range(1, 7) %}
+                <option value="{{ s }}">{{ '★' * s }}</option>
+                {% endfor %}
+            </select>
+            <select name="equip_id" id="equip_select" required>
                 <option value="">-- Chọn trang bị --</option>
                 {% for e in equips %}
-                <option value="{{ e.id }}">{{ e.name }}</option>
+                <option value="{{ e.id }}" data-star="{{ e.star }}">{{ e.name }}</option>
                 {% endfor %}
             </select>
             <button type="submit">Tặng</button>
@@ -87,7 +93,12 @@
                 <option value="{{ g.type }}">{{ g.name }}</option>
                 {% endfor %}
             </select>
-            <input name="gem_level" placeholder="Cấp (1-9)" type="number" min="1" max="9" value="1" required>
+            <select name="gem_level" required>
+                <option value="">-- Chọn cấp --</option>
+                {% for lv in range(1, 10) %}
+                <option value="{{ lv }}">Cấp {{ lv }}</option>
+                {% endfor %}
+            </select>
             <input name="quantity" placeholder="SL" type="number" min="1" value="1" required>
             <button type="submit">Tặng</button>
         </form>
@@ -141,4 +152,18 @@
         </div>
     </div>
 </div>
+
+<script>
+function filterEquip() {
+    const star = document.getElementById('equip_star_filter').value;
+    const select = document.getElementById('equip_select');
+    const options = select.querySelectorAll('option');
+    options.forEach(opt => {
+        if (!opt.value) return;
+        const os = opt.getAttribute('data-star');
+        opt.style.display = (!star || os === star) ? '' : 'none';
+    });
+    select.value = '';
+}
+</script>
 {% endblock %}
