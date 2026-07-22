@@ -764,6 +764,35 @@ class WorldBoss(commands.Cog):
         opts = ["start", "stop", "status"]
         return [app_commands.Choice(name=o, value=o) for o in opts if current.lower() in o]
 
+    @app_commands.command(name="wb", description="🐉 Bắt đầu Boss Thế Giới ngay (admin)")
+    @app_commands.default_permissions(administrator=True)
+    async def wb_start(self, interaction: discord.Interaction):
+        """Lệnh nhanh để admin start boss bất kỳ lúc nào, không cần chọn action."""
+        from bot.cogs.admin import ADMIN_IDS
+        if str(interaction.user.id) not in ADMIN_IDS:
+            await interaction.response.send_message("🚫", ephemeral=True)
+            return
+
+        if self._current_status is not None:
+            status_msg = {
+                "registering": f"⏳ Đang mở đăng ký Boss #{self._current_id}!",
+                "fighting": f"⚔️ Boss #{self._current_id} đang chiến đấu! HP: {self._boss['hp']}/{self._boss['hp_max']}" if self._boss else "⚔️ Đang có boss chạy!",
+            }.get(self._current_status, "⏳ Đang có boss chạy rồi!")
+            await interaction.response.send_message(status_msg, ephemeral=True)
+            return
+
+        await interaction.response.send_message(
+            "✅ **Boss Thế Giới** đang được triệu hồi...\n"
+            f"📍 Kênh: <#{WORLD_BOSS_CHANNEL_ID}>",
+            ephemeral=True)
+
+        # Mở boss tại channel được cấu hình
+        ch = self.bot.get_channel(WORLD_BOSS_CHANNEL_ID)
+        if not ch:
+            # Fallback: mở tại channel hiện tại nếu không tìm thấy channel cấu hình
+            ch = interaction.channel
+        await self.start_boss(ch)
+
 
 class WorldBossJoinView(discord.ui.View):
     def __init__(self, boss_id: int, channel_id: int):
