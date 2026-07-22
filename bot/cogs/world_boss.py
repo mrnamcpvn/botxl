@@ -259,3 +259,45 @@ class WorldBossJoinView(discord.ui.View):
             await db.close()
         del self.participants[sid]
         await interaction.response.send_message("👋 Đã rời.", ephemeral=True)
+
+class BossBattleView(discord.ui.View):
+    def __init__(self, cog, user_id: str, user_name: str):
+        super().__init__(timeout=None)
+        self.cog = cog
+        self.user_id = user_id
+        self.user_name = user_name
+        self.message: discord.Message | None = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("🤡 Có phải mày đâu!", ephemeral=True)
+            return False
+        return True
+
+    async def _do_action(self, interaction: discord.Interaction, action_type: str):
+        player_state = self.cog._players.get(self.user_id)
+        if not player_state:
+            await interaction.response.send_message("❌ Không tìm thấy dữ liệu!", ephemeral=True)
+            return
+        if player_state.get("cd_until", 0) > time.time():
+            remaining = int(player_state["cd_until"] - time.time())
+            await interaction.response.send_message(f"⏳ Hồi sinh sau **{remaining}s** nữa!", ephemeral=True)
+            return
+        if self.cog._boss is None or self.cog._boss.get("hp", 0) <= 0:
+            await interaction.response.send_message("💀 Boss đã chết rồi!", ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        await self.cog._process_player_action(self.user_id, self.user_name, action_type, self, interaction)
+
+    @discord.ui.button(emoji="💥", label="Attack", style=discord.ButtonStyle.red, custom_id="wb:atk")
+    async def atk_btn(self, interaction: discord.Interaction, button: discord.Button):
+        await self._do_action(interaction, "attack")
+
+    @discord.ui.button(emoji="🔥", label="Special", style=discord.ButtonStyle.blurple, custom_id="wb:spc")
+    async def spc_btn(self, interaction: discord.Interaction, button: discord.Button):
+        await self._do_action(interaction, "special")
+
+    @discord.ui.button(emoji="🛡️", label="Defense", style=discord.ButtonStyle.green, custom_id="wb:def")
+    async def def_btn(self, interaction: discord.Interaction, button: discord.Button):
+        await self._do_action(interaction, "defense")
