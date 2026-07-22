@@ -117,7 +117,145 @@ class WorldBoss(commands.Cog):
         self._reg_task = asyncio.create_task(self._registration_phase(channel.id, self._current_id))
 
     async def _registration_phase(self, channel_id: int, tid: int):
-        pass
+        ch = self.bot.get_channel(channel_id)
+        if not ch:
+            await self._cancel_boss(tid)
+            return
+
+        view = WorldBossJoinView(tid, channel_id)
+
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT p.player_id, pl.name FROM world_boss_participants p "
+                "JOIN players pl ON pl.id=p.player_id WHERE p.boss_id=?", (tid,))
+            async for r in cursor:
+                view.participants[r[0]] = r[1] or r[0]
+        finally:
+            await db.close()
+
+        embed = self._build_reg_embed(view, WORLD_BOSS_REGISTER_TIME)
+        msg = await ch.send(embed=embed, view=view)
+
+        for remaining in range(WORLD_BOSS_REGISTER_TIME - 1, -1, -1):
+            await asyncio.sleep(1)
+            if self._current_status != "registering":
+                return
+            try:
+                embed = self._build_reg_embed(view, remaining)
+                await msg.edit(embed=embed)
+            except Exception:
+                pass
+
+        view.stop()
+        for child in view.children:
+            child.disabled = True
+        await msg.edit(view=view)
+
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT player_id FROM world_boss_participants WHERE boss_id=?", (tid,))
+            rows = await cursor.fetchall()
+            ids = [r[0] for r in rows]
+        finally:
+            await db.close()
+
+        if not ids:
+            await msg.edit(content="❌ Không có ai đăng ký! Boss bỏ đi rồi...", embed=None, view=None)
+            await self._cancel_boss(tid)
+            return
+
+        self._current_status = "fighting"
+        db = await get_db()
+        try:
+            await db.execute("UPDATE world_boss SET status='fighting' WHERE id=?", (tid,))
+            await db.commit()
+        finally:
+            await db.close()
+
+        self._fight_task = asyncio.create_task(self._fighting_phase(channel_id, tid, ids))
+
+    def _build_reg_embed(self, view, remaining: int) -> discord.Embed:
+        m, s = divmod(remaining, 60)
+        count = len(view.participants)
+        lines = [
+            f"⏳ Đăng ký kết thúc sau: **{m}:{s:02d}**",
+            "",
+            f"👥 Đã đăng ký (**{count}**):",
+        ]
+        for name in list(view.participants.values())[:20]:
+            lines.append(f"  • {name}")
+        if count == 0:
+            lines.append("  *(chưa có ai)*")
+        lines.extend(["", f"{'─' * 25}", "Boss auto-đánh, bạn tự chọn skill để đánh boss!"])
+        embed = discord.Embed(
+            title="🐉 BOSS THẾ GIỚI XUẤT HIỆN!",
+            description="\n".join(lines),
+            color=0xff0000,
+        )
+        embed.set_footer(text=f"ID: #{self._current_id} | ⚔️ Ra đòn càng nhiều thưởng càng cao")
+        return embed
 
     async def _cancel_boss(self, tid: int):
+        db = await get_db()
+        try:
+            await db.execute("UPDATE world_boss SET status='cancelled', finished_at=? WHERE id=?", (time.time(), tid))
+            await db.commit()
+        finally:
+            await db.close()
+        self._current_id = None
+        self._current_status = None
+        self._boss = None
+        self._players.clear()
+
+    async def _fighting_phase(self, channel_id: int, tid: int, player_ids: list[str]):
         pass
+
+
+class WorldBossJoinView(discord.ui.View):
+    def __init__(self, boss_id: int, channel_id: int):
+        super().__init__(timeout=None)
+        self.boss_id = boss_id
+        self.channel_id = channel_id
+        self.participants: dict[str, str] = {}
+
+    @discord.ui.button(emoji="⚔️", label="Tham Gia", style=discord.ButtonStyle.danger, custom_id="wb:join")
+    async def join_btn(self, interaction: discord.Interaction, button: discord.Button):
+        sid = str(interaction.user.id)
+        if sid in self.participants:
+            await interaction.response.send_message("🤷 Mày đã đăng ký rồi!", ephemeral=True)
+            return
+
+        db = await get_db()
+        try:
+            prow = await (await db.execute("SELECT id, name FROM players WHERE id=?", (sid,))).fetchone()
+            if not prow:
+                await interaction.response.send_message("❌ Đăng ký trước đã: `!register`", ephemeral=True)
+                return
+            name = prow["name"] or interaction.user.display_name
+            await db.execute(
+                "INSERT OR IGNORE INTO world_boss_participants (boss_id, player_id) VALUES (?, ?)",
+                (self.boss_id, sid))
+            await db.commit()
+        finally:
+            await db.close()
+
+        self.participants[sid] = name
+        await interaction.response.send_message(f"✅ Đã đăng ký! ({len(self.participants)} người)", ephemeral=True)
+
+    @discord.ui.button(emoji="❌", label="Rời", style=discord.ButtonStyle.secondary, custom_id="wb:leave")
+    async def leave_btn(self, interaction: discord.Interaction, button: discord.Button):
+        sid = str(interaction.user.id)
+        if sid not in self.participants:
+            await interaction.response.send_message("🤷 Mày chưa đăng ký mà!", ephemeral=True)
+            return
+        db = await get_db()
+        try:
+            await db.execute("DELETE FROM world_boss_participants WHERE boss_id=? AND player_id=?",
+                             (self.boss_id, sid))
+            await db.commit()
+        finally:
+            await db.close()
+        del self.participants[sid]
+        await interaction.response.send_message("👋 Đã rời.", ephemeral=True)
