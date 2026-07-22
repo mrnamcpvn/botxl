@@ -66,6 +66,7 @@ class StatsView(discord.ui.View):
             (2, "⚒️", "Trang Bị",  discord.ButtonStyle.success),
             (3, "🔥", "Kỹ Năng",   discord.ButtonStyle.danger),
             (4, "🔱", "Thần Khí",  discord.ButtonStyle.secondary),
+            (5, "💎", "Đá Khảm",   discord.ButtonStyle.secondary),
         ]
         for tid, emoji, label, style in tabs:
             active = (tid == tab)
@@ -79,7 +80,7 @@ class StatsView(discord.ui.View):
             btn.callback = self._make_cb(tid)
             self.add_item(btn)
 
-        builders = {1: self._tab1, 2: self._tab2, 3: self._tab3, 4: self._tab4}
+        builders = {1: self._tab1, 2: self._tab2, 3: self._tab3, 4: self._tab4, 5: self._tab5}
         self._current_embed = builders[tab]()
 
     def _make_cb(self, tab: int):
@@ -441,4 +442,97 @@ class StatsView(discord.ui.View):
                 embed.set_image(url=a["gif_url"])
 
         embed.set_footer(text="Dùng /thankhi để quản lý Thần Khí")
+        return embed
+
+    # ── Tab 5: Đá Khảm ────────────────────────────────────────
+
+    def _tab5(self) -> discord.Embed:
+        from bot.config import GEM_TYPES, SOCKETS_BY_STAR
+        pdata = self.pdata
+        eq = pdata.get("equipped", {})
+        equip_items = pdata.get("_equip_items", {})
+        equip_enhances = pdata.get("_equip_enhances", {})
+        socket_data = pdata.get("_equip_sockets", {})
+
+        embed = discord.Embed(
+            title=f"💎 Đá Khảm — {self.target.display_name}",
+            color=0x9b59b6,
+        )
+        embed.set_thumbnail(url=self.target.display_avatar.url)
+
+        # Tổng stat từ gem
+        total_gem_stats: dict[str, int] = {}
+        has_any_gem = False
+        lines = []
+
+        stat_icons = {"hp": "❤️", "atk": "⚔️", "def": "🛡️",
+                      "spd": "💨", "crit": "💥", "pierce": "🔱"}
+
+        for slot in ALL_EQUIP_SLOTS:
+            eq_id = eq.get(slot)
+            item_id = equip_items.get(str(eq_id)) if eq_id else None
+            if not item_id or item_id not in EQUIPMENT:
+                continue
+
+            e = EQUIPMENT[item_id]
+            star = e["star"]
+            num_sockets = SOCKETS_BY_STAR.get(star, 1)
+            sockets = socket_data.get(str(eq_id), {})
+
+            socket_parts = []
+            for i in range(1, num_sockets + 1):
+                gem_str = sockets.get(f"socket_{i}", "")
+                if gem_str and ":" in gem_str:
+                    parts = gem_str.split(":")
+                    gt, gl = parts[0], int(parts[1])
+                    info = GEM_TYPES.get(gt, {})
+                    levels = info.get("levels", [])
+                    val = levels[gl - 1] if gl <= len(levels) else 0
+                    stat = info.get("stat", gt)
+                    icon = stat_icons.get(stat, "💎")
+                    socket_parts.append(f"{info.get('name', gt)} C{gl} ({icon}+{val})")
+                    total_gem_stats[stat] = total_gem_stats.get(stat, 0) + val
+                    has_any_gem = True
+                else:
+                    socket_parts.append("🟫 Trống")
+
+            slot_label = EQ_SLOT_NAMES.get(slot, slot)
+            star_label = STAR_LABELS.get(star, "⭐")
+            enhance = equip_enhances.get(str(eq_id), 0)
+            enh_str = f" +{enhance}" if enhance > 0 else ""
+            gem_display = "  ·  ".join(socket_parts)
+            lines.append(f"**{slot_label}** {star_label} {e['name']}{enh_str}\n　└ {gem_display}")
+
+        if lines:
+            embed.add_field(
+                name="🔮 Đá Đang Khảm",
+                value="\n".join(lines),
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="🔮 Đá Đang Khảm",
+                value="_Chưa có trang bị nào_",
+                inline=False,
+            )
+
+        # Tổng bonus từ gem
+        if has_any_gem:
+            bonus_parts = []
+            for stat, val in total_gem_stats.items():
+                icon = stat_icons.get(stat, "💎")
+                bonus_parts.append(f"{icon} +{val} {stat.upper()}")
+            embed.add_field(
+                name="📊 Tổng Bonus Đá",
+                value="  ·  ".join(bonus_parts) if bonus_parts else "_Không có_",
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="📊 Tổng Bonus Đá",
+                value="_Chưa khảm đá nào_",
+                inline=False,
+            )
+
+        embed.set_footer(text="!khamda hoặc /khamda để khảm đá  ·  !khoda để xem kho đá")
         return embed
