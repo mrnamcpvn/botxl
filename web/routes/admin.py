@@ -33,6 +33,16 @@ def get_skill_list():
     from bot.data.skills import SKILLS_DB
     return [{"id": sid, "name": f"{s['icon']} {s['name']} ({s['rarity']})"} for sid, s in SKILLS_DB.items()]
 
+def get_gem_list():
+    from bot.config import GEM_TYPES
+    gems = []
+    for gtype, info in GEM_TYPES.items():
+        for lv in range(1, 10):
+            val = info["levels"][lv - 1]
+            stat = info["stat"].upper()
+            gems.append({"type": gtype, "level": lv, "name": f"{info['name']} C{lv} (+{val} {stat})"})
+    return gems
+
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {"request": request, "is_admin": False})
@@ -56,8 +66,9 @@ async def admin_page(request: Request, msg: str = "", error: str = ""):
     players = get_players()
     equips = get_equip_list()
     skills = get_skill_list()
+    gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
-        "request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "msg": msg, "error": error
+        "request": request, "is_admin": True, "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg, "error": error
     })
 
 @router.post("/admin/coins", response_class=HTMLResponse)
@@ -74,10 +85,10 @@ async def admin_coins(request: Request, player_id: str = Form(...), amount: int 
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "gems": gems, "msg": msg
     })
 
 @router.post("/admin/dungeon", response_class=HTMLResponse)
@@ -102,10 +113,10 @@ async def admin_dungeon(request: Request, player_id: str = Form(...), entries: i
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
 
 @router.post("/admin/equip", response_class=HTMLResponse)
@@ -128,10 +139,10 @@ async def admin_equip(request: Request, player_id: str = Form(...), equip_id: in
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
 
 @router.post("/admin/stones", response_class=HTMLResponse)
@@ -197,10 +208,36 @@ async def admin_stones(request: Request, player_id: str = Form(...), stone_type:
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
+    })
+
+@router.post("/admin/gem", response_class=HTMLResponse)
+async def admin_gem(request: Request, player_id: str = Form(...), gem_type: str = Form(...), gem_level: int = Form(...), quantity: int = Form(1)):
+    if not request.session.get("admin"):
+        return RedirectResponse(url="/login")
+    conn = get_db()
+    msg = ""
+    try:
+        from bot.config import GEM_TYPES
+        info = GEM_TYPES.get(gem_type, {})
+        gem_name = info.get("name", gem_type) if info else gem_type
+        conn.execute(
+            "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+?",
+            (player_id, gem_type, gem_level, quantity, quantity))
+        conn.commit()
+        msg = f"✅ Tặng **{quantity}x {gem_name} C{gem_level}** cho <@{player_id}>"
+    except Exception as e:
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
 
 @router.post("/admin/skill", response_class=HTMLResponse)
@@ -220,10 +257,10 @@ async def admin_skill(request: Request, player_id: str = Form(...), skill_id: in
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
 
 @router.post("/admin/artifact", response_class=HTMLResponse)
@@ -257,10 +294,10 @@ async def admin_artifact(request: Request, player_id: str = Form(...), star: int
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
 
 @router.post("/admin/resetcd", response_class=HTMLResponse)
@@ -280,8 +317,8 @@ async def admin_resetcd(request: Request, player_id: str = Form(...)):
         msg = f"❌ Lỗi: {e}"
     finally:
         conn.close()
-    players = get_players(); equips = get_equip_list(); skills = get_skill_list()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
     return templates.TemplateResponse(request, "admin.html", {
         "request": request, "is_admin": True,
-        "players": players, "equips": equips, "skills": skills, "msg": msg
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })

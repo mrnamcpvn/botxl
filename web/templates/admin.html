@@ -73,6 +73,27 @@
     </div>
 
     <div class="card">
+        <h2>💎 Tặng Đá Khảm</h2>
+        <form method="post" action="/admin/gem">
+            <select name="player_id" required>
+                <option value="">-- Chọn người chơi --</option>
+                {% for p in players %}
+                <option value="{{ p.id }}">{{ p.name }} (Lv.{{ p.level }})</option>
+                {% endfor %}
+            </select>
+            <select name="gem_type" required>
+                <option value="">-- Chọn loại đá --</option>
+                {% for g in gems %}
+                <option value="{{ g.type }}">{{ g.name }}</option>
+                {% endfor %}
+            </select>
+            <input name="gem_level" placeholder="Cấp (1-9)" type="number" min="1" max="9" value="1" required>
+            <input name="quantity" placeholder="SL" type="number" min="1" value="1" required>
+            <button type="submit">Tặng</button>
+        </form>
+    </div>
+
+    <div class="card">
         <h2>🔥 Tặng Skill</h2>
         <form method="post" action="/admin/skill">
             <select name="player_id" required>
