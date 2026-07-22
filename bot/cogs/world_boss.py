@@ -210,6 +210,234 @@ class WorldBoss(commands.Cog):
         self._players.clear()
 
     async def _fighting_phase(self, channel_id: int, tid: int, player_ids: list[str]):
+        ch = self.bot.get_channel(channel_id)
+        if not ch:
+            await self._cancel_boss(tid)
+            return
+
+        try:
+            max_level = 1
+            for sid in player_ids:
+                db = await get_db()
+                try:
+                    prow = await (await db.execute("SELECT level, name FROM players WHERE id=?", (sid,))).fetchone()
+                    if prow:
+                        lvl = prow["level"]
+                        if lvl > max_level:
+                            max_level = lvl
+                        self._players[sid] = {
+                            "damage": 0, "deaths": 0, "cd_until": 0,
+                            "name": prow["name"] or f"Player{sid[-4:]}",
+                        }
+                finally:
+                    await db.close()
+
+            boss_level = max_level + 30
+            n = len(player_ids)
+            boss_hp_max = int(80 * n * 200)
+            boss_atk_min = boss_level * 5
+            boss_atk_max = boss_level * 8
+            boss_def = boss_level * 3
+
+            self._boss = {
+                "id": "boss", "name": "🐉 Boss Thế Giới",
+                "level": boss_level,
+                "hp": boss_hp_max, "hp_max": boss_hp_max,
+                "attack_min": boss_atk_min, "attack_max": boss_atk_max,
+                "defense": boss_def,
+                "crit": 5, "pierce": 10,
+                "_npc_override": True,
+                "skill_equipped": {}, "buffs": {},
+                "class_id": "trumcuoi",
+                "attack_cd": 0, "special_cd": 0, "defense_cd": 0,
+            }
+
+            db = await get_db()
+            try:
+                await db.execute(
+                    "UPDATE world_boss SET boss_level=?, boss_hp=?, boss_hp_max=?, "
+                    "boss_atk_min=?, boss_atk_max=?, boss_def=? WHERE id=?",
+                    (boss_level, boss_hp_max, boss_hp_max,
+                     boss_atk_min, boss_atk_max, boss_def, tid))
+                await db.commit()
+            finally:
+                await db.close()
+
+            embed = self._build_boss_embed(tid)
+            self._ranking_msg = await ch.send(embed=embed)
+
+            for sid in player_ids:
+                try:
+                    user = await self.bot.fetch_user(int(sid))
+                    view = BossBattleView(self, sid, self._players[sid]["name"])
+                    pvt = await user.send(
+                        embed=discord.Embed(
+                            title="⚔️ Đánh Boss!",
+                            description="Dùng 3 nút bên dưới để đánh boss.\n"
+                                        "💥 Attack | 🔥 Special | 🛡️ Defense",
+                            color=0xff0000),
+                        view=view)
+                    view.message = pvt
+                    self._players[sid]["view"] = view
+                except Exception:
+                    pass
+
+            while True:
+                await asyncio.sleep(1)
+                if self._boss["hp"] <= 0:
+                    break
+                if self._current_status != "fighting":
+                    return
+
+            await self._finish_boss(tid, ch)
+        except asyncio.CancelledError:
+            await self._cancel_boss(tid)
+        except Exception as e:
+            logger.error(f"[WORLDBOSS] _fighting_phase lỗi: {e}", exc_info=True)
+            await self._cancel_boss(tid)
+            try:
+                await ch.send(f"⚠️ Boss #{tid} gặp lỗi và đã bị hủy!")
+            except Exception:
+                pass
+        finally:
+            self._current_id = None
+            self._current_status = None
+
+    async def _process_player_action(self, user_id: str, user_name: str, action_type: str,
+                                     view: BossBattleView, interaction: discord.Interaction):
+        if self._boss is None or self._boss.get("hp", 0) <= 0:
+            return
+
+        db = await get_db()
+        try:
+            pdata = await load_player_full(db, user_id, reset_cd=False)
+            if not pdata:
+                return
+        finally:
+            await db.close()
+
+        pdata["id"] = user_id
+        pdata["name"] = user_name
+        pdata["hp"] = pdata.get("hp", pdata.get("hp_max", 100))
+        if pdata["hp"] <= 0:
+            pdata["hp"] = pdata.get("hp_max", 100)
+
+        eff = get_effective_stats(pdata)
+        pdata["hp_max"] = eff["hp_max"]
+        if pdata["hp"] > eff["hp_max"]:
+            pdata["hp"] = eff["hp_max"]
+
+        skill_id = 1
+        slot = pdata.get("skill_equipped", {}).get(action_type)
+        if slot:
+            skill_id = slot
+
+        prev_boss_hp = self._boss["hp"]
+        flags: dict = {}
+        result = await execute_action(pdata, self._boss, 0, {"type": action_type, "skill_id": skill_id}, flags)
+
+        dmg_to_boss = prev_boss_hp - self._boss["hp"]
+        if dmg_to_boss < 0:
+            dmg_to_boss = 0
+        self._players[user_id]["damage"] = self._players[user_id].get("damage", 0) + dmg_to_boss
+
+        if pdata["hp"] <= 0:
+            self._players[user_id]["cd_until"] = time.time() + WORLD_BOSS_RESPAWN_DELAY
+            self._players[user_id]["deaths"] = self._players[user_id].get("deaths", 0) + 1
+            respawn_text = f"\n💀 Bạn đã chết! Hồi sinh sau {WORLD_BOSS_RESPAWN_DELAY}s..."
+        else:
+            self._players[user_id]["cd_until"] = 0
+            respawn_text = ""
+
+        hp_text = f"❤️ {pdata['hp']}/{pdata['hp_max']}"
+        btn_update = False
+        if self._players[user_id]["cd_until"] > time.time():
+            for child in view.children:
+                child.disabled = True
+            btn_update = True
+
+        try:
+            await interaction.edit_original_response(
+                embed=discord.Embed(
+                    title="⚔️ Đánh Boss!",
+                    description=f"{hp_text}\n💥 Gây **{dmg_to_boss}** dmg!{respawn_text}",
+                    color=0xff0000 if pdata["hp"] <= 0 else 0x00ff00),
+                view=view if btn_update else None)
+        except Exception:
+            pass
+
+        if self._boss["hp"] <= 0:
+            return
+
+        alive_ids = [sid for sid, ps in self._players.items() if ps.get("cd_until", 0) <= time.time()]
+        if alive_ids:
+            target_id = random.choice(alive_ids)
+            await self._boss_attack(target_id)
+
+        if self._ranking_msg and self._boss["hp"] > 0:
+            try:
+                embed = self._build_boss_embed(self._current_id)
+                await self._ranking_msg.edit(embed=embed)
+            except Exception:
+                pass
+
+    async def _boss_attack(self, target_id: str):
+        if self._boss is None or self._boss["hp"] <= 0:
+            return
+
+        db = await get_db()
+        try:
+            tdata = await load_player_full(db, target_id, reset_cd=False)
+            if not tdata:
+                return
+        finally:
+            await db.close()
+
+        tdata["id"] = target_id
+        tdata["name"] = self._players[target_id].get("name", "?")
+        eff = get_effective_stats(tdata)
+        tdata["hp_max"] = eff["hp_max"]
+        if tdata.get("hp", 0) <= 0 or tdata["hp"] > eff["hp_max"]:
+            tdata["hp"] = eff["hp_max"]
+
+        dmg = random.randint(self._boss["attack_min"], self._boss["attack_max"])
+        crit_roll = random.random() * 100 < self._boss.get("crit", 0)
+        if crit_roll:
+            dmg = int(dmg * 1.5)
+
+        pierce = self._boss.get("pierce", 0)
+        if pierce > 0:
+            eff_def = int(eff["defense"] * (100 - pierce) / 100)
+        else:
+            eff_def = eff["defense"]
+
+        final_dmg = max(dmg // 4, dmg - eff_def)
+        tdata["hp"] = max(0, tdata.get("hp", 0) - final_dmg)
+
+        target_view = self._players[target_id].get("view")
+        if target_view and target_view.message:
+            try:
+                if tdata["hp"] <= 0:
+                    self._players[target_id]["cd_until"] = time.time() + WORLD_BOSS_RESPAWN_DELAY
+                    self._players[target_id]["deaths"] = self._players[target_id].get("deaths", 0) + 1
+                    for child in target_view.children:
+                        child.disabled = True
+                    status = f"💀 Boss đánh **{final_dmg}** dmg! Bạn đã chết! Hồi sinh sau {WORLD_BOSS_RESPAWN_DELAY}s..."
+                else:
+                    status = f"🛡️ Boss đánh **{final_dmg}** dmg!"
+                await target_view.message.edit(
+                    embed=discord.Embed(
+                        title=f"⚔️ Đánh Boss! | ❤️ {tdata['hp']}/{tdata['hp_max']}",
+                        description=status,
+                        color=0xff0000 if tdata["hp"] <= 0 else 0xffaa00),
+                    view=target_view if tdata["hp"] <= 0 else None)
+            except Exception:
+                pass
+
+    def _build_boss_embed(self, tid: int) -> discord.Embed:
+        return discord.Embed(title="🐉 Boss Thế Giới", description="Đang tải...", color=0xff0000)
+
+    async def _finish_boss(self, tid: int, ch: discord.TextChannel):
         pass
 
 
