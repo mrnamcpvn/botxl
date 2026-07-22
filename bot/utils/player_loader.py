@@ -69,6 +69,21 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     pdata["_equip_enhances"] = equip_enhances
     pdata["_equip_hidden"] = equip_hidden
 
+    eq_ids = list(equip_items.keys())
+    socket_data = {}
+    if eq_ids:
+        placeholders = ",".join("?" for _ in eq_ids)
+        sc = await db.execute(
+            f"SELECT equip_instance_id, socket_1, socket_2, socket_3, socket_4 FROM equipment_sockets WHERE equip_instance_id IN ({placeholders})",
+            [int(eid) for eid in eq_ids])
+        async for sr in sc:
+            eid = sr[0]
+            socket_data[str(eid)] = {
+                "socket_1": sr[1] or "", "socket_2": sr[2] or "",
+                "socket_3": sr[3] or "", "socket_4": sr[4] or "",
+            }
+    pdata["_equip_sockets"] = socket_data
+
     # Set bonus
     pdata["_set_bonus"] = None
     stars_per_slot = {}
