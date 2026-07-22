@@ -50,6 +50,8 @@ class WorldBoss(commands.Cog):
         self._action_lock = asyncio.Lock()
         # Event báo boss đã chết
         self._boss_dead = asyncio.Event()
+        # ID người giết boss
+        self._killer_id: str | None = None
 
     async def cog_load(self):
         asyncio.create_task(self._init_on_ready())
@@ -227,6 +229,7 @@ class WorldBoss(commands.Cog):
         self._boss = None
         self._players.clear()
         self._ranking_msg = None
+        self._killer_id = None
         self._boss_dead.set()  # unlock bất kỳ waiter nào
 
     async def _fighting_phase(self, channel_id: int, tid: int, player_ids: list[str]):
@@ -278,6 +281,7 @@ class WorldBoss(commands.Cog):
                 "_npc_override": True, "class_id": "trumcuoi",
             }
             self._boss_dead.clear()
+            self._killer_id = None
 
             db = await get_db()
             try:
@@ -324,7 +328,7 @@ class WorldBoss(commands.Cog):
             await self._boss_dead.wait()
 
             if self._boss and self._boss["hp"] <= 0:
-                await self._finish_boss(tid, ch)
+                await self._finish_boss(tid, ch, self._killer_id)
 
         except asyncio.CancelledError:
             await self._cancel_boss(tid)
@@ -439,6 +443,7 @@ class WorldBoss(commands.Cog):
 
             if boss_dead:
                 self._boss["hp"] = 0
+                self._killer_id = user_id
                 self._boss_dead.set()
                 return ("boss_dead", damage, crit_tag, skill_cd_key, skill_cooldown_sec)
 
@@ -648,13 +653,14 @@ class WorldBoss(commands.Cog):
             rw_preview = self._calc_boss_reward(rank, total_players)
             coins = rw_preview.get("coins", 0)
             stones = rw_preview.get("stones")
-            equip_star = rw_preview.get("equip_star")
+            equips = rw_preview.get("equips", [])
             rw_parts = [f"💰~{coins}🪙"]
             if stones:
-                rw_parts.append(f"💎{stones[1]}{stones[0][6:7].upper()}")  # B/M/A
-            if equip_star:
-                star_icons = {3: "🟡", 4: "🟣", 5: "🔴", 6: "💗"}
-                rw_parts.append(f"⚒️{star_icons.get(equip_star,'⭐')}")
+                stone_abbr = {"stone_basic": "SC", "stone_medium": "TC", "stone_advanced": "CC"}
+                rw_parts.append(f"💎×{stones[1]}{stone_abbr.get(stones[0], '')}")
+            star_icons = {2: "🟢", 3: "🟡", 4: "🟣", 5: "🔴", 6: "💗"}
+            for equip_star, equip_count in equips:
+                rw_parts.append(f"⚒️{star_icons.get(equip_star,'⭐')}×{equip_count}")
             rw_str = f" _({' '.join(rw_parts)})_"
 
             lines.append(
@@ -667,19 +673,22 @@ class WorldBoss(commands.Cog):
         embed = discord.Embed(
             title=f"🐉 BOSS THẾ GIỚI #{tid}",
             description="\n".join(lines), color=0xff0000)
-        embed.set_footer(text="💡 Gây nhiều dmg = thưởng tốt hơn | Phần thưởng chỉ là dự kiến")
+        embed.set_footer(text="💡 Gây nhiều dmg = thưởng tốt hơn | ⚔️ Người kết liễu boss nhận thêm 1 trang bị 5★")
         return embed
 
-    async def _finish_boss(self, tid: int, ch: discord.TextChannel):
+    async def _finish_boss(self, tid: int, ch: discord.TextChannel, killer_id: str | None = None):
         sorted_p = sorted(self._players.items(), key=lambda x: x[1]["damage"], reverse=True)
         rewards = [
             (sid, rank, self._calc_boss_reward(rank, len(sorted_p)), ps.get("name", "?"))
             for rank, (sid, ps) in enumerate(sorted_p, 1)
         ]
-        reward_summaries = await self._apply_boss_rewards(tid, rewards)
+        reward_summaries = await self._apply_boss_rewards(tid, rewards, killer_id)
 
         lines = [f"💀 **BOSS THẾ GIỚI #{tid} ĐÃ BỊ HẠ!**\n",
                  f"🐉 Lv.{self._boss['level']} | HP: {self._boss['hp_max']:,}".replace(",", "."), ""]
+        if killer_id and killer_id in self._players:
+            killer_name = self._players[killer_id].get("name", "???")
+            lines.append(f"⚔️ **Người kết liễu:** {killer_name} _(+1 trang bị 5★ thưởng thêm)_\n")
         for sid, rank, rw, name in rewards[:10]:
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"{rank}.")
             ps = self._players.get(sid, {})
@@ -740,25 +749,52 @@ class WorldBoss(commands.Cog):
         self._ranking_msg = None
 
     def _calc_boss_reward(self, rank: int, total: int) -> dict:
+        """
+        Bảng thưởng theo rank:
+        Top 1  : 1.000🪙 · 700XP · 3 Đá Cao Cấp · 1 trang bị 5★
+        Top 2  : 800🪙  · 550XP · 2 Đá Cao Cấp · 2 trang bị 4★
+        Top 3  : 600🪙  · 400XP · 3 Đá Trung Cấp · 1 trang bị 4★
+        Top 4-5: 450🪙  · 280XP · 2 Đá Trung Cấp · 2 trang bị 3★
+        Top 6-10: 300🪙 · 160XP · 1 trang bị random 2-3★
+        Top 11+: 150🪙  · 60XP
+        (+ người kết liễu boss nhận thêm 1 trang bị 5★, xử lý riêng trong _apply_boss_rewards)
+        """
         if rank == 1:
-            return {"coins": random.randint(800, 1000), "xp": 600,
-                    "stones": ("stone_advanced", random.randint(5, 8)),
-                    "equip_star": 4, "equip_count": 1}
+            return {
+                "coins": random.randint(900, 1100), "xp": 700,
+                "stones": ("stone_advanced", random.randint(3, 5)),
+                "equips": [(5, 1)],          # [(star, count)]
+            }
         elif rank == 2:
-            return {"coins": random.randint(600, 800), "xp": 450,
-                    "stones": ("stone_medium", random.randint(3, 5)),
-                    "equip_star": 3, "equip_count": 2}
+            return {
+                "coins": random.randint(700, 900), "xp": 550,
+                "stones": ("stone_advanced", random.randint(2, 3)),
+                "equips": [(4, 2)],
+            }
         elif rank == 3:
-            return {"coins": random.randint(400, 600), "xp": 300,
-                    "stones": ("stone_basic", random.randint(5, 10)),
-                    "equip_star": 3, "equip_count": 1}
+            return {
+                "coins": random.randint(500, 700), "xp": 400,
+                "stones": ("stone_medium", random.randint(3, 5)),
+                "equips": [(4, 1)],
+            }
         elif rank <= 5:
-            return {"coins": random.randint(300, 500), "xp": random.randint(150, 240)}
+            return {
+                "coins": random.randint(400, 500), "xp": random.randint(250, 300),
+                "stones": ("stone_medium", random.randint(1, 2)),
+                "equips": [(3, 2)],
+            }
         elif rank <= 10:
-            return {"coins": random.randint(200, 300), "xp": random.randint(60, 120)}
-        return {"coins": random.randint(100, 200), "xp": 30}
+            # 1 trang bị random 2 hoặc 3 sao
+            star = random.choice([2, 3])
+            return {
+                "coins": random.randint(250, 350), "xp": random.randint(130, 180),
+                "equips": [(star, 1)],
+            }
+        else:
+            return {"coins": random.randint(100, 200), "xp": 60}
 
-    async def _apply_boss_rewards(self, tid: int, rewards: list) -> dict[str, str]:
+    async def _apply_boss_rewards(self, tid: int, rewards: list,
+                                   killer_id: str | None = None) -> dict[str, str]:
         summaries: dict[str, str] = {}
         db = await get_db()
         try:
@@ -777,10 +813,10 @@ class WorldBoss(commands.Cog):
                 logger.info(f"[WORLDBOSS] Cộng thưởng {pid} ({name}): +{coins}🪙 +{xp}XP (rank {rank})")
                 lines = [f"  • +{coins}🪙 · +{xp}XP"]
 
+                # Stones
                 stones = rw.get("stones")
                 if stones:
                     stype, sqty = stones
-                    # Chỉ cho phép cột hợp lệ — tránh SQL injection
                     if stype not in ("stone_basic", "stone_medium", "stone_advanced"):
                         logger.error(f"[WORLDBOSS] stone type không hợp lệ: {stype}")
                     else:
@@ -794,23 +830,35 @@ class WorldBoss(commands.Cog):
                         lines.append(f"  • +{sqty} {STONE_NAMES.get(stype, stype)}")
                         logger.info(f"[WORLDBOSS]   +{sqty} {stype} cho {pid}")
 
-                equip_star = rw.get("equip_star")
-                equip_count = rw.get("equip_count", 0)
-                if equip_star and equip_count > 0:
+                # Equipment list: [(star, count), ...]
+                equips = rw.get("equips", [])
+                for equip_star, equip_count in equips:
                     eids = _EQUIP_BY_STAR.get(equip_star, [])
                     if not eids:
                         logger.warning(f"[WORLDBOSS] Không có equipment {equip_star}★ trong _EQUIP_BY_STAR")
+                        continue
                     for _ in range(equip_count):
-                        if eids:
-                            eid = random.choice(eids)
-                            await db.execute(
-                                "INSERT INTO player_equipment "
-                                "(player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
-                                (pid, eid))
-                            eq_name = EQUIPMENT.get(eid, {}).get("name", f"ID:{eid}")
-                            lines.append(
-                                f"  • {STAR_LABELS.get(equip_star,'⭐')} **{eq_name}**")
-                            logger.info(f"[WORLDBOSS]   Trang bị {equip_star}★ {eq_name} (id={eid}) cho {pid}")
+                        eid = random.choice(eids)
+                        await db.execute(
+                            "INSERT INTO player_equipment "
+                            "(player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                            (pid, eid))
+                        eq_name = EQUIPMENT.get(eid, {}).get("name", f"ID:{eid}")
+                        lines.append(f"  • {STAR_LABELS.get(equip_star,'⭐')} **{eq_name}**")
+                        logger.info(f"[WORLDBOSS]   Trang bị {equip_star}★ {eq_name} (id={eid}) cho {pid}")
+
+                # Killer bonus: +1 trang bị 5★
+                if pid == killer_id:
+                    killer_eids = _EQUIP_BY_STAR.get(5, [])
+                    if killer_eids:
+                        eid = random.choice(killer_eids)
+                        await db.execute(
+                            "INSERT INTO player_equipment "
+                            "(player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
+                            (pid, eid))
+                        eq_name = EQUIPMENT.get(eid, {}).get("name", f"ID:{eid}")
+                        lines.append(f"  • ⚔️ **BONUS KẾT LIỄU:** {STAR_LABELS.get(5,'🔴')} **{eq_name}**")
+                        logger.info(f"[WORLDBOSS]   Killer bonus 5★ {eq_name} (id={eid}) cho {pid}")
 
                 await db.execute(
                     "INSERT OR IGNORE INTO world_boss_participants (boss_id, player_id) VALUES (?, ?)",
@@ -852,7 +900,7 @@ class WorldBoss(commands.Cog):
             self._boss_atk_task = asyncio.create_task(self._boss_auto_attack_loop())
             await self._boss_dead.wait()
             if self._boss and self._boss["hp"] <= 0:
-                await self._finish_boss(tid, ch)
+                await self._finish_boss(tid, ch, self._killer_id)
         except asyncio.CancelledError:
             await self._cancel_boss(tid)
         except Exception as e:
