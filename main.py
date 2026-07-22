@@ -52,6 +52,7 @@ async def load_extensions():
     await bot.load_extension("bot.cogs.quest")
     await bot.load_extension("bot.cogs.arena_tournament")
     await bot.load_extension("bot.cogs.world_boss")
+    await bot.load_extension("bot.cogs.gem_socket")
 
 async def main():
     await init_db()
