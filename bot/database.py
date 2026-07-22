@@ -183,6 +183,21 @@ TABLES = [
         player_id TEXT PRIMARY KEY,
         amount INTEGER DEFAULT 0
     )""",
+    """CREATE TABLE IF NOT EXISTS player_gems (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id TEXT NOT NULL,
+        gem_type TEXT NOT NULL,
+        gem_level INTEGER DEFAULT 1,
+        quantity INTEGER DEFAULT 0,
+        UNIQUE(player_id, gem_type, gem_level)
+    )""",
+    """CREATE TABLE IF NOT EXISTS equipment_sockets (
+        equip_instance_id INTEGER PRIMARY KEY REFERENCES player_equipment(id),
+        socket_1 TEXT DEFAULT '',
+        socket_2 TEXT DEFAULT '',
+        socket_3 TEXT DEFAULT '',
+        socket_4 TEXT DEFAULT ''
+    )""",
 ]
 
 MIGRATIONS = [
@@ -301,6 +316,7 @@ async def _create_indexes(db):
         "CREATE INDEX IF NOT EXISTS idx_arena_participants_tid ON arena_participants(tournament_id)",
         "CREATE INDEX IF NOT EXISTS idx_world_boss_status ON world_boss(status)",
         "CREATE INDEX IF NOT EXISTS idx_world_boss_participants_bid ON world_boss_participants(boss_id)",
+        "CREATE INDEX IF NOT EXISTS idx_player_gems_player ON player_gems(player_id)",
     ]
     for sql in indexes:
         try:
