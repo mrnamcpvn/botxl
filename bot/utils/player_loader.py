@@ -28,9 +28,18 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     slots = {}
     async for r in slots_cursor:
         slots[r[0]] = r[1]
-    pdata["skill_equipped"] = slots if slots else {
-        "attack": 1, "special": 5, "defense": 10, "passive": 14
-    }
+    if not slots:
+        # Ghi default skill slots vào DB nếu player chưa có
+        default_slots = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
+        for slot, skill_id in default_slots.items():
+            await db.execute(
+                "INSERT OR IGNORE INTO player_skill_slots (player_id, slot, skill_id) VALUES (?, ?, ?)",
+                (pid, slot, skill_id))
+        await db.execute(
+            "INSERT OR IGNORE INTO player_skills (player_id, skill_id) VALUES (?, 1)", (pid,))
+        await db.commit()
+        slots = default_slots
+    pdata["skill_equipped"] = slots
 
     # Equipment (bao gồm hidden_stats)
     eq_cursor = await db.execute(

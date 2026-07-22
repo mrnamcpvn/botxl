@@ -14,7 +14,6 @@ from bot.engine.battle import get_effective_stats
 from bot.engine.rewards import _EQUIP_BY_STAR
 from bot.data.equipment import EQUIPMENT, STAR_LABELS
 from bot.data.skills import SKILLS_DB
-from bot.data.skills import SKILLS_DB
 from bot.utils.player_loader import load_player_full
 from bot.logger import logger
 
@@ -390,16 +389,24 @@ class WorldBoss(commands.Cog):
             atk_min = eff["attack_min"]
             atk_max = eff["attack_max"]
 
-            # Lấy skill đang equipped — fallback về skill mặc định
-            _default_skills = {"attack": 1, "special": 5, "defense": 10}
-            skill_id = pdata.get("skill_equipped", {}).get(
-                action_type, _default_skills.get(action_type, 1))
-            skill = SKILLS_DB.get(skill_id, SKILLS_DB[1])
-            mult = skill.get("multiplier", 1.0)
+            # Basic attack — skill_id=1, không CD
+            if action_type == "basic":
+                skill_id = 1
+                skill = SKILLS_DB[1]
+                skill_cd_key = None
+                skill_cooldown_sec = 0
+            else:
+                # Lấy skill đang equipped — fallback về skill mặc định
+                _default_skills = {"attack": 1, "special": 5, "defense": 10}
+                skill_id = pdata.get("skill_equipped", {}).get(
+                    action_type, _default_skills.get(action_type, 1))
+                skill = SKILLS_DB.get(skill_id, SKILLS_DB[1])
+                # Set CD cho skill này (dùng cooldown từ SKILLS_DB, tối thiểu 2s real-time)
+                skill_cooldown_sec = max(2, skill.get("cooldown", 0) * 3)  # mỗi CD = 3 giây real-time
+                skill_cd_key = f"skill_cd_{action_type}"
+                ps[skill_cd_key] = time.time() + skill_cooldown_sec
 
-            # Set CD cho skill này (dùng cooldown từ SKILLS_DB, tối thiểu 2s real-time)
-            skill_cooldown_sec = max(2, skill.get("cooldown", 0) * 3)  # mỗi CD = 3 giây real-time
-            ps[skill_cd_key] = time.time() + skill_cooldown_sec
+            mult = skill.get("multiplier", 1.0)
 
             # Tính base damage
             base_dmg = int(random.randint(atk_min, atk_max) * mult)
@@ -507,12 +514,7 @@ class WorldBoss(commands.Cog):
                     view=view)
             except Exception:
                 pass
-            # Update ranking
-            if self._ranking_msg:
-                try:
-                    await self._ranking_msg.edit(embed=self._build_boss_embed(self._current_id))
-                except Exception:
-                    pass
+            # Ranking embed sẽ được update trong _finish_boss (chỉ 1 lần khi boss chết)
             return
 
         if result[0] == "hit":
@@ -533,12 +535,7 @@ class WorldBoss(commands.Cog):
                     view=view)
             except Exception:
                 pass
-            # Update ranking embed — không block nếu fail
-            if self._ranking_msg:
-                try:
-                    await self._ranking_msg.edit(embed=self._build_boss_embed(self._current_id))
-                except Exception:
-                    pass
+            # Không update live ranking embed mỗi lần đánh — chỉ update khi boss chết
 
     async def _boss_attack(self, target_id: str):
         """Boss tấn công 1 player cụ thể, cập nhật HP trong state."""
@@ -668,7 +665,7 @@ class WorldBoss(commands.Cog):
             lines.append("  *(đang tải...)*")
 
         embed = discord.Embed(
-            title=f"🐉 BOSS THẾ GIỚI #{tid} — LIVE",
+            title=f"🐉 BOSS THẾ GIỚI #{tid}",
             description="\n".join(lines), color=0xff0000)
         embed.set_footer(text="💡 Gây nhiều dmg = thưởng tốt hơn | Phần thưởng chỉ là dự kiến")
         return embed
@@ -768,26 +765,41 @@ class WorldBoss(commands.Cog):
             for pid, rank, rw, name in rewards:
                 coins = rw.get("coins", 0)
                 xp = rw.get("xp", 0)
+                # Đảm bảo player tồn tại trước khi UPDATE
+                prow = await (await db.execute(
+                    "SELECT id FROM players WHERE id=?", (pid,))).fetchone()
+                if not prow:
+                    logger.warning(f"[WORLDBOSS] _apply_boss_rewards: player {pid} không tồn tại, bỏ qua")
+                    continue
+
                 await db.execute(
                     "UPDATE players SET coins=coins+?, xp=xp+? WHERE id=?", (coins, xp, pid))
+                logger.info(f"[WORLDBOSS] Cộng thưởng {pid} ({name}): +{coins}🪙 +{xp}XP (rank {rank})")
                 lines = [f"  • +{coins}🪙 · +{xp}XP"]
 
                 stones = rw.get("stones")
                 if stones:
                     stype, sqty = stones
-                    await db.execute(
-                        "INSERT OR IGNORE INTO player_enhance_stones "
-                        "(player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)",
-                        (pid,))
-                    await db.execute(
-                        f"UPDATE player_enhance_stones SET {stype}={stype}+? WHERE player_id=?",
-                        (sqty, pid))
-                    lines.append(f"  • +{sqty} {STONE_NAMES[stype]}")
+                    # Chỉ cho phép cột hợp lệ — tránh SQL injection
+                    if stype not in ("stone_basic", "stone_medium", "stone_advanced"):
+                        logger.error(f"[WORLDBOSS] stone type không hợp lệ: {stype}")
+                    else:
+                        await db.execute(
+                            "INSERT OR IGNORE INTO player_enhance_stones "
+                            "(player_id, stone_basic, stone_medium, stone_advanced) VALUES (?, 0, 0, 0)",
+                            (pid,))
+                        await db.execute(
+                            f"UPDATE player_enhance_stones SET {stype}={stype}+? WHERE player_id=?",
+                            (sqty, pid))
+                        lines.append(f"  • +{sqty} {STONE_NAMES.get(stype, stype)}")
+                        logger.info(f"[WORLDBOSS]   +{sqty} {stype} cho {pid}")
 
                 equip_star = rw.get("equip_star")
                 equip_count = rw.get("equip_count", 0)
                 if equip_star and equip_count > 0:
                     eids = _EQUIP_BY_STAR.get(equip_star, [])
+                    if not eids:
+                        logger.warning(f"[WORLDBOSS] Không có equipment {equip_star}★ trong _EQUIP_BY_STAR")
                     for _ in range(equip_count):
                         if eids:
                             eid = random.choice(eids)
@@ -795,15 +807,24 @@ class WorldBoss(commands.Cog):
                                 "INSERT INTO player_equipment "
                                 "(player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
                                 (pid, eid))
+                            eq_name = EQUIPMENT.get(eid, {}).get("name", f"ID:{eid}")
                             lines.append(
-                                f"  • {STAR_LABELS.get(equip_star,'⭐')} **{EQUIPMENT[eid]['name']}**")
+                                f"  • {STAR_LABELS.get(equip_star,'⭐')} **{eq_name}**")
+                            logger.info(f"[WORLDBOSS]   Trang bị {equip_star}★ {eq_name} (id={eid}) cho {pid}")
 
                 await db.execute(
+                    "INSERT OR IGNORE INTO world_boss_participants (boss_id, player_id) VALUES (?, ?)",
+                    (tid, pid))
+                await db.execute(
                     "UPDATE world_boss_participants "
-                    "SET reward_given=1, final_rank=? WHERE boss_id=? AND player_id=?",
-                    (rank, tid, pid))
+                    "SET reward_given=1, final_rank=?, total_damage=? WHERE boss_id=? AND player_id=?",
+                    (rank, self._players.get(pid, {}).get("damage", 0), tid, pid))
                 summaries[pid] = "\n".join(lines)
+
             await db.commit()
+            logger.info(f"[WORLDBOSS] _apply_boss_rewards hoàn tất, đã commit {len(summaries)} người")
+        except Exception as e:
+            logger.error(f"[WORLDBOSS] _apply_boss_rewards lỗi: {e}", exc_info=True)
         finally:
             await db.close()
         return summaries
@@ -937,6 +958,17 @@ class WorldBossJoinView(discord.ui.View):
                     "❌ Đăng ký trước đã: `!register`", ephemeral=True)
                 return
             name = prow["name"] or interaction.user.display_name
+
+            # Đảm bảo player có default skill slots trong DB (nếu chưa có)
+            default_slots = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
+            for slot, skill_id in default_slots.items():
+                await db.execute(
+                    "INSERT OR IGNORE INTO player_skill_slots (player_id, slot, skill_id) VALUES (?, ?, ?)",
+                    (sid, slot, skill_id))
+            # Đảm bảo player có skill 1 trong danh sách skills sở hữu
+            await db.execute(
+                "INSERT OR IGNORE INTO player_skills (player_id, skill_id) VALUES (?, 1)", (sid,))
+
             await db.execute(
                 "INSERT OR IGNORE INTO world_boss_participants (boss_id, player_id) VALUES (?, ?)",
                 (self.boss_id, sid))
@@ -980,6 +1012,15 @@ class BossBattleView(discord.ui.View):
         atk  = labels.get("attack",  {"icon": "💥", "name": "Attack"})
         spc  = labels.get("special", {"icon": "🔥", "name": "Special"})
         dfs  = labels.get("defense", {"icon": "🛡️", "name": "Defense"})
+
+        # Nút cơ bản — không bao giờ CD, luôn dùng được
+        btn_basic = discord.ui.Button(
+            emoji="👊",
+            label="Cú Đấm Ba Que",
+            style=discord.ButtonStyle.secondary,
+            custom_id="wb:basic")
+        btn_basic.callback = self._basic_cb
+        self.add_item(btn_basic)
 
         btn_atk = discord.ui.Button(
             emoji=atk["icon"],
@@ -1026,6 +1067,9 @@ class BossBattleView(discord.ui.View):
             return
         await interaction.response.defer()
         await self.cog._handle_player_action(self.user_id, action_type, self, interaction)
+
+    async def _basic_cb(self, interaction: discord.Interaction):
+        await self._do_action(interaction, "basic")
 
     async def _atk_cb(self, interaction: discord.Interaction):
         await self._do_action(interaction, "attack")

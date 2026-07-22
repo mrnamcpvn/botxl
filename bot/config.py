@@ -11,20 +11,20 @@ WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY") or "botxl-secret-key-change-me"
 QUIZ_CHANNEL_ID = int(os.getenv("QUIZ_CHANNEL_ID") or "1040459995319373864")
 
 # World Boss
-WORLD_BOSS_CHANNEL_ID   = int(os.getenv("WORLD_BOSS_CHANNEL_ID", "1040459995319373864"))
-WORLD_BOSS_HOURS        = [int(h) for h in os.getenv("WORLD_BOSS_HOURS", "12,20").split(",")]
-WORLD_BOSS_REGISTER_TIME = int(os.getenv("WORLD_BOSS_REGISTER_TIME", "120"))  # giây đăng ký
-WORLD_BOSS_RESPAWN_DELAY = int(os.getenv("WORLD_BOSS_RESPAWN_DELAY", "30"))   # giây chờ hồi sinh
+WORLD_BOSS_CHANNEL_ID   = int(os.getenv("WORLD_BOSS_CHANNEL_ID", "1529021378416738384"))
+WORLD_BOSS_HOURS        = [int(h) for h in os.getenv("WORLD_BOSS_HOURS", "11,15,20").split(",")]
+WORLD_BOSS_REGISTER_TIME = int(os.getenv("WORLD_BOSS_REGISTER_TIME", "300"))  # giây đăng ký
+WORLD_BOSS_RESPAWN_DELAY = int(os.getenv("WORLD_BOSS_RESPAWN_DELAY", "15"))   # giây chờ hồi sinh
 WORLD_BOSS_ATTACK_INTERVAL = int(os.getenv("WORLD_BOSS_ATTACK_INTERVAL", "10"))  # giây boss attack 1 lần
 
 # Arena Tournament (Đấu Trường Sinh Tử)
-ARENA_INTERVAL          = int(os.getenv("ARENA_INTERVAL", "86400"))   # giây giữa 2 mùa auto (mặc định 24h)
-ARENA_REGISTER_TIME     = int(os.getenv("ARENA_REGISTER_TIME", "120")) # giây mở đăng ký
+ARENA_INTERVAL          = int(os.getenv("ARENA_INTERVAL", "3600"))    # giây giữa 2 mùa auto
+ARENA_REGISTER_TIME     = int(os.getenv("ARENA_REGISTER_TIME", "60")) # giây mở đăng ký
 ARENA_MIN_PLAYERS       = int(os.getenv("ARENA_MIN_PLAYERS", "4"))
-ARENA_MAX_PLAYERS       = int(os.getenv("ARENA_MAX_PLAYERS", "32"))
-ARENA_AUTO_ENABLED      = os.getenv("ARENA_AUTO_ENABLED", "false").lower() == "true"
-ARENA_BATTLE_DELAY      = float(os.getenv("ARENA_BATTLE_DELAY", "1.5")) # giây delay giữa các trận
-ARENA_SHOW_LOG_LINES    = int(os.getenv("ARENA_SHOW_LOG_LINES", "3"))   # số dòng log hiển thị/trận
+ARENA_MAX_PLAYERS       = int(os.getenv("ARENA_MAX_PLAYERS", "8"))
+ARENA_AUTO_ENABLED      = os.getenv("ARENA_AUTO_ENABLED", "true").lower() == "true"
+ARENA_BATTLE_DELAY      = float(os.getenv("ARENA_BATTLE_DELAY", "3.0")) # giây delay giữa các trận
+ARENA_SHOW_LOG_LINES    = int(os.getenv("ARENA_SHOW_LOG_LINES", "6"))   # số dòng log hiển thị/trận
 
 HP_REGEN_PCT = 10
 HP_REGEN_INTERVAL = 30
@@ -119,16 +119,4 @@ ARTIFACT_UPGRADE_COSTS = {
 }
 
 # ── Arena Tournament ──────────────────────────────────────────
-ARENA_INTERVAL = 3600
-ARENA_REGISTER_TIME = 60
-ARENA_MIN_PLAYERS = 4
-ARENA_MAX_PLAYERS = 8
-ARENA_AUTO_ENABLED = True
-ARENA_BATTLE_DELAY = 3
-ARENA_SHOW_LOG_LINES = 6
-
-# ── World Boss ──────────────────────────────────────────────
-WORLD_BOSS_HOURS = [11, 15, 20]
-WORLD_BOSS_REGISTER_TIME = 300
-WORLD_BOSS_RESPAWN_DELAY = 15
-WORLD_BOSS_CHANNEL_ID = 1529021378416738384
+# (giá trị được load từ env ở trên, không override lại)
