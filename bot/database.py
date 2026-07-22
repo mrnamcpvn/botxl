@@ -198,6 +198,12 @@ TABLES = [
         socket_3 TEXT DEFAULT '',
         socket_4 TEXT DEFAULT ''
     )""",
+    """CREATE TABLE IF NOT EXISTS monster_codex (
+        player_id TEXT NOT NULL,
+        npc_id INTEGER NOT NULL,
+        kills INTEGER DEFAULT 0,
+        PRIMARY KEY (player_id, npc_id)
+    )""",
 ]
 
 MIGRATIONS = [
@@ -317,6 +323,7 @@ async def _create_indexes(db):
         "CREATE INDEX IF NOT EXISTS idx_world_boss_status ON world_boss(status)",
         "CREATE INDEX IF NOT EXISTS idx_world_boss_participants_bid ON world_boss_participants(boss_id)",
         "CREATE INDEX IF NOT EXISTS idx_player_gems_player ON player_gems(player_id)",
+        "CREATE INDEX IF NOT EXISTS idx_monster_codex_player ON monster_codex(player_id)",
     ]
     for sql in indexes:
         try:
