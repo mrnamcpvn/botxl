@@ -311,14 +311,20 @@ class Arena(commands.Cog):
                     }
             pdata["_equip_sockets"] = socket_data
             from bot.data.equipment import SET_BONUSES
-            stars_per_slot = {}
+            # Set bonus — tính theo tổng sao
+            total_stars = 0
+            equipped_count = 0
             for slot, eq_id in equipped.items():
                 item_id = equip_items.get(str(eq_id))
                 if item_id and item_id in EQUIPMENT:
-                    stars_per_slot[slot] = EQUIPMENT[item_id]["star"]
+                    total_stars += EQUIPMENT[item_id]["star"]
+                    equipped_count += 1
             pdata["_set_bonus"] = None
-            if len(stars_per_slot) == 6 and len(set(stars_per_slot.values())) == 1:
-                pdata["_set_bonus"] = SET_BONUSES.get(list(stars_per_slot.values())[0])
+            if equipped_count == 6:
+                for min_stars in sorted(SET_BONUSES.keys(), reverse=True):
+                    if total_stars >= min_stars:
+                        pdata["_set_bonus"] = SET_BONUSES[min_stars]
+                        break
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}
@@ -928,14 +934,20 @@ class Arena(commands.Cog):
                     }
             pdata["_equip_sockets"] = socket_data
             from bot.data.equipment import SET_BONUSES
-            stars_per_slot = {}
+            # Set bonus — tính theo tổng sao
+            total_stars = 0
+            equipped_count = 0
             for slot, eq_id in equipped.items():
                 item_id = equip_items.get(str(eq_id))
                 if item_id and item_id in EQUIPMENT:
-                    stars_per_slot[slot] = EQUIPMENT[item_id]["star"]
+                    total_stars += EQUIPMENT[item_id]["star"]
+                    equipped_count += 1
             pdata["_set_bonus"] = None
-            if len(stars_per_slot) == 6 and len(set(stars_per_slot.values())) == 1:
-                pdata["_set_bonus"] = SET_BONUSES.get(list(stars_per_slot.values())[0])
+            if equipped_count == 6:
+                for min_stars in sorted(SET_BONUSES.keys(), reverse=True):
+                    if total_stars >= min_stars:
+                        pdata["_set_bonus"] = SET_BONUSES[min_stars]
+                        break
             buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (sid,))
             buff_row = await buff_cursor.fetchone()
             pdata["buffs"] = dict(buff_row) if buff_row else {}

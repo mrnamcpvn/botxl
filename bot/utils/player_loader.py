@@ -84,18 +84,20 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
             }
     pdata["_equip_sockets"] = socket_data
 
-    # Set bonus
+    # Set bonus — tính theo tổng sao thay vì cùng sao
     pdata["_set_bonus"] = None
-    stars_per_slot = {}
+    total_stars = 0
+    equipped_count = 0
     for slot, eq_id in equipped.items():
         item_id = equip_items.get(str(eq_id))
         if item_id and item_id in EQUIPMENT:
-            stars_per_slot[slot] = EQUIPMENT[item_id]["star"]
-    if len(stars_per_slot) == 6:
-        star_values = set(stars_per_slot.values())
-        if len(star_values) == 1:
-            star = star_values.pop()
-            pdata["_set_bonus"] = SET_BONUSES.get(star)
+            total_stars += EQUIPMENT[item_id]["star"]
+            equipped_count += 1
+    if equipped_count == 6:
+        for min_stars in sorted(SET_BONUSES.keys(), reverse=True):
+            if total_stars >= min_stars:
+                pdata["_set_bonus"] = SET_BONUSES[min_stars]
+                break
 
     # Buffs
     buff_cursor = await db.execute("SELECT * FROM player_buffs WHERE player_id=?", (pid,))
@@ -113,6 +115,18 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     async for cr in codex_cursor:
         codex_kills[str(cr[0])] = cr[1]
     pdata["_codex_kills"] = codex_kills
+
+    # Cultivation (Tu Tiên)
+    cult_cursor = await db.execute(
+        "SELECT realm, stage, tuvi, last_collect, cultivating, session_start FROM cultivation WHERE player_id=?",
+        (pid,))
+    cult_row = await cult_cursor.fetchone()
+    pdata["_cult_realm"]         = cult_row[0] if cult_row else -1
+    pdata["_cult_stage"]         = cult_row[1] if cult_row else 1
+    pdata["_cult_tuvi"]          = cult_row[2] if cult_row else 0
+    pdata["_cult_last_collect"]  = cult_row[3] if cult_row else 0
+    pdata["_cult_cultivating"]   = bool(cult_row[4]) if cult_row else False
+    pdata["_cult_session_start"] = cult_row[5] if cult_row else 0
 
     regen_hp(pdata)
 

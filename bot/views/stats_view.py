@@ -204,6 +204,58 @@ class StatsView(discord.ui.View):
                 inline=False,
             )
 
+        # ── Tu Tiên ──
+        cult_realm = pdata.get("_cult_realm", -1)
+        cult_stage = pdata.get("_cult_stage", 1)
+        if cult_realm >= 0:
+            from bot.engine.cultivation import (
+                full_title, get_session_hours, is_cultivating,
+                calc_session_tuvi, calc_stat_bonus, get_tuvi_cost, MAX_STAGE
+            )
+            from bot.config import CULTIVATION_MAX_HOURS
+            cdata = {
+                "realm": cult_realm,
+                "stage": cult_stage,
+                "tuvi": pdata.get("_cult_tuvi", 0),
+                "cultivating": pdata.get("_cult_cultivating", False),
+                "session_start": pdata.get("_cult_session_start", 0),
+            }
+            level = pdata.get("level", 1)
+            bonus_pct = calc_stat_bonus(cult_realm, cult_stage)
+
+            from bot.cogs.cultivation import _format_tuvi, _format_duration
+            cult_lines = [f"**{full_title(cult_realm, cult_stage)}**"]
+            cult_lines.append(f"⚡ Bonus: **+{bonus_pct:.0f}%** tất cả chỉ số")
+
+            if cdata["cultivating"] and cdata["session_start"] > 0:
+                import time as _time
+                elapsed_h = min((_time.time() - cdata["session_start"]) / 3600, CULTIVATION_MAX_HOURS)
+                pending = calc_session_tuvi(cult_realm, cult_stage, elapsed_h)
+                elapsed_str = _format_duration(elapsed_h * 3600)
+                cult_lines.append(f"🧘 Đang tu luyện... ({elapsed_str})")
+                cult_lines.append(f"📈 Tích lũy: +{_format_tuvi(pending)} tu vi")
+            else:
+                cult_lines.append("💤 Không tu luyện")
+
+            if cult_stage < MAX_STAGE:
+                cost = get_tuvi_cost(cult_realm, cult_stage)
+                tuvi_now = cdata["tuvi"]
+                bar_filled = min(8, tuvi_now * 8 // max(cost, 1))
+                bar = "🟣" * bar_filled + "⬛" * (8 - bar_filled)
+                cult_lines.append(f"`{_format_tuvi(tuvi_now)}/{_format_tuvi(cost)}` {bar}")
+
+            embed.add_field(
+                name="🏛️ Tu Tiên",
+                value="\n".join(cult_lines),
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name="🏛️ Tu Tiên",
+                value="_Chưa bắt đầu_\nDùng `!tulyen` để khởi động!",
+                inline=False,
+            )
+
         # ── Buffs ──
         buff = pdata.get("buffs", {})
         bl = []
@@ -328,7 +380,15 @@ class StatsView(discord.ui.View):
         set_bonus = pdata.get("_set_bonus")
         if set_bonus:
             from bot.data.equipment import SET_BONUSES as SB
-            for star, sb in SB.items():
+            total_stars = 0
+            eq = pdata.get("equipped", {})
+            equip_items = pdata.get("_equip_items", {})
+            for slot, eq_id in eq.items():
+                item_id = equip_items.get(str(eq_id))
+                if item_id and item_id in EQUIPMENT:
+                    total_stars += EQUIPMENT[item_id]["star"]
+
+            for min_stars, sb in SB.items():
                 if sb == set_bonus:
                     parts = []
                     if sb.get("hp_pct"): parts.append(f"❤️ +{sb['hp_pct']}% HP")
@@ -336,8 +396,15 @@ class StatsView(discord.ui.View):
                     if sb.get("def_pct"): parts.append(f"🛡️ +{sb['def_pct']}% DEF")
                     if sb.get("crit"): parts.append(f"💥 +{sb['crit']}% Crit")
                     if sb.get("dodge"): parts.append(f"🍀 +{sb['dodge']}% Dodge")
+
+                    next_tier = ""
+                    for nms in sorted(SB.keys()):
+                        if nms > total_stars:
+                            next_tier = f" → còn {nms - total_stars}⭐ nữa lên **{SB[nms]['name']}**"
+                            break
+
                     embed.add_field(
-                        name=f"🌟 SET {sb['name']} ★{star} KÍCH HOẠT!",
+                        name=f"🌟 SET {sb['name']} ({total_stars}⭐ tổng) KÍCH HOẠT!{next_tier}",
                         value=" · ".join(parts),
                         inline=False)
                     break
