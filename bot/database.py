@@ -181,6 +181,30 @@ TABLES = [
         reward_given INTEGER DEFAULT 0,
         PRIMARY KEY (tournament_id, player_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS world_boss (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        status TEXT DEFAULT 'registering',
+        channel_id TEXT NOT NULL,
+        boss_level INTEGER NOT NULL,
+        boss_hp INTEGER NOT NULL,
+        boss_hp_max INTEGER NOT NULL,
+        boss_atk_min INTEGER NOT NULL,
+        boss_atk_max INTEGER NOT NULL,
+        boss_def INTEGER NOT NULL,
+        started_at REAL NOT NULL,
+        finished_at REAL,
+        created_at TEXT DEFAULT (datetime('now','+7 hours'))
+    )""",
+    """CREATE TABLE IF NOT EXISTS world_boss_participants (
+        boss_id INTEGER REFERENCES world_boss(id),
+        player_id TEXT NOT NULL,
+        total_damage INTEGER DEFAULT 0,
+        deaths INTEGER DEFAULT 0,
+        death_cooldown_until REAL DEFAULT 0,
+        final_rank INTEGER DEFAULT 0,
+        reward_given INTEGER DEFAULT 0,
+        PRIMARY KEY (boss_id, player_id)
+    )""",
 ]
 
 MIGRATIONS = [
@@ -299,6 +323,8 @@ async def _create_indexes(db):
         "CREATE INDEX IF NOT EXISTS idx_arena_participants_tid ON arena_participants(tournament_id)",
         "CREATE INDEX IF NOT EXISTS idx_arena_tournament_status ON arena_tournament(status)",
         "CREATE INDEX IF NOT EXISTS idx_arena_participants_tournament ON arena_participants(tournament_id)",
+        "CREATE INDEX IF NOT EXISTS idx_world_boss_status ON world_boss(status)",
+        "CREATE INDEX IF NOT EXISTS idx_world_boss_participants_boss ON world_boss_participants(boss_id)",
     ]
     for sql in indexes:
         try:
