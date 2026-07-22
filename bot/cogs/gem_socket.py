@@ -141,6 +141,85 @@ class GemSocket(commands.Cog):
         view.add_item(GemSocketSelect(sid, eq_map, options))
         await ctx.reply("🔮 Chọn trang bị để khảm đá:", view=view)
 
+    @commands.command(name="huongdanda", aliases=["gemhelp"])
+    async def huong_dan_da(self, ctx):
+        embed = discord.Embed(
+            title="💎 Hướng Dẫn Đá Khảm (Gem Socket)",
+            description=(
+                "Khảm đá quý vào trang bị để tăng chỉ số! Mỗi trang bị có số ô socket tùy theo sao.\n\n"
+            ),
+            color=0x9b59b6,
+        )
+
+        embed.add_field(
+            name="📊 Số ô socket theo sao",
+            value=(
+                "⭐ 1-3★ → **1 ô**\n"
+                "⭐ 4-5★ → **2 ô**\n"
+                "⭐ 6★ → **3 ô**\n"
+                "⭐ 7-9★ → **4 ô** (tương lai)"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="🔴 Các loại đá quý",
+            value=(
+                "🔴 **Hồng Ngọc** — +HP (max C9: +2500)\n"
+                "⚔️ **Lục Bảo** — +ATK (max C9: +250)\n"
+                "🛡️ **Lam Ngọc** — +DEF (max C9: +160)\n"
+                "💨 **Phong Tinh** — +SPD (max C9: +160)\n"
+                "💥 **Huyết Thạch** — +CRIT (max C9: +120)\n"
+                "🔱 **Tử Tinh** — +PIERCE (max C9: +120)"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="⛏️ Nguồn rơi",
+            value=(
+                "• **NPC Lv 10-19** → Đá C1 (10%)\n"
+                "• **NPC Lv 20-25** → Đá C2 (10%)\n"
+                "• **NPC Lv 26-30** → Đá C3 (10%)\n"
+                "• **Dungeon 20-40** → Đá C1 (8%)\n"
+                "• **Dungeon 41-60** → Đá C2 (8%)\n"
+                "• **Dungeon 61-80** → Đá C3 (8%)\n"
+                "• **Dungeon 81-100** → Đá C4 (8%)\n"
+                "• **World Boss** → C1-C3 (100%)"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="🔄 Ghép đá",
+            value=(
+                "`!ghepda <loại> <cấp>`\n"
+                "3 viên cùng loại + coin → 1 viên cấp cao hơn\n"
+                "Phí = cấp đích × 500🪙\n"
+                "VD: `!ghepda hp 1` → 3× Hồng Ngọc C1 + 1000🪙 → C2"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="🔮 Khảm & Tháo",
+            value=(
+                "`!khamda` — Mở giao diện khảm/tháo đá\n"
+                "Khảm: miễn phí | Tháo: cấp đá × 1000🪙\n"
+                "Đá tháo ra được giữ lại, không bị hủy"
+            ),
+            inline=False,
+        )
+
+        embed.add_field(
+            name="📦 Xem kho",
+            value="`!khoda` — Xem tất cả đá đang có trong kho",
+            inline=False,
+        )
+
+        embed.set_footer(text="💡 Mẹo: Ưu tiên khảm đá vào trang bị 5-6★ để có nhiều ô socket hơn!")
+        await ctx.reply(embed=embed)
+
 
 class GemSocketSelect(discord.ui.Select):
     def __init__(self, user_id: str, eq_map: dict, options: list):
