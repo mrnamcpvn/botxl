@@ -134,3 +134,39 @@ GEM_MAX_LEVEL = 9
 GEM_MERGE_COST_PER_LEVEL = 500
 GEM_REMOVE_COST_PER_LEVEL = 1000
 SOCKETS_BY_STAR = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3, 7: 4, 8: 4, 9: 4}
+
+# ── Monster Codex / Đồ Thư ──────────────────────────────────
+CODEX_MILESTONES = [100, 500, 1000, 10000]
+
+CODEX_DATA = {
+    1:  {"bonus": "coin",   "tiers": [4, 8, 12, 20]},
+    2:  {"bonus": "xp",     "tiers": [4, 8, 12, 20]},
+    3:  {"bonus": "def",    "tiers": [3, 6, 9, 15]},
+    4:  {"bonus": "pierce", "tiers": [3, 5, 8, 12]},
+    5:  {"bonus": "hp",     "tiers": [3, 5, 8, 12]},
+    6:  {"bonus": "spd",    "tiers": [3, 5, 8, 12]},
+    7:  {"bonus": "dmg",    "tiers": [3, 5, 8, 11]},
+    8:  {"bonus": "crit",   "tiers": [2, 4, 6, 9]},
+    9:  {"bonus": "dmg",    "tiers": [3, 6, 9, 14]},
+    10: {"bonus": "spd",    "tiers": [3, 5, 8, 11]},
+    11: {"bonus": "def",    "tiers": [4, 7, 10, 16]},
+    12: {"bonus": "crit",   "tiers": [3, 5, 8, 11]},
+    13: {"bonus": "pierce", "tiers": [3, 6, 9, 14]},
+    14: {"bonus": "all",    "tiers": [2, 3, 5, 8]},
+    15: {"bonus": "drop",   "tiers": [2, 4, 6, 9]},
+    16: {"bonus": "spd",    "tiers": [3, 6, 9, 14]},
+    17: {"bonus": "hp",     "tiers": [4, 8, 11, 16]},
+    18: {"bonus": "xp",     "tiers": [5, 9, 13, 21]},
+    19: {"bonus": "dmg",    "tiers": [4, 7, 10, 16]},
+    20: {"bonus": "hp",     "tiers": [5, 8, 12, 18]},
+    21: {"bonus": "crit",   "tiers": [3, 6, 9, 14]},
+    22: {"bonus": "dmg",    "tiers": [4, 8, 11, 16]},
+    23: {"bonus": "xp",     "tiers": [6, 10, 15, 23]},
+    24: {"bonus": "crit",   "tiers": [4, 7, 10, 15]},
+    25: {"bonus": "def",    "tiers": [4, 8, 11, 16]},
+    26: {"bonus": "dmg",    "tiers": [5, 8, 12, 18]},
+    27: {"bonus": "pierce", "tiers": [4, 8, 11, 16]},
+    28: {"bonus": "all",    "tiers": [2, 4, 6, 10]},
+    29: {"bonus": "all",    "tiers": [3, 5, 8, 12]},
+    30: {"bonus": "all",    "tiers": [3, 6, 9, 14]},
+}
