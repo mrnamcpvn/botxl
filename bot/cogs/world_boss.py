@@ -715,3 +715,6 @@ class BossBattleView(discord.ui.View):
     @discord.ui.button(emoji="🛡️", label="Defense", style=discord.ButtonStyle.green, custom_id="wb:def")
     async def def_btn(self, interaction: discord.Interaction, button: discord.Button):
         await self._do_action(interaction, "defense")
+
+async def setup(bot):
+    await bot.add_cog(WorldBoss(bot))
