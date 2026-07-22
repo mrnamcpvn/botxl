@@ -564,6 +564,10 @@ class NPCCog(commands.Cog):
                         player["coins"] = player.get("coins", 0) + drop["amount"]
                     result_lines.append(f"\n{drop['text']}")
 
+                gem_text = await _drop_gem_npc(db, sid, npc.get("level", 10))
+                if gem_text:
+                    result_lines.append(gem_text)
+
                 await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=?", (sid,))
 
                 if npc.get("level", 0) >= 15:
@@ -613,6 +617,25 @@ class NPCCog(commands.Cog):
                 color=0xff4444,
             )
         await interaction.edit_original_response(embed=embed, view=None)
+
+async def _drop_gem_npc(db, player_id: str, npc_level: int) -> str | None:
+    from bot.config import GEM_TYPES
+    if npc_level < 10:
+        return None
+    if random.random() > 0.10:
+        return None
+    if npc_level <= 19:
+        gl = 1
+    elif npc_level <= 25:
+        gl = 2
+    else:
+        gl = 3
+    gt = random.choice(list(GEM_TYPES.keys()))
+    await db.execute(
+        "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "
+        "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
+        (player_id, gt, gl))
+    return f"💎 Rơi: {GEM_TYPES[gt]['name']} C{gl}!"
 
 async def setup(bot):
     await bot.add_cog(NPCCog(bot))

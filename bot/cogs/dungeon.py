@@ -760,6 +760,24 @@ class DungeonCog(commands.Cog):
                 stars = STAR_LABELS.get(eq["star"], "⭐")
                 result_lines.append(f"⚒️ +{stars} **{eq['name']}**")
 
+            from bot.config import GEM_TYPES
+            gem_level = None
+            if 20 <= floor <= 40:
+                gem_level = 1
+            elif 41 <= floor <= 60:
+                gem_level = 2
+            elif 61 <= floor <= 80:
+                gem_level = 3
+            elif 81 <= floor <= 100:
+                gem_level = 4
+            if gem_level and random.random() < 0.08:
+                gt = random.choice(list(GEM_TYPES.keys()))
+                await db.execute(
+                    "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "
+                    "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
+                    (sid, gt, gem_level))
+                result_lines.append(f"💎 Rơi: {GEM_TYPES[gt]['name']} C{gem_level}!")
+
             db = await get_db()
             try:
                 await db.execute(

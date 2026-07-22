@@ -813,6 +813,15 @@ class WorldBoss(commands.Cog):
                 logger.info(f"[WORLDBOSS] Cộng thưởng {pid} ({name}): +{coins}🪙 +{xp}XP (rank {rank})")
                 lines = [f"  • +{coins}🪙 · +{xp}XP"]
 
+                from bot.config import GEM_TYPES
+                gl = random.randint(1, 3)
+                gt = random.choice(list(GEM_TYPES.keys()))
+                await db.execute(
+                    "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "
+                    "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
+                    (pid, gt, gl))
+                lines.append(f"  • 💎 {GEM_TYPES[gt]['name']} C{gl}")
+
                 # Stones
                 stones = rw.get("stones")
                 if stones:
