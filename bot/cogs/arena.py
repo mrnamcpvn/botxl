@@ -88,17 +88,6 @@ class Arena(commands.Cog):
         finally:
             await db.close()
 
-    @commands.command(name="trogiup", aliases=["h"])
-    async def help_cmd(self, ctx):
-        embed = discord.Embed(title="⚔️ Đấu Trường Ba Que Xỏ Lá", color=0xff6600,
-                              description="Game đấm nhau bằng xỏ lá, khịa nhau, chọc gậy bánh xe!")
-        embed.add_field(name="📝 Cơ Bản", value="`!register` `!stats` `!upgrade <hp/atk/def>` `!leaderboard`", inline=False)
-        embed.add_field(name="⚔️ Đấm Nhau", value="`!challenge @player` → bấm nút ✅/❌\nBấm 💥🔥🛡️ khi tới lượt (15s)\nTừ chối/hết giờ: -20🪙", inline=False)
-        embed.add_field(name="🏪 Shop", value="`!shop` `!buy <số>` `!use <số>` `!equip <số>` `!inv`", inline=False)
-        embed.add_field(name="🔥 Kỹ Năng (4 slot)", value="`!skills` — Xem 20 skill\n`!buyskill <số>` — Mua skill\n`!equipskill <loại> <số>` — Gán skill", inline=False)
-        embed.add_field(name="🎭 Class", value="`!class` — Xem/dổi class", inline=False)
-        await ctx.send(embed=embed)
-
     @commands.command(name="attack", aliases=["xola", "xl"])
     async def attack_cmd(self, ctx):
         await self._text_fallback(ctx, "attack")
