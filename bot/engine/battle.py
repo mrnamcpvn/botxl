@@ -6,6 +6,7 @@ from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT, SET_BONUSES
 from bot.data.classes import CLASSES
 from bot.config import HP_REGEN_INTERVAL, HP_REGEN_PCT, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT, GLOBAL_DEF_MULT
+from bot.engine.codex import get_codex_bonuses
 
 # Conversion: raw equipment stat → battle-effective percentage
 # raw can reach 500-700 at absolute endgame, so divisors are tuned for balance
@@ -193,6 +194,22 @@ def get_effective_stats(pdata: dict) -> dict:
 
     hp_max = int(hp_max * GLOBAL_HP_MULT) if not pdata.get("_npc_override") else hp_max
     defense = int(defense * GLOBAL_DEF_MULT) if not pdata.get("_npc_override") else defense
+
+    codex_kills = pdata.get("_codex_kills", {})
+    if codex_kills:
+        cb = get_codex_bonuses(codex_kills)
+        if cb:
+            all_pct = cb.get("all", 0)
+            mult_hp = 1 + (cb.get("hp", 0) + all_pct) / 100
+            mult_dmg = 1 + (cb.get("dmg", 0) + all_pct) / 100
+            mult_def = 1 + (cb.get("def", 0) + all_pct) / 100
+            hp_max = int(hp_max * mult_hp)
+            atk_min = int(atk_min * mult_dmg)
+            atk_max = int(atk_max * mult_dmg)
+            defense = int(defense * mult_def)
+            spd += spd * (cb.get("spd", 0) + all_pct) // 100
+            crit += crit * (cb.get("crit", 0) + all_pct) // 100
+            pierce += pierce * (cb.get("pierce", 0) + all_pct) // 100
 
     return {
         "hp_max": hp_max,
