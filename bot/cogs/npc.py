@@ -12,6 +12,7 @@ from bot.data.equipment import EQUIPMENT
 from bot.data.shop_items import SHOP_ITEMS
 from bot.engine.battle import execute_action, get_equipped_skill, regen_hp, get_effective_stats
 from bot.engine.rewards import calc_rewards, apply_rewards, calc_drop, apply_drop
+from bot.engine.codex import get_codex_bonuses
 from bot.engine.ranking import calculate_elo
 from bot.config import BATTLE_COOLDOWN_SECONDS
 from bot.data.wives import WIVES, WIFE_XP_SHARE
@@ -557,7 +558,36 @@ class NPCCog(commands.Cog):
                 if wife_lines:
                     result_lines.extend(wife_lines)
 
-                drop = calc_drop(player.get("role_mult", 1.0))
+                # Codex: tăng kill count
+                npc_id = int(view.npc_id)
+                await db.execute(
+                    "INSERT INTO monster_codex (player_id, npc_id, kills) VALUES (?, ?, 1) "
+                    "ON CONFLICT(player_id, npc_id) DO UPDATE SET kills=kills+1",
+                    (sid, npc_id))
+
+                # Codex coin/xp bonus
+                codex_cursor = await db.execute(
+                    "SELECT npc_id, kills FROM monster_codex WHERE player_id=?", (sid,))
+                codex_rows = await codex_cursor.fetchall()
+                codex_kills = {str(r[0]): r[1] for r in codex_rows}
+                cb = get_codex_bonuses(codex_kills)
+                if cb:
+                    coin_pct = cb.get("coin", 0) + cb.get("all", 0)
+                    xp_pct = cb.get("xp", 0) + cb.get("all", 0)
+                    if coin_pct:
+                        extra_coins = int(w_coins * coin_pct / 100)
+                        player["coins"] = player.get("coins", 0) + extra_coins
+                        w_coins += extra_coins
+                        result_lines.append(f"📖 Codex: +{extra_coins}🪙 (+{coin_pct}%)")
+                    if xp_pct:
+                        extra_xp = int(w_xp * xp_pct / 100)
+                        player["xp"] = player.get("xp", 0) + extra_xp
+                        w_xp += extra_xp
+                        result_lines.append(f"📖 Codex: +{extra_xp}XP (+{xp_pct}%)")
+
+                # Codex drop bonus
+                drop_pct = cb.get("drop", 0) + cb.get("all", 0) if cb else 0
+                drop = calc_drop(player.get("role_mult", 1.0), drop_pct)
                 if drop:
                     await apply_drop(db, sid, drop)
                     if drop["type"] == "coins":

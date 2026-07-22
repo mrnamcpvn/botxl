@@ -19,8 +19,10 @@ for _star, _weight in DROP_WEIGHTS.items():
 _TOTAL_WEIGHT: int = _cum
 
 
-def calc_drop(role_mult: float = 1.0) -> dict | None:
+def calc_drop(role_mult: float = 1.0, codex_drop_pct: int = 0) -> dict | None:
     chance = DROP_CHANCE * role_mult
+    if codex_drop_pct:
+        chance *= (1 + codex_drop_pct / 100)
     if random.random() > chance:
         return None
     roll = random.random()
