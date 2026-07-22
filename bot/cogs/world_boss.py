@@ -261,7 +261,10 @@ class WorldBoss(commands.Cog):
 
             n = len(player_ids)
             boss_level = max_level + 30
-            boss_hp_max = 80 * n * 200
+            # HP đủ cho 5-10 phút chiến đấu
+            # Giả sử avg 800 dmg/đòn, đánh mỗi 2-3s → ~300 dmg/s/người
+            # 7 phút = 420s × 300 dmg/s × n người = 126,000 HP/người
+            boss_hp_max = n * 1200 * 100   # ≈ 120,000 HP/người
             boss_atk_min = boss_level * 5
             boss_atk_max = boss_level * 8
             boss_def = boss_level * 3
@@ -363,20 +366,22 @@ class WorldBoss(commands.Cog):
                                      interaction: discord.Interaction):
         """Xử lý hành động của player. Dùng Lock để tránh race condition."""
         async with self._action_lock:
+            # Kiểm tra boss còn sống không — bên trong lock để chắc chắn
             if self._boss is None or self._boss["hp"] <= 0:
-                try:
-                    await interaction.edit_original_response(
-                        embed=discord.Embed(title="💀 Boss đã chết!", color=0x888888),
-                        view=None)
-                except Exception:
-                    pass
-                return
+                return  # Xử lý UI bên ngoài lock
 
             ps = self._players.get(user_id)
             if not ps:
                 return
 
-            # Tính damage dựa trên stats player (dùng pdata đã cache)
+            # Kiểm tra CD skill
+            skill_cd_key = f"skill_cd_{action_type}"
+            cd_until = ps.get(skill_cd_key, 0)
+            if cd_until > time.time():
+                remaining = int(cd_until - time.time())
+                # Trả về flag CD để xử lý bên ngoài lock
+                return ("cd", remaining)
+
             pdata = ps.get("pdata")
             if pdata is None:
                 return
@@ -385,28 +390,34 @@ class WorldBoss(commands.Cog):
             atk_min = eff["attack_min"]
             atk_max = eff["attack_max"]
 
-            # Lấy skill đang equipped
-            skill_id = pdata.get("skill_equipped", {}).get(action_type, 1)
+            # Lấy skill đang equipped — fallback về skill mặc định
+            _default_skills = {"attack": 1, "special": 5, "defense": 10}
+            skill_id = pdata.get("skill_equipped", {}).get(
+                action_type, _default_skills.get(action_type, 1))
             skill = SKILLS_DB.get(skill_id, SKILLS_DB[1])
             mult = skill.get("multiplier", 1.0)
+
+            # Set CD cho skill này (dùng cooldown từ SKILLS_DB, tối thiểu 2s real-time)
+            skill_cooldown_sec = max(2, skill.get("cooldown", 0) * 3)  # mỗi CD = 3 giây real-time
+            ps[skill_cd_key] = time.time() + skill_cooldown_sec
 
             # Tính base damage
             base_dmg = int(random.randint(atk_min, atk_max) * mult)
 
-            # Áp dụng pierce
+            # Pierce
             boss_def = self._boss["defense"]
             equip_pierce = eff.get("pierce", 0)
             if equip_pierce > 0:
                 boss_def = int(boss_def * (100 - min(equip_pierce, 35)) / 100)
             damage = max(base_dmg // 4, base_dmg - boss_def)
 
-            # Crit check
+            # Crit
             crit_pct = eff.get("crit", 0)
             is_crit = crit_pct > 0 and random.random() * 100 < crit_pct
             if is_crit:
                 damage = int(damage * 1.5)
 
-            # Áp dụng damage_pct passive
+            # Damage pct passive
             dmg_pct = eff.get("damage_pct", 0)
             if dmg_pct > 0:
                 damage = int(damage * (1 + dmg_pct / 100))
@@ -416,47 +427,118 @@ class WorldBoss(commands.Cog):
             # Giảm HP boss
             self._boss["hp"] = max(0, self._boss["hp"] - damage)
             ps["damage"] = ps.get("damage", 0) + damage
-
             crit_tag = " 💥CRIT!" if is_crit else ""
             boss_dead = self._boss["hp"] <= 0
 
-        # Sau khi release lock — cập nhật UI
-        if boss_dead:
-            self._boss_dead.set()
+            if boss_dead:
+                self._boss["hp"] = 0
+                self._boss_dead.set()
+                return ("boss_dead", damage, crit_tag, skill_cd_key, skill_cooldown_sec)
+
+            return ("hit", damage, crit_tag, skill_cd_key, skill_cooldown_sec)
+
+    async def _handle_player_action(self, user_id: str, action_type: str,
+                                    view: "BossBattleView",
+                                    interaction: discord.Interaction):
+        """Wrapper gọi _process_player_action rồi xử lý UI."""
+        # Kiểm tra boss trước khi vào lock
+        if self._boss is None or self._boss["hp"] <= 0:
             try:
+                for child in view.children:
+                    child.disabled = True
                 await interaction.edit_original_response(
                     embed=discord.Embed(
-                        title="☠️ BOSS ĐÃ BỊ HẠ!",
-                        description=f"💥 Đòn cuối của bạn gây **{damage}** dmg!{crit_tag}\nĐang tính thưởng...",
-                        color=0xffd700),
-                    view=None)
+                        title="💀 Boss đã bị hạ rồi!",
+                        description="Trận chiến đã kết thúc.",
+                        color=0x888888),
+                    view=view)
             except Exception:
                 pass
             return
 
-        # Boss còn sống — update player HP hiển thị và ranking
-        player_hp_str = f"❤️ `{ps['hp']}/{ps['hp_max']}`"
-        boss_pct = int(self._boss["hp"] / max(self._boss["hp_max"], 1) * 100)
-        try:
-            await interaction.edit_original_response(
-                embed=discord.Embed(
-                    title="⚔️ Đánh Boss!",
-                    description=(
-                        f"{player_hp_str}\n"
-                        f"💥 Gây **{damage}** dmg!{crit_tag}\n"
-                        f"🐉 Boss còn **{boss_pct}%** HP"
-                    ),
-                    color=0x00ff00),
-                view=view)
-        except Exception:
-            pass
+        result = await self._process_player_action(user_id, action_type, view, interaction)
 
-        # Update ranking embed
-        if self._ranking_msg:
+        ps = self._players.get(user_id, {})
+
+        if result is None:
+            return
+
+        if result[0] == "cd":
+            remaining = result[1]
             try:
-                await self._ranking_msg.edit(embed=self._build_boss_embed(self._current_id))
+                await interaction.edit_original_response(
+                    embed=discord.Embed(
+                        title="⚔️ Đánh Boss!",
+                        description=(
+                            f"❤️ `{ps.get('hp', 0)}/{ps.get('hp_max', 1)}`\n"
+                            f"⏳ Skill đang hồi chiêu! Còn **{remaining}s**"
+                        ),
+                        color=0xffaa00),
+                    view=view)
             except Exception:
                 pass
+            return
+
+        if result[0] == "boss_dead":
+            _, damage, crit_tag, skill_cd_key, _ = result
+            # Disable tất cả views ngay lập tức
+            for sid, p in self._players.items():
+                v = p.get("view")
+                if v:
+                    for child in v.children:
+                        child.disabled = True
+                    if v.message and sid != user_id:
+                        try:
+                            await v.message.edit(
+                                embed=discord.Embed(
+                                    title="☠️ BOSS ĐÃ BỊ HẠ!",
+                                    description=f"🎉 **{ps.get('name','?')}** đã hạ boss!\nĐang tính thưởng...",
+                                    color=0xffd700),
+                                view=v)
+                        except Exception:
+                            pass
+            # Thông báo cho người giết boss
+            try:
+                await interaction.edit_original_response(
+                    embed=discord.Embed(
+                        title="☠️ BOSS ĐÃ BỊ HẠ!",
+                        description=f"💥 Đòn cuối của bạn gây **{damage}** dmg!{crit_tag}\n🎉 Bạn đã hạ boss!\nĐang tính thưởng...",
+                        color=0xffd700),
+                    view=view)
+            except Exception:
+                pass
+            # Update ranking
+            if self._ranking_msg:
+                try:
+                    await self._ranking_msg.edit(embed=self._build_boss_embed(self._current_id))
+                except Exception:
+                    pass
+            return
+
+        if result[0] == "hit":
+            _, damage, crit_tag, skill_cd_key, skill_cooldown_sec = result
+            player_hp_str = f"❤️ `{ps.get('hp', 0)}/{ps.get('hp_max', 1)}`"
+            boss_pct = int(self._boss["hp"] / max(self._boss["hp_max"], 1) * 100)
+            try:
+                await interaction.edit_original_response(
+                    embed=discord.Embed(
+                        title="⚔️ Đánh Boss!",
+                        description=(
+                            f"{player_hp_str}\n"
+                            f"💥 Gây **{damage}** dmg!{crit_tag}\n"
+                            f"🐉 Boss còn **{boss_pct}%** HP\n"
+                            f"⏳ Skill hồi sau **{skill_cooldown_sec}s**"
+                        ),
+                        color=0x00ff00),
+                    view=view)
+            except Exception:
+                pass
+            # Update ranking embed — không block nếu fail
+            if self._ranking_msg:
+                try:
+                    await self._ranking_msg.edit(embed=self._build_boss_embed(self._current_id))
+                except Exception:
+                    pass
 
     async def _boss_attack(self, target_id: str):
         """Boss tấn công 1 player cụ thể, cập nhật HP trong state."""
@@ -543,23 +625,53 @@ class WorldBoss(commands.Cog):
         bar_len = 12
         filled = max(0, min(bar_len, round(pct / 100 * bar_len)))
         hp_bar = "🟥" * filled + "⬛" * (bar_len - filled)
+
+        # Thống kê thời gian chưa hoàn thành (tính từ damage đã gây)
+        total_dmg = sum(ps.get("damage", 0) for ps in self._players.values())
+        dmg_pct = total_dmg / max(hp_max, 1) * 100
+
         lines = [
-            f"**Level:** {self._boss['level']}  |  "
-            f"❤️ `{hp}/{hp_max}` ({pct:.1f}%)",
-            hp_bar, "",
+            f"**Level:** {self._boss['level']}  ·  ❤️ `{hp:,}/{hp_max:,}` ({pct:.1f}%)".replace(",", "."),
+            hp_bar,
+            f"💥 Tổng dmg đã gây: `{total_dmg:,}` ({dmg_pct:.1f}%)".replace(",", "."),
+            "",
             "🏆 **BẢNG XẾP HẠNG SÁT THƯƠNG:**",
         ]
+
         sorted_p = sorted(self._players.items(), key=lambda x: x[1]["damage"], reverse=True)
+        total_players = len(sorted_p)
+
         for rank, (sid, ps) in enumerate(sorted_p, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"**{rank}.**")
-            d_str = f"{ps['deaths']}💀 " if ps.get("deaths", 0) > 0 else ""
+            dmg = ps.get("damage", 0)
+            d_str = f" {ps['deaths']}💀" if ps.get("deaths", 0) > 0 else ""
             cd_tag = " ⏳" if ps.get("cd_until", 0) > time.time() else ""
-            lines.append(f"{medal} **{ps['name']}** — {ps['damage']} dmg {d_str}{cd_tag}")
+
+            # Phần thưởng dự kiến
+            rw_preview = self._calc_boss_reward(rank, total_players)
+            coins = rw_preview.get("coins", 0)
+            stones = rw_preview.get("stones")
+            equip_star = rw_preview.get("equip_star")
+            rw_parts = [f"💰~{coins}🪙"]
+            if stones:
+                rw_parts.append(f"💎{stones[1]}{stones[0][6:7].upper()}")  # B/M/A
+            if equip_star:
+                star_icons = {3: "🟡", 4: "🟣", 5: "🔴", 6: "💗"}
+                rw_parts.append(f"⚒️{star_icons.get(equip_star,'⭐')}")
+            rw_str = f" _({' '.join(rw_parts)})_"
+
+            lines.append(
+                f"{medal} **{ps['name']}**{cd_tag} — `{dmg:,}` dmg{d_str}{rw_str}".replace(",", ".")
+            )
+
         if not sorted_p:
             lines.append("  *(đang tải...)*")
-        return discord.Embed(
+
+        embed = discord.Embed(
             title=f"🐉 BOSS THẾ GIỚI #{tid} — LIVE",
             description="\n".join(lines), color=0xff0000)
+        embed.set_footer(text="💡 Gây nhiều dmg = thưởng tốt hơn | Phần thưởng chỉ là dự kiến")
+        return embed
 
     async def _finish_boss(self, tid: int, ch: discord.TextChannel):
         sorted_p = sorted(self._players.items(), key=lambda x: x[1]["damage"], reverse=True)
@@ -584,6 +696,7 @@ class WorldBoss(commands.Cog):
         if len(full) > 3800:
             full = full[:3800] + "\n_...còn nữa_"
 
+        # Update ranking embed công khai
         embed = discord.Embed(title="🐉 Boss Thế Giới Đã Bị Hạ!", description=full, color=0x00ff00)
         if self._ranking_msg:
             try:
@@ -593,19 +706,26 @@ class WorldBoss(commands.Cog):
         else:
             await ch.send(embed=embed)
 
-        # Disable tất cả view
-        for ps in self._players.values():
-            view = ps.get("view")
-            if view and view.message:
+        # Gửi DM phần thưởng + disable view cho từng player
+        for sid, rank, rw, name in rewards:
+            ps = self._players.get(sid, {})
+            summary = reward_summaries.get(sid, "")
+            v = ps.get("view")
+            rank_str = {1: "🥇 Hạng 1", 2: "🥈 Hạng 2", 3: "🥉 Hạng 3"}.get(rank, f"Hạng {rank}")
+            dm_embed = discord.Embed(
+                title="🏆 Trận Boss Kết Thúc!",
+                description=(
+                    f"**{rank_str}** với **{ps.get('damage', 0)}** dmg\n\n"
+                    f"**🎁 Phần thưởng của bạn:**\n{summary}" if summary
+                    else f"**{rank_str}** với **{ps.get('damage', 0)}** dmg\n\n_Không có phần thưởng đặc biệt_"
+                ),
+                color=0xffd700 if rank <= 3 else 0x00ff88,
+            )
+            if v and v.message:
                 try:
-                    for child in view.children:
+                    for child in v.children:
                         child.disabled = True
-                    await view.message.edit(
-                        embed=discord.Embed(
-                            title="☠️ Boss đã bị hạ!",
-                            description="Trận chiến kết thúc. Cảm ơn đã tham gia!",
-                            color=0x888888),
-                        view=view)
+                    await v.message.edit(embed=dm_embed, view=v)
                 except Exception:
                     pass
 
@@ -905,7 +1025,7 @@ class BossBattleView(discord.ui.View):
             await interaction.response.send_message("💀 Boss đã chết rồi!", ephemeral=True)
             return
         await interaction.response.defer()
-        await self.cog._process_player_action(self.user_id, action_type, self, interaction)
+        await self.cog._handle_player_action(self.user_id, action_type, self, interaction)
 
     async def _atk_cb(self, interaction: discord.Interaction):
         await self._do_action(interaction, "attack")
