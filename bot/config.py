@@ -10,6 +10,13 @@ WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY") or "botxl-secret-key-change-me"
 
 QUIZ_CHANNEL_ID = int(os.getenv("QUIZ_CHANNEL_ID") or "1040459995319373864")
 
+# World Boss
+WORLD_BOSS_CHANNEL_ID   = int(os.getenv("WORLD_BOSS_CHANNEL_ID", "1040459995319373864"))
+WORLD_BOSS_HOURS        = [int(h) for h in os.getenv("WORLD_BOSS_HOURS", "12,20").split(",")]
+WORLD_BOSS_REGISTER_TIME = int(os.getenv("WORLD_BOSS_REGISTER_TIME", "120"))  # giây đăng ký
+WORLD_BOSS_RESPAWN_DELAY = int(os.getenv("WORLD_BOSS_RESPAWN_DELAY", "30"))   # giây chờ hồi sinh
+WORLD_BOSS_ATTACK_INTERVAL = int(os.getenv("WORLD_BOSS_ATTACK_INTERVAL", "10"))  # giây boss attack 1 lần
+
 # Arena Tournament (Đấu Trường Sinh Tử)
 ARENA_INTERVAL          = int(os.getenv("ARENA_INTERVAL", "86400"))   # giây giữa 2 mùa auto (mặc định 24h)
 ARENA_REGISTER_TIME     = int(os.getenv("ARENA_REGISTER_TIME", "120")) # giây mở đăng ký

@@ -155,6 +155,30 @@ TABLES = [
         reward_given INTEGER DEFAULT 0,
         UNIQUE(tournament_id, player_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS world_boss (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        status TEXT NOT NULL DEFAULT 'registering',
+        channel_id TEXT NOT NULL,
+        boss_level INTEGER DEFAULT 0,
+        boss_hp INTEGER DEFAULT 0,
+        boss_hp_max INTEGER DEFAULT 0,
+        boss_atk_min INTEGER DEFAULT 0,
+        boss_atk_max INTEGER DEFAULT 0,
+        boss_def INTEGER DEFAULT 0,
+        started_at REAL,
+        finished_at REAL
+    )""",
+    """CREATE TABLE IF NOT EXISTS world_boss_participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        boss_id INTEGER NOT NULL,
+        player_id TEXT NOT NULL,
+        total_damage INTEGER DEFAULT 0,
+        deaths INTEGER DEFAULT 0,
+        death_cooldown_until REAL DEFAULT 0,
+        final_rank INTEGER DEFAULT 0,
+        reward_given INTEGER DEFAULT 0,
+        UNIQUE(boss_id, player_id)
+    )""",
     """CREATE TABLE IF NOT EXISTS player_vip_coins (
         player_id TEXT PRIMARY KEY,
         amount INTEGER DEFAULT 0
@@ -321,6 +345,8 @@ async def _create_indexes(db):
         "CREATE INDEX IF NOT EXISTS idx_battle_status_battle ON battle_status(battle_id)",
         "CREATE INDEX IF NOT EXISTS idx_arena_tournament_status ON arena_tournament(status)",
         "CREATE INDEX IF NOT EXISTS idx_arena_participants_tid ON arena_participants(tournament_id)",
+        "CREATE INDEX IF NOT EXISTS idx_world_boss_status ON world_boss(status)",
+        "CREATE INDEX IF NOT EXISTS idx_world_boss_participants_bid ON world_boss_participants(boss_id)",
         "CREATE INDEX IF NOT EXISTS idx_arena_tournament_status ON arena_tournament(status)",
         "CREATE INDEX IF NOT EXISTS idx_arena_participants_tournament ON arena_participants(tournament_id)",
         "CREATE INDEX IF NOT EXISTS idx_world_boss_status ON world_boss(status)",

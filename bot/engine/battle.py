@@ -419,7 +419,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             damage = int(damage * 1.5)
             is_crit = True
 
-        # Cheat Death (defender passive: né chết + hồi 50% HP — chỉ 1 lần/trận)
+        # Cheat Death — né chết + hồi HP, chỉ 1 lần/trận, áp dụng cho cả player lẫn NPC
         cheat_death_proc = False
         cd_key = f"{defender['id']}_cheat_death_used"
         if def_passive["type"] == "cheat_death" and not flags.get(cd_key):
@@ -427,20 +427,26 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 damage = max(0, defender.get("hp", 0) - 1)
                 cheat_death_proc = True
                 flags[cd_key] = True
+                # Đánh dấu để skip burn tick trong cùng turn này
+                flags[f"{defender['id']}_cheat_death_this_turn"] = True
 
         # Apply damage
         defender["hp"] = max(0, defender.get("hp", 0) - damage)
         attacker["damage_dealt"] = attacker.get("damage_dealt", 0) + damage
         defender["damage_taken"] = defender.get("damage_taken", 0) + damage
 
-        # Cheat death heal (hồi 50% HP sau khi né chết)
+        # Cheat death heal (hồi HP sau khi né chết)
         if cheat_death_proc:
             heal_pct = 50
             if get_class_perk(def_class) == "last_stand_boost":
                 heal_pct = 70
             heal = int(def_eff["hp_max"] * heal_pct / 100)
             defender["hp"] = min(def_eff["hp_max"], defender["hp"] + heal)
-            result_lines.append(f"💎 CHƯA CHẾT ĐÃ SỐNG LẠI! Thoát chết + hồi {heal}HP!")
+            defender_name = defender.get("name", "???")
+            result_lines.append(
+                f"💎 **{defender_name}** kích hoạt **CHƯA CHẾT ĐÃ SỐNG LẠI!** "
+                f"Thoát chết + hồi **{heal}HP**!"
+            )
 
         result_lines.append(f"{skill.get('icon', '')} **{skill['name']}**")
         if damage > 0:
@@ -529,11 +535,19 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             eff = _eff(p)
             key = f"{p['id']}_burn"
             burn = flags.get(key)
-            if burn and burn.get("turns", 0) > 0:
+            # Skip burn nếu cheat_death vừa kích hoạt trong turn này — tránh bị giết ngay sau khi né chết
+            just_cheat_death = flags.pop(f"{p['id']}_cheat_death_this_turn", False)
+            if burn and burn.get("turns", 0) > 0 and not just_cheat_death:
                 bd = int(eff["hp_max"] * burn["pct"] / 100)
                 p["hp"] = max(0, p.get("hp", 0) - bd)
                 burn["turns"] -= 1
                 result_lines.append(f"🔥 Bỏng! {p.get('name', '???')} -{bd}HP ({burn['turns']}t)")
+                if burn["turns"] <= 0:
+                    flags.pop(key, None)
+            elif burn and just_cheat_death:
+                # Vẫn giảm turns nhưng không gây damage trong turn này
+                burn["turns"] -= 1
+                result_lines.append(f"🔥 Bỏng nhẹ! {p.get('name', '???')} chịu được nhờ Chưa Chết Đã Sống Lại! ({burn['turns']}t)")
                 if burn["turns"] <= 0:
                     flags.pop(key, None)
 
