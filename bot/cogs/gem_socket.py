@@ -84,7 +84,7 @@ class GemSocket(commands.Cog):
         else:
             await ctx_or_int.response.send_message(embed=embed)
 
-    @commands.command(name="ghepda", aliases=["ghep"])
+    @commands.command(name="ghepda", aliases=["gd"])
     async def ghep_da(self, ctx, gem_type: str, level: int):
         await self._ghep_da(ctx, str(ctx.author.id), gem_type, level)
 
