@@ -120,3 +120,17 @@ ARTIFACT_UPGRADE_COSTS = {
 
 # ── Arena Tournament ──────────────────────────────────────────
 # (giá trị được load từ env ở trên, không override lại)
+
+# ── Gem Socket / Đá Khảm ────────────────────────────────────
+GEM_TYPES = {
+    "hp":     {"name": "🔴 Hồng Ngọc",  "stat": "hp",     "levels": [80, 150, 250, 400, 600, 900, 1300, 1800, 2500]},
+    "atk":    {"name": "⚔️ Lục Bảo",    "stat": "atk",    "levels": [8, 15, 25, 40, 60, 90, 130, 180, 250]},
+    "def":    {"name": "🛡️ Lam Ngọc",   "stat": "def",    "levels": [5, 10, 18, 30, 45, 65, 90, 120, 160]},
+    "spd":    {"name": "💨 Phong Tinh",  "stat": "spd",    "levels": [5, 10, 18, 30, 45, 65, 90, 120, 160]},
+    "crit":   {"name": "💥 Huyết Thạch", "stat": "crit",   "levels": [3, 6, 12, 20, 30, 45, 65, 90, 120]},
+    "pierce": {"name": "🔱 Tử Tinh",    "stat": "pierce", "levels": [3, 6, 12, 20, 30, 45, 65, 90, 120]},
+}
+GEM_MAX_LEVEL = 9
+GEM_MERGE_COST_PER_LEVEL = 500
+GEM_REMOVE_COST_PER_LEVEL = 1000
+SOCKETS_BY_STAR = {1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3, 7: 4, 8: 4, 9: 4}
