@@ -233,6 +233,15 @@ class GemSocket(commands.Cog):
 
     @commands.command(name="huongdanda", aliases=["gemhelp"])
     async def huong_dan_da(self, ctx):
+        embed = self._build_gem_help_embed()
+        await ctx.reply(embed=embed)
+
+    @app_commands.command(name="huongdanda", description="💎 Hướng dẫn hệ thống Đá Khảm")
+    async def slash_huong_dan_da(self, interaction: discord.Interaction):
+        embed = self._build_gem_help_embed()
+        await interaction.response.send_message(embed=embed)
+
+    def _build_gem_help_embed(self) -> discord.Embed:
         embed = discord.Embed(
             title="💎 Hướng Dẫn Đá Khảm (Gem Socket)",
             description=(
@@ -283,10 +292,10 @@ class GemSocket(commands.Cog):
         embed.add_field(
             name="🔄 Ghép đá",
             value=(
-                "`!ghepda <loại> <cấp>`\n"
+                "`!ghepda <loại> <cấp>` hoặc `/ghepda`\n"
                 "3 viên cùng loại + coin → 1 viên cấp cao hơn\n"
                 "Phí = cấp đích × 500🪙\n"
-                "VD: `!ghepda hp 1` → 3× Hồng Ngọc C1 + 1000🪙 → C2"
+                "VD: `!ghepda hp 1` → 3× Hồng Ngọc C1 + 1.000🪙 → C2"
             ),
             inline=False,
         )
@@ -294,21 +303,25 @@ class GemSocket(commands.Cog):
         embed.add_field(
             name="🔮 Khảm & Tháo",
             value=(
-                "`!khamda` — Mở giao diện khảm/tháo đá\n"
-                "Khảm: miễn phí | Tháo: cấp đá × 1000🪙\n"
-                "Đá tháo ra được giữ lại, không bị hủy"
+                "`!khamda` hoặc `/khamda` — Mở giao diện khảm/tháo đá\n"
+                "Khảm mới vào ô trống: **miễn phí**\n"
+                "Tháo đá hoặc đổi đá: **cấp đá × 1.000🪙**\n"
+                "Đá tháo ra được hoàn lại kho, không mất"
             ),
             inline=False,
         )
 
         embed.add_field(
-            name="📦 Xem kho",
-            value="`!khoda` — Xem tất cả đá đang có trong kho",
+            name="📦 Xem kho & Xem trên stats",
+            value=(
+                "`!khoda` hoặc `/khoda` — Xem kho đá + tổng stat tiềm năng\n"
+                "`/stats` → Tab **💎 Đá Khảm** — Xem đá đang khảm trên từng trang bị"
+            ),
             inline=False,
         )
 
         embed.set_footer(text="💡 Mẹo: Ưu tiên khảm đá vào trang bị 5-6★ để có nhiều ô socket hơn!")
-        await ctx.reply(embed=embed)
+        return embed
 
 
 class GemSocketSelect(discord.ui.Select):

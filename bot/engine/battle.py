@@ -207,9 +207,12 @@ def get_effective_stats(pdata: dict) -> dict:
             atk_min = int(atk_min * mult_dmg)
             atk_max = int(atk_max * mult_dmg)
             defense = int(defense * mult_def)
-            spd += spd * (cb.get("spd", 0) + all_pct) // 100
-            crit += crit * (cb.get("crit", 0) + all_pct) // 100
-            pierce += pierce * (cb.get("pierce", 0) + all_pct) // 100
+            if spd:
+                spd = int(spd * (1 + (cb.get("spd", 0) + all_pct) / 100))
+            if crit:
+                crit = int(crit * (1 + (cb.get("crit", 0) + all_pct) / 100))
+            if pierce:
+                pierce = int(pierce * (1 + (cb.get("pierce", 0) + all_pct) / 100))
 
     return {
         "hp_max": hp_max,

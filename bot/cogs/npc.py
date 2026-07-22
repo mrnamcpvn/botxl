@@ -565,12 +565,25 @@ class NPCCog(commands.Cog):
                     "ON CONFLICT(player_id, npc_id) DO UPDATE SET kills=kills+1",
                     (sid, npc_id))
 
-                # Codex coin/xp bonus
-                codex_cursor = await db.execute(
-                    "SELECT npc_id, kills FROM monster_codex WHERE player_id=?", (sid,))
-                codex_rows = await codex_cursor.fetchall()
-                codex_kills = {str(r[0]): r[1] for r in codex_rows}
+                # Dùng lại codex_kills từ pdata đã load — cộng thêm 1 kill vừa ghi
+                codex_kills = dict(player.get("_codex_kills", {}))
+                old_kills = codex_kills.get(str(npc_id), 0)
+                new_kills = old_kills + 1
+                codex_kills[str(npc_id)] = new_kills
                 cb = get_codex_bonuses(codex_kills)
+
+                # Thông báo nếu vừa đạt milestone mới
+                from bot.config import CODEX_DATA, CODEX_MILESTONES
+                cd_entry = CODEX_DATA.get(npc_id)
+                if cd_entry:
+                    for ms in CODEX_MILESTONES:
+                        if old_kills < ms <= new_kills:
+                            tier_idx = CODEX_MILESTONES.index(ms)
+                            bonus_pct = cd_entry["tiers"][tier_idx] if tier_idx < len(cd_entry["tiers"]) else 0
+                            result_lines.append(
+                                f"\n📖 **ĐỒ THƯ MỞ KHÓA!** {ms} kills → "
+                                f"+{bonus_pct}% {cd_entry['bonus'].upper()} vĩnh viễn! 🎉"
+                            )
                 if cb:
                     coin_pct = cb.get("coin", 0) + cb.get("all", 0)
                     xp_pct = cb.get("xp", 0) + cb.get("all", 0)
