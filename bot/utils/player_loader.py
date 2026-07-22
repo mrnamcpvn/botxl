@@ -107,6 +107,13 @@ async def load_player_full(db, pid: str, *, reset_cd: bool = False) -> dict | No
     pdata["_artifact_star"] = art_row[0] if art_row else 0
     pdata["_artifact_stones"] = art_row[1] if art_row else 0
 
+    codex_cursor = await db.execute(
+        "SELECT npc_id, kills FROM monster_codex WHERE player_id=?", (pid,))
+    codex_kills = {}
+    async for cr in codex_cursor:
+        codex_kills[str(cr[0])] = cr[1]
+    pdata["_codex_kills"] = codex_kills
+
     regen_hp(pdata)
 
     if reset_cd:
