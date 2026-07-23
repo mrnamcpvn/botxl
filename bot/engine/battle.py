@@ -451,6 +451,22 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         def_factor = max(0.20, def_factor)  # tối thiểu 20% damage luôn qua được
         damage = max(1, int(base_dmg * def_factor))
 
+        # Level difference penalty — hard cap: cách > 20 level gần như không gây được damage
+        # gap 0-20: không penalty
+        # gap 21-30: giảm 50%
+        # gap 31-40: giảm 80%
+        # gap 41+:   giảm 95% (chỉ còn 5% damage — không thể farm)
+        atk_level = attacker.get("level", 1)
+        def_level = defender.get("level", 1)
+        if defender.get("_npc_override") and def_level > atk_level:
+            level_gap = def_level - atk_level
+            if level_gap > 40:
+                damage = max(1, int(damage * 0.05))
+            elif level_gap > 30:
+                damage = max(1, int(damage * 0.20))
+            elif level_gap > 20:
+                damage = max(1, int(damage * 0.50))
+
         # Class perk: defend_reduce
         def_class = defender.get("class_id", "banxabong")
         if get_class_perk(def_class) == "defend_reduce" and defending:
