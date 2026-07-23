@@ -335,6 +335,17 @@ class Arena(commands.Cog):
             art_row = await art_cursor.fetchone()
             pdata["_artifact_star"] = art_row[0] if art_row else 0
             pdata["_artifact_stones"] = art_row[1] if art_row else 0
+            # Load cultivation data cho stats tab Tu Tiên
+            cult_cursor = await db.execute(
+                "SELECT realm, stage, tuvi, last_collect, cultivating, session_start "
+                "FROM cultivation WHERE player_id=?", (sid,))
+            cult_row = await cult_cursor.fetchone()
+            pdata["_cult_realm"]         = cult_row[0] if cult_row else -1
+            pdata["_cult_stage"]         = cult_row[1] if cult_row else 1
+            pdata["_cult_tuvi"]          = cult_row[2] if cult_row else 0
+            pdata["_cult_last_collect"]  = cult_row[3] if cult_row else 0
+            pdata["_cult_cultivating"]   = bool(cult_row[4]) if cult_row else False
+            pdata["_cult_session_start"] = cult_row[5] if cult_row else 0
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
             await update_combat_power(sid, pdata, wives_data, db=db)
@@ -958,6 +969,17 @@ class Arena(commands.Cog):
             art_row = await art_cursor.fetchone()
             pdata["_artifact_star"] = art_row[0] if art_row else 0
             pdata["_artifact_stones"] = art_row[1] if art_row else 0
+            # Load cultivation data cho stats tab Tu Tiên
+            cult_cursor = await db.execute(
+                "SELECT realm, stage, tuvi, last_collect, cultivating, session_start "
+                "FROM cultivation WHERE player_id=?", (sid,))
+            cult_row = await cult_cursor.fetchone()
+            pdata["_cult_realm"]         = cult_row[0] if cult_row else -1
+            pdata["_cult_stage"]         = cult_row[1] if cult_row else 1
+            pdata["_cult_tuvi"]          = cult_row[2] if cult_row else 0
+            pdata["_cult_last_collect"]  = cult_row[3] if cult_row else 0
+            pdata["_cult_cultivating"]   = bool(cult_row[4]) if cult_row else False
+            pdata["_cult_session_start"] = cult_row[5] if cult_row else 0
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
             await update_combat_power(sid, pdata, wives_data, db=db)

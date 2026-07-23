@@ -909,8 +909,7 @@ class WorldBoss(commands.Cog):
                         cult_drops.append(CULTIVATION_ITEM_NAMES["tien_tinh"])
                 else:
                     # Top 4+: 50% Thiên Linh Thạch
-                    import random as _rnd
-                    if _rnd.random() < 0.50:
+                    if random.random() < 0.50:
                         await db.execute(
                             "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, 'thien_linh_thach', 1) "
                             "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1", (pid,))
