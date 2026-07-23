@@ -174,13 +174,22 @@ class HelpCog(commands.Cog):
                 "Mỗi cảnh giới +% stat + passive đặc biệt"
             ),
         },
+        "gacha": {
+            "name": "🎰 Quay Trang Bị",
+            "description": (
+                "`!roll` — Quay trang bị ngẫu nhiên (1.000🪙/lượt)\n"
+                "Tỉ lệ: 1★ 50% → 6★ 0.1%\n"
+                "Bảo hành: 100 lượt không có 6★ → nhận 6★ miễn phí\n"
+                "Càng quay nhiều, càng gần bảo hành!"
+            ),
+        },
     }
 
     HELP_ORDER = [
         "co_ban", "dam_nhau", "shop", "ky_nang", "class",
         "nang_cap", "dungeon", "thankhi", "quest",
         "arena", "world_boss", "gem", "codex",
-        "cultivation", "quiz", "trade", "waifu",
+        "cultivation", "gacha", "quiz", "trade", "waifu",
     ]
 
     @commands.command(name="trogiup", aliases=["h", "help"])

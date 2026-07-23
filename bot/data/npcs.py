@@ -1,10 +1,11 @@
 from bot.data.classes import CLASSES
 
 NPC_DEFINITIONS = {
-    # ═══════════ TRANG 1: Lv.1-39 ═══════════
+    # Rebalanced dựa trên dữ liệu thực tế player (top ATK ~1742, mid ATK ~891)
+    # Target: top player 3-15 hits basic, mid player 5-29 hits basic
     "1": {
         "name": "🐀 Chuột Cống", "class_id": "banxabong", "level": 1,
-        "hp": 120, "hp_max": 120, "attack_min": 18, "attack_max": 25, "defense": 10,
+        "hp": 4749, "hp_max": 4749, "attack_min": 30, "attack_max": 41, "defense": 50,
         "trait": "Cơ bản - Dùng để tập đánh",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 10, "passive": 14},
@@ -12,15 +13,15 @@ NPC_DEFINITIONS = {
     },
     "2": {
         "name": "🐍 Rắn Học Trò", "class_id": "sieunhan", "level": 3,
-        "hp": 96, "hp_max": 96, "attack_min": 42, "attack_max": 60, "defense": 8,
-        "trait": "⚡ First Strike - Đòn đầu ×1.5",
+        "hp": 4800, "hp_max": 4800, "attack_min": 38, "attack_max": 52, "defense": 80,
+        "trait": "⚡ First Strike - Đòn đầu ×1.3",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 1, "special": 5, "defense": 10, "passive": 15},
         "role_mult": 1.0, "_npc_override": True,
     },
     "3": {
         "name": "🦎 Kỳ Đà Cản Mũi", "class_id": "thaychua", "level": 5,
-        "hp": 180, "hp_max": 180, "attack_min": 52, "attack_max": 78, "defense": 22,
+        "hp": 4900, "hp_max": 4900, "attack_min": 44, "attack_max": 61, "defense": 130,
         "trait": "⏳ CD Reduce - Hồi chiêu nhanh",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 2, "special": 7, "defense": 12, "passive": 17},
@@ -28,7 +29,7 @@ NPC_DEFINITIONS = {
     },
     "4": {
         "name": "🐊 Cá Sấu Nước Đục", "class_id": "chodien", "level": 8,
-        "hp": 350, "hp_max": 350, "attack_min": 82, "attack_max": 120, "defense": 50,
+        "hp": 4950, "hp_max": 4950, "attack_min": 57, "attack_max": 79, "defense": 160,
         "trait": "💢 Rage - Càng đánh càng mạnh",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 2, "special": 5, "defense": 10, "passive": 19},
@@ -36,7 +37,7 @@ NPC_DEFINITIONS = {
     },
     "5": {
         "name": "🐉 Rồng Tem Bảo Hành", "class_id": "baque", "level": 12,
-        "hp": 420, "hp_max": 420, "attack_min": 100, "attack_max": 140, "defense": 85,
+        "hp": 4976, "hp_max": 4976, "attack_min": 90, "attack_max": 130, "defense": 200,
         "trait": "💎 Last Stand - HP<40% giảm 50% dmg",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 2, "special": 7, "defense": 12, "passive": 20},
@@ -44,7 +45,7 @@ NPC_DEFINITIONS = {
     },
     "6": {
         "name": "🦅 Đại Bàng Xỏ Lá", "class_id": "trumcuoi", "level": 15,
-        "hp": 600, "hp_max": 600, "attack_min": 180, "attack_max": 250, "defense": 120,
+        "hp": 5440, "hp_max": 5440, "attack_min": 140, "attack_max": 200, "defense": 300,
         "trait": "🌟 Toàn năng - Dùng đủ loại skill",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -52,7 +53,7 @@ NPC_DEFINITIONS = {
     },
     "7": {
         "name": "💀 Tử Thần Bóng Tối", "class_id": "muoi", "level": 18,
-        "hp": 720, "hp_max": 720, "attack_min": 210, "attack_max": 300, "defense": 120,
+        "hp": 5934, "hp_max": 5934, "attack_min": 170, "attack_max": 240, "defense": 380,
         "trait": "🩸 Hút Máu - Đánh hồi 50% dmg",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 3, "special": 6, "defense": 11, "passive": 17},
@@ -60,7 +61,7 @@ NPC_DEFINITIONS = {
     },
     "8": {
         "name": "👹 Diêm Vương Địa Ngục", "class_id": "baque", "level": 21,
-        "hp": 880, "hp_max": 880, "attack_min": 250, "attack_max": 360, "defense": 150,
+        "hp": 5496, "hp_max": 5496, "attack_min": 200, "attack_max": 280, "defense": 450,
         "trait": "🔥 Đốt Cháy - Gây burn 15%/2t",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 3, "special": 7, "defense": 12, "passive": 20},
@@ -68,7 +69,7 @@ NPC_DEFINITIONS = {
     },
     "9": {
         "name": "🐉 Hắc Long Hủy Diệt", "class_id": "trumcuoi", "level": 24,
-        "hp": 1050, "hp_max": 1050, "attack_min": 310, "attack_max": 430, "defense": 170,
+        "hp": 5971, "hp_max": 5971, "attack_min": 240, "attack_max": 340, "defense": 520,
         "trait": "🌑 Choáng - Stun mất lượt",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 8, "defense": 13, "passive": 20},
@@ -76,7 +77,7 @@ NPC_DEFINITIONS = {
     },
     "10": {
         "name": "⚡ Lôi Thần Sấm Sét", "class_id": "chodien", "level": 27,
-        "hp": 2400, "hp_max": 2400, "attack_min": 740, "attack_max": 1040, "defense": 380,
+        "hp": 5537, "hp_max": 5537, "attack_min": 280, "attack_max": 400, "defense": 600,
         "trait": "💢 Rage + Burn - Cực kỳ nguy hiểm",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 7, "defense": 12, "passive": 19},
@@ -84,7 +85,7 @@ NPC_DEFINITIONS = {
     },
     "11": {
         "name": "🧊 Băng Thần Vĩnh Cửu", "class_id": "xola", "level": 30,
-        "hp": 2800, "hp_max": 2800, "attack_min": 840, "attack_max": 1160, "defense": 460,
+        "hp": 5800, "hp_max": 5800, "attack_min": 320, "attack_max": 450, "defense": 700,
         "trait": "🛡️ Thủ Cực Mạnh - DEF×3 khi defend",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 3, "special": 5, "defense": 10, "passive": 14},
@@ -92,7 +93,7 @@ NPC_DEFINITIONS = {
     },
     "12": {
         "name": "🔥 Phượng Hoàng Lửa Thiêng", "class_id": "sieunhan", "level": 33,
-        "hp": 3200, "hp_max": 3200, "attack_min": 1000, "attack_max": 1360, "defense": 520,
+        "hp": 5352, "hp_max": 5352, "attack_min": 380, "attack_max": 530, "defense": 800,
         "trait": "⚡ Dồn dmg cực nhanh - Né hoặc hồi máu",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 12, "passive": 15},
@@ -100,7 +101,7 @@ NPC_DEFINITIONS = {
     },
     "13": {
         "name": "🌌 Chúa Tể Hư Không", "class_id": "thaychua", "level": 36,
-        "hp": 3700, "hp_max": 3700, "attack_min": 1140, "attack_max": 1560, "defense": 580,
+        "hp": 5598, "hp_max": 5598, "attack_min": 430, "attack_max": 600, "defense": 900,
         "trait": "💚 Hồi 5% HP mỗi turn - Cần dồn dmg",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 8, "defense": 13, "passive": 17},
@@ -108,16 +109,15 @@ NPC_DEFINITIONS = {
     },
     "14": {
         "name": "👑 Vua Quỷ Tận Thế", "class_id": "trumcuoi", "level": 39,
-        "hp": 4200, "hp_max": 4200, "attack_min": 1300, "attack_max": 1800, "defense": 680,
+        "hp": 5220, "hp_max": 5220, "attack_min": 490, "attack_max": 680, "defense": 1000,
         "trait": "🌟 Boss Tổng - Đủ skill mạnh",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
         "role_mult": 1.0, "_npc_override": True,
     },
-    # ═══════════ TRANG 2: Lv.42-66 ═══════════
     "15": {
         "name": "🐲 Hắc Kỳ Lân", "class_id": "trumcuoi", "level": 42,
-        "hp": 4800, "hp_max": 4800, "attack_min": 1500, "attack_max": 2100, "defense": 750,
+        "hp": 5440, "hp_max": 5440, "attack_min": 550, "attack_max": 760, "defense": 1100,
         "trait": "🌑 Chuyên Choáng",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 8, "defense": 11, "passive": 20},
@@ -125,7 +125,7 @@ NPC_DEFINITIONS = {
     },
     "16": {
         "name": "🦅 Phong Thần Ưng", "class_id": "sieunhan", "level": 45,
-        "hp": 5000, "hp_max": 5000, "attack_min": 1800, "attack_max": 2500, "defense": 600,
+        "hp": 5800, "hp_max": 5800, "attack_min": 620, "attack_max": 860, "defense": 1000,
         "trait": "🔥 Gây Burn + né đòn 15%",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 7, "defense": 12, "passive": 18},
@@ -133,7 +133,7 @@ NPC_DEFINITIONS = {
     },
     "17": {
         "name": "🐢 Huyền Vũ Thần Quy", "class_id": "xola", "level": 48,
-        "hp": 6500, "hp_max": 6500, "attack_min": 1400, "attack_max": 1900, "defense": 900,
+        "hp": 5120, "hp_max": 5120, "attack_min": 580, "attack_max": 800, "defense": 1200,
         "trait": "💚 Hồi máu + DEF cao",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 3, "special": 9, "defense": 12, "passive": 16},
@@ -141,7 +141,7 @@ NPC_DEFINITIONS = {
     },
     "18": {
         "name": "🦊 Cửu Vĩ Hồ Ly", "class_id": "muoi", "level": 51,
-        "hp": 5500, "hp_max": 5500, "attack_min": 1700, "attack_max": 2400, "defense": 750,
+        "hp": 5984, "hp_max": 5984, "attack_min": 680, "attack_max": 940, "defense": 1100,
         "trait": "🩸 Hút máu + Lifesteal mạnh",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 6, "defense": 11, "passive": 17},
@@ -149,7 +149,7 @@ NPC_DEFINITIONS = {
     },
     "19": {
         "name": "🐅 Bạch Hổ Thần Thú", "class_id": "chodien", "level": 54,
-        "hp": 7200, "hp_max": 7200, "attack_min": 2200, "attack_max": 3000, "defense": 800,
+        "hp": 5632, "hp_max": 5632, "attack_min": 760, "attack_max": 1050, "defense": 1200,
         "trait": "💢 Rage + ATK cao",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 19},
@@ -157,7 +157,7 @@ NPC_DEFINITIONS = {
     },
     "20": {
         "name": "🐉 Thanh Long Thần Thú", "class_id": "baque", "level": 57,
-        "hp": 8500, "hp_max": 8500, "attack_min": 2400, "attack_max": 3300, "defense": 900,
+        "hp": 5796, "hp_max": 5796, "attack_min": 840, "attack_max": 1160, "defense": 1300,
         "trait": "💎 Last Stand + Shield",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -165,7 +165,7 @@ NPC_DEFINITIONS = {
     },
     "21": {
         "name": "🐦 Chu Tước Thần Điểu", "class_id": "sieunhan", "level": 60,
-        "hp": 8000, "hp_max": 8000, "attack_min": 2800, "attack_max": 3800, "defense": 750,
+        "hp": 5632, "hp_max": 5632, "attack_min": 930, "attack_max": 1280, "defense": 1200,
         "trait": "⚡ ATK siêu cao",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 12, "passive": 15},
@@ -173,7 +173,7 @@ NPC_DEFINITIONS = {
     },
     "22": {
         "name": "👹 A Tu La Chiến Thần", "class_id": "chodien", "level": 63,
-        "hp": 9500, "hp_max": 9500, "attack_min": 3000, "attack_max": 4100, "defense": 950,
+        "hp": 5496, "hp_max": 5496, "attack_min": 1020, "attack_max": 1400, "defense": 1400,
         "trait": "💢 Siêu Rage + Self-dmg",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 3, "special": 7, "defense": 13, "passive": 19},
@@ -181,16 +181,15 @@ NPC_DEFINITIONS = {
     },
     "23": {
         "name": "🧘 Thái Thượng Lão Quân", "class_id": "thaychua", "level": 66,
-        "hp": 8800, "hp_max": 8800, "attack_min": 2600, "attack_max": 3600, "defense": 1000,
+        "hp": 5220, "hp_max": 5220, "attack_min": 1050, "attack_max": 1450, "defense": 1500,
         "trait": "💚 Hồi 5%/t + heal 40%",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 12, "passive": 17},
         "role_mult": 1.0, "_npc_override": True,
     },
-    # ═══════════ TRANG 3: Lv.69-90 ═══════════
     "24": {
         "name": "⚡ Lôi Công Chấn Thiên", "class_id": "sieunhan", "level": 69,
-        "hp": 9000, "hp_max": 9000, "attack_min": 3200, "attack_max": 4400, "defense": 850,
+        "hp": 5655, "hp_max": 5655, "attack_min": 1130, "attack_max": 1560, "defense": 1500,
         "trait": "⚡ Multi-hit + Pierce",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 12, "passive": 20},
@@ -198,7 +197,7 @@ NPC_DEFINITIONS = {
     },
     "25": {
         "name": "🌊 Cộng Công Thủy Thần", "class_id": "xola", "level": 72,
-        "hp": 11000, "hp_max": 11000, "attack_min": 2800, "attack_max": 3800, "defense": 1100,
+        "hp": 5382, "hp_max": 5382, "attack_min": 1100, "attack_max": 1520, "defense": 1600,
         "trait": "🛡️ Siêu tank + reflect 5%",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 3, "special": 8, "defense": 13, "passive": 14},
@@ -206,7 +205,7 @@ NPC_DEFINITIONS = {
     },
     "26": {
         "name": "🔥 Chúc Dung Hỏa Thần", "class_id": "chodien", "level": 75,
-        "hp": 10500, "hp_max": 10500, "attack_min": 3500, "attack_max": 4800, "defense": 950,
+        "hp": 5382, "hp_max": 5382, "attack_min": 1250, "attack_max": 1720, "defense": 1600,
         "trait": "🔥 Burn 15% + Rage",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 7, "defense": 12, "passive": 19},
@@ -214,7 +213,7 @@ NPC_DEFINITIONS = {
     },
     "27": {
         "name": "☀️ Hậu Nghệ Xạ Nhật", "class_id": "baque", "level": 78,
-        "hp": 12000, "hp_max": 12000, "attack_min": 3800, "attack_max": 5200, "defense": 1000,
+        "hp": 5530, "hp_max": 5530, "attack_min": 1380, "attack_max": 1900, "defense": 1700,
         "trait": "💎 Last Stand + Pierce",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},
@@ -222,7 +221,7 @@ NPC_DEFINITIONS = {
     },
     "28": {
         "name": "🌙 Hằng Nga Tiên Tử", "class_id": "thaychua", "level": 81,
-        "hp": 11500, "hp_max": 11500, "attack_min": 3200, "attack_max": 4400, "defense": 1200,
+        "hp": 5292, "hp_max": 5292, "attack_min": 1420, "attack_max": 1960, "defense": 1800,
         "trait": "🍀 Né đòn 15% + Hồi máu",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 18},
@@ -230,7 +229,7 @@ NPC_DEFINITIONS = {
     },
     "29": {
         "name": "⚔️ Nhị Lang Thần Chân Quân", "class_id": "trumcuoi", "level": 85,
-        "hp": 14000, "hp_max": 14000, "attack_min": 4200, "attack_max": 5800, "defense": 1200,
+        "hp": 5430, "hp_max": 5430, "attack_min": 1580, "attack_max": 2180, "defense": 1900,
         "trait": "🌟 All-in-one - Stun",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 8, "defense": 12, "passive": 20},
@@ -238,7 +237,7 @@ NPC_DEFINITIONS = {
     },
     "30": {
         "name": "👑 Ngọc Hoàng Đại Đế", "class_id": "trumcuoi", "level": 90,
-        "hp": 18000, "hp_max": 18000, "attack_min": 5000, "attack_max": 7000, "defense": 1500,
+        "hp": 5220, "hp_max": 5220, "attack_min": 1800, "attack_max": 2500, "defense": 2000,
         "trait": "👑 BOSS CUỐI",
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {"attack": 4, "special": 9, "defense": 13, "passive": 20},

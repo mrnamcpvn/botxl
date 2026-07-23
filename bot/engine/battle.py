@@ -43,6 +43,12 @@ def get_effective_stats(pdata: dict) -> dict:
         atk_min = pdata.get("attack_min", 10)
         atk_max = pdata.get("attack_max", 20)
         defense = pdata.get("defense", 5)
+        # Chỉ scale NPC nếu KHÔNG có _no_global_scale
+        # NPC_DEFINITIONS đã hardcode stats riêng — không cần scale thêm
+        # Chỉ Dungeon NPC tự generate mới được opt-in scale
+        if pdata.get("_apply_global_scale"):
+            hp_max  = int(hp_max  * GLOBAL_HP_MULT)
+            defense = int(defense * GLOBAL_DEF_MULT)
     else:
         upgrade_hp = pdata.get("upgrade_hp", 0)
         upgrade_atk = pdata.get("upgrade_atk", 0)
@@ -149,7 +155,10 @@ def get_effective_stats(pdata: dict) -> dict:
     damage_pct = 0
     passive_id = pdata.get("skill_equipped", {}).get("passive")
     skill = SKILLS_DB.get(passive_id)
-    if skill and skill["category"] == "passive" and skill["type"] == "stat_boost":
+    # Passive stat_boost chỉ áp dụng cho player, không áp dụng cho NPC hardcoded
+    # (NPC stats đã được thiết kế thủ công, không cần passive boost thêm)
+    if skill and skill["category"] == "passive" and skill["type"] == "stat_boost" \
+            and not pdata.get("_npc_override"):
         if skill.get("stat") == "hp_max":
             hp_max += int(hp_max * skill["boost_pct"] / 100)
         elif skill.get("stat") == "damage":
@@ -436,19 +445,23 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             eff_def = int(eff_def * (100 - equip_pierce) / 100)
             result_lines.append(f"🔱 XUYÊN {equip_pierce}% DEF!")
 
-        damage = max(base_dmg // 4, base_dmg - eff_def)
+        # Percent-based defense: DEF=500 → -50% dmg, DEF=1000 → -67%, floor 20%
+        # Tăng threshold 300→500 để DEF class có giá trị hơn ở late game
+        def_factor = 1.0 - eff_def / (eff_def + 500)
+        def_factor = max(0.20, def_factor)  # tối thiểu 20% damage luôn qua được
+        damage = max(1, int(base_dmg * def_factor))
 
         # Class perk: defend_reduce
         def_class = defender.get("class_id", "banxabong")
         if get_class_perk(def_class) == "defend_reduce" and defending:
             damage = int(damage * 0.8)
 
-        # Class perk: first_strike
+        # Class perk: first_strike — đòn đầu ×1.3 (nerf từ 1.5)
         atk_class = attacker.get("class_id", "banxabong")
         if get_class_perk(atk_class) == "first_strike":
             turn_count = flags.get("turn_count", 0)
             if turn_count == 0:
-                damage = int(damage * 1.5)
+                damage = int(damage * 1.3)
 
         # Counter — 80% damage reduction
         d_id = defender["id"]
@@ -487,7 +500,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             if flags.get(rage_key, 0) > 0:
                 rage_mult = atk_passive.get("rage_multiplier", 2.0)
                 if get_class_perk(atk_class) == "rage_boost":
-                    rage_mult = 2.5
+                    rage_mult = 2.0   # nerf từ 2.5
                 rage_bonus = int(flags.pop(rage_key, 0) * rage_mult)
                 damage += rage_bonus
                 result_lines.append(f"💢 PHẪN NỘ! +{rage_bonus} dmg!")

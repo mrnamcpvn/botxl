@@ -9,7 +9,7 @@ SKILLS_DB = {
     6: {"name":"🩸 Hút Máu Bán Muỗi","desc":"1.8x dmg + hồi 50% dmg","category":"special","type":"lifesteal","multiplier":1.8,"lifesteal_pct":50,"cooldown":3,"price":3500,"rarity":"rare","icon":"🩸"},
     7: {"name":"🔥 Đốt Nhà Hàng Xóm","desc":"1.8x dmg + đốt 15%/2 turn","category":"special","type":"burn","multiplier":1.8,"burn_pct":15,"burn_turns":2,"cooldown":3,"price":3500,"rarity":"rare","icon":"🔥"},
     8: {"name":"🌑 Tắt Điện Đột Ngột","desc":"2.0x dmg + choáng 1 turn","category":"special","type":"stun","multiplier":2.0,"cooldown":4,"price":5000,"rarity":"epic","icon":"🌑"},
-    9: {"name":"⚡ Sét Đánh Ngang Tai","desc":"3.5x dmg, xuyên 50% DEF","category":"special","type":"pierce","multiplier":3.5,"pierce_pct":50,"cooldown":4,"price":15000,"rarity":"legendary","icon":"⚡"},
+    9: {"name":"⚡ Sét Đánh Ngang Tai","desc":"2.5x dmg, xuyên 35% DEF","category":"special","type":"pierce","multiplier":2.5,"pierce_pct":35,"cooldown":4,"price":15000,"rarity":"legendary","icon":"⚡"},
     # ═══════ DEFENSE SKILLS ═══════
     10: {"name":"🛡️ Chống Xỏ Lá","desc":"×3 DEF + hồi 8% HP | CD:2","category":"defense","type":"defend","heal_pct":8,"cooldown":2,"price":0,"rarity":"common","icon":"🛡️"},
     11: {"name":"🔄 Gậy Ông Đập Lưng Ông","desc":"Giảm 80% dmg + phản 10% dmg","category":"defense","type":"counter","multiplier":0.1,"cooldown":5,"price":2500,"rarity":"uncommon","icon":"🔄"},

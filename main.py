@@ -56,6 +56,7 @@ async def load_extensions():
     await bot.load_extension("bot.cogs.monster_codex")
     await bot.load_extension("bot.cogs.cultivation")
     await bot.load_extension("bot.cogs.help")
+    await bot.load_extension("bot.cogs.gacha")
 
 async def main():
     await init_db()

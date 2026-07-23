@@ -1,43 +1,43 @@
 CLASSES = {
     "banxabong": {
         "name": "Bán Xà Bông", "icon": "🧼",
-        "hp_base": 120, "hp_scale": 12,
-        "atk_base": 12, "atk_scale": 3,
+        "hp_base": 120, "hp_scale": 10,
+        "atk_base": 14, "atk_scale": 4,
         "def_base": 10, "def_scale": 2,
-        "desc": "Tập tễnh vào đời, đánh ai cũng được",
+        "desc": "Tập tễnh vào đời, cân bằng mọi thứ",
         "price": 0
     },
     "xola": {
         "name": "Xỏ Lá", "icon": "🤓",
-        "hp_base": 200, "hp_scale": 20,
-        "atk_base": 6, "atk_scale": 2,
-        "def_base": 22, "def_scale": 6,
+        "hp_base": 160, "hp_scale": 14,   # giảm từ 180/18 → HP vẫn cao nhưng không áp đảo
+        "atk_base": 10, "atk_scale": 3,
+        "def_base": 20, "def_scale": 5,
         "desc": "Siêu trâu, thủ giảm 20% dmg | +HP +DEF -ATK",
         "price": 5000,
         "perk": "defend_reduce"
     },
     "sieunhan": {
         "name": "Siêu Nhân Xà Phòng", "icon": "💪",
-        "hp_base": 80, "hp_scale": 8,
-        "atk_base": 22, "atk_scale": 6,
-        "def_base": 4, "def_scale": 1,
-        "desc": "Đòn đầu ×1.5 sát thương | +ATK -HP -DEF",
+        "hp_base": 90, "hp_scale": 8,
+        "atk_base": 22, "atk_scale": 6,   # tăng atk_scale lại 5→6 để bù HP thấp
+        "def_base": 5, "def_scale": 1,
+        "desc": "Đòn đầu ×1.3 sát thương | +ATK -HP -DEF",
         "price": 5000,
         "perk": "first_strike"
     },
     "thaychua": {
         "name": "Thầy Chùa", "icon": "🙏",
-        "hp_base": 90, "hp_scale": 9,
-        "atk_base": 14, "atk_scale": 4,
-        "def_base": 6, "def_scale": 2,
+        "hp_base": 100, "hp_scale": 10,
+        "atk_base": 16, "atk_scale": 5,
+        "def_base": 8, "def_scale": 2,
         "desc": "CD gốc tất cả skill -1 | skill hồi nhanh hơn",
         "price": 5000,
         "perk": "cd_reduce"
     },
     "muoi": {
         "name": "Con Muỗi", "icon": "🦟",
-        "hp_base": 115, "hp_scale": 11,
-        "atk_base": 16, "atk_scale": 4,
+        "hp_base": 110, "hp_scale": 10,
+        "atk_base": 18, "atk_scale": 5,
         "def_base": 6, "def_scale": 1,
         "desc": "Hút 80% dmg gây ra thành HP | +ATK +SPD",
         "price": 10000,
@@ -45,18 +45,18 @@ CLASSES = {
     },
     "chodien": {
         "name": "Chó Điên", "icon": "🐕",
-        "hp_base": 150, "hp_scale": 15,
+        "hp_base": 140, "hp_scale": 13,
         "atk_base": 18, "atk_scale": 5,
         "def_base": 8, "def_scale": 2,
-        "desc": "Càng đánh càng mạnh, rage ×2.5 | +HP +ATK",
+        "desc": "Càng đánh càng mạnh, rage ×2.0 | +HP +ATK",
         "price": 10000,
         "perk": "rage_boost"
     },
     "baque": {
         "name": "Ba Que", "icon": "🥢",
-        "hp_base": 160, "hp_scale": 16,
-        "atk_base": 10, "atk_scale": 3,
-        "def_base": 18, "def_scale": 4,
+        "hp_base": 150, "hp_scale": 14,
+        "atk_base": 12, "atk_scale": 3,
+        "def_base": 16, "def_scale": 4,
         "desc": "Né chết hồi 70% HP (50%→70%) | +HP +DEF",
         "price": 20000,
         "perk": "last_stand_boost"

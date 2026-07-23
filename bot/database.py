@@ -220,6 +220,10 @@ TABLES = [
         quantity INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (player_id, item_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS gacha_pity (
+        player_id TEXT PRIMARY KEY,
+        roll_count INTEGER NOT NULL DEFAULT 0
+    )""",
 ]
 
 MIGRATIONS = [

@@ -128,10 +128,27 @@ def _dungeon_reward_embed(acc: dict, floor: int, title: str) -> discord.Embed:
 
 
 def generate_dungeon_npc(floor: int) -> dict:
-    npc_level = floor + 5
-    hp = 100 + npc_level * 25
-    atk = 10 + npc_level * 5
-    defense = 5 + npc_level * 3
+    # Level tăng nhanh theo tầng: T1=Lv11, T50=Lv85, T100=Lv160
+    # Class mạnh dần: banxabong→thaychua→chodien→sieunhan→trumcuoi
+    npc_level = int(floor * 1.5 + 10)
+    if floor <= 15:
+        class_id = "banxabong"
+    elif floor <= 35:
+        class_id = "thaychua"
+    elif floor <= 55:
+        class_id = "chodien"
+    elif floor <= 75:
+        class_id = "sieunhan"
+    else:
+        class_id = "trumcuoi"
+
+    from bot.data.classes import CLASSES as _CLASSES
+    _cls = _CLASSES[class_id]
+    HP_MULT  = 2.5
+    ATK_MULT = 2.5
+    hp      = int((_cls["hp_base"]  + _cls["hp_scale"]  * (npc_level - 1)) * HP_MULT)
+    atk     = int((_cls["atk_base"] + _cls["atk_scale"] * (npc_level - 1)) * ATK_MULT)
+    defense = int((_cls["def_base"] + _cls["def_scale"] * (npc_level - 1)) * HP_MULT)
     names = [
         "Quái Vật Bóng Tối", "Thú Dữ Vực Sâu", "Linh Hồn Lạc Lối",
         "Xác Sống Vô Hồn", "Quỷ Dữ Bóng Đêm", "Rồng Đen Hắc Ám",
@@ -151,13 +168,9 @@ def generate_dungeon_npc(floor: int) -> dict:
     }
     if floor in boss_names:
         name = boss_names[floor]
-        hp = int(hp * 7)
-        atk = int(atk * 7)
-        defense = int(defense * 7)
-    else:
-        hp = int(hp * 3)
-        atk = int(atk * 3)
-        defense = int(defense * 3)
+        hp      = int(hp * 1.8)
+        atk     = int(atk * 1.8)
+        defense = int(defense * 1.2)
 
     if floor <= 20:
         skills = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
@@ -174,10 +187,10 @@ def generate_dungeon_npc(floor: int) -> dict:
         "hp": hp,
         "hp_max": hp,
         "attack_min": atk,
-        "attack_max": atk + 5,
+        "attack_max": atk + int(atk * 0.1),
         "defense": defense,
         "level": npc_level,
-        "class_id": random.choice(REAL_CLASSES),
+        "class_id": class_id,   # dùng class đúng theo tầng thay vì random
         "cooldowns": {"attack_cd": 0, "special_cd": 0, "defense_cd": 0},
         "skill_equipped": skills,
         "_npc_override": True,
