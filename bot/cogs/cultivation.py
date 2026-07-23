@@ -20,12 +20,12 @@ from bot.engine.cultivation import (
 
 _PASSIVE_LABELS = {
     "coin_boost":        "💰 +10% coin từ NPC",
-    "heal_after_win":    "💚 Hồi 10% HP sau thắng trận",
+    "heal_after_win":    "💚 Hồi 50% HP sau thắng trận",
     "drop_boost":        "🎁 +15% drop rate, +10% gem drop",
-    "combat_regen":      "🌿 Hồi 5% HP mỗi lượt chiến đấu",
+    "combat_regen":      "🌿 Hồi 10% HP mỗi lượt chiến đấu",
     "pierce_passive":    "🔱 +20% xuyên giáp tất cả đòn",
     "anti_crit":         "🌌 25% thoát CRIT + giảm 20% dmg nhận",
-    "cheat_death_cult":  "⚡ Thoát chết 1 lần/trận + hồi 30% HP",
+    "cheat_death_cult":  "⚡ Thoát chết 1 lần/trận + hồi 70% HP",
 }
 
 _STONE_COLS = {"stone_medium", "stone_advanced"}

@@ -239,7 +239,7 @@ def get_effective_stats(pdata: dict) -> dict:
             pdata["_cult_anti_dmg"] = 20
         # Passive Nguyên Anh: combat regen (đánh dấu để dùng trong execute_action)
         if cult_realm >= 3:
-            pdata["_cult_combat_regen"] = 5  # 5% HP/turn
+            pdata["_cult_combat_regen"] = 10  # 10% HP/turn
 
     return {
         "hp_max": hp_max,
@@ -529,7 +529,7 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 flags[cult_cd_key] = True
                 flags[f"{defender['id']}_cheat_death_this_turn"] = True
                 eff_d = _eff(defender)
-                heal = int(eff_d["hp_max"] * 0.30)
+                heal = int(eff_d["hp_max"] * 0.70)
                 defender["hp"] = min(eff_d["hp_max"], defender.get("hp", 0) + heal)
                 result_lines.append(
                     f"⚡ **{defender.get('name','?')}** kích hoạt **ĐỘ KIẾP BẤT DIỆT!** "

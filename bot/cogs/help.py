@@ -161,13 +161,26 @@ class HelpCog(commands.Cog):
                 "`!equipwife <id>` — Chọn vợ ra trận"
             ),
         },
+        "cultivation": {
+            "name": "🧘 Tu Tiên",
+            "description": (
+                "`!tulyen` — Bắt đầu tu luyện (tích lũy tu vi)\n"
+                "`!ketthuc` — Kết thúc và nhận tu vi\n"
+                "`!dotpha` — Đột phá lên bậc tiếp theo\n"
+                "`!thangcanh` — Thăng cảnh giới (cần cống phẩm)\n"
+                "`!dung <tên>` — Dùng cống phẩm tăng tu vi\n"
+                "7 cảnh giới: Luyện Khí → Trúc Cơ → Kết Đan →\n"
+                "Nguyên Anh → Hóa Thần → Đại Thừa → Độ Kiếp\n"
+                "Mỗi cảnh giới +% stat + passive đặc biệt"
+            ),
+        },
     }
 
     HELP_ORDER = [
         "co_ban", "dam_nhau", "shop", "ky_nang", "class",
         "nang_cap", "dungeon", "thankhi", "quest",
         "arena", "world_boss", "gem", "codex",
-        "quiz", "trade", "waifu",
+        "cultivation", "quiz", "trade", "waifu",
     ]
 
     @commands.command(name="trogiup", aliases=["h", "help"])

@@ -567,10 +567,10 @@ class NPCCog(commands.Cog):
                     player["coins"] = player.get("coins", 0) + extra_coin
                     w_coins += extra_coin
 
-                # Tu Tiên passive — Trúc Cơ+: hồi 10% HP sau thắng
+                # Tu Tiên passive — Trúc Cơ+: hồi 50% HP sau thắng
                 if cult_realm >= 1:
                     p_eff_heal = get_effective_stats(player)
-                    heal_amt = int(p_eff_heal["hp_max"] * 0.10)
+                    heal_amt = int(p_eff_heal["hp_max"] * 0.50)
                     player["hp"] = min(p_eff_heal["hp_max"], player.get("hp", 0) + heal_amt)
                     result_lines.append(f"🌿 Tu tiên hồi **{heal_amt}HP** sau trận!")
 
