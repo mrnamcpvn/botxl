@@ -813,53 +813,43 @@ class DungeonCog(commands.Cog):
                 stars = STAR_LABELS.get(eq["star"], "⭐")
                 result_lines.append(f"⚒️ +{stars} **{eq['name']}**")
 
-            from bot.config import GEM_TYPES
+            from bot.config import GEM_TYPES, CULTIVATION_ITEM_NAMES
             gem_level = None
-            if 20 <= floor <= 40:
-                gem_level = 1
-            elif 41 <= floor <= 60:
-                gem_level = 2
-            elif 61 <= floor <= 80:
-                gem_level = 3
-            elif 81 <= floor <= 120:
-                gem_level = 4
-            elif 121 <= floor <= 160:
-                gem_level = 5
-            elif 161 <= floor <= 200:
-                gem_level = 6
-            if gem_level and random.random() < 0.08:
-                gt = random.choice(list(GEM_TYPES.keys()))
-                await db.execute(
-                    "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "
-                    "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
-                    (sid, gt, gem_level))
-                result_lines.append(f"💎 Rơi: {GEM_TYPES[gt]['name']} C{gem_level}!")
+            if 20 <= floor <= 40:   gem_level = 1
+            elif 41 <= floor <= 60:  gem_level = 2
+            elif 61 <= floor <= 80:  gem_level = 3
+            elif 81 <= floor <= 120: gem_level = 4
+            elif 121 <= floor <= 160: gem_level = 5
+            elif 161 <= floor <= 200: gem_level = 6
 
-            # Tu tiên cống phẩm từ dungeon
-            from bot.config import CULTIVATION_ITEM_NAMES
             cult_drop = None
-            if floor >= 161 and random.random() < 0.02:
-                cult_drop = "tien_tinh"
-            elif floor >= 121 and random.random() < 0.03:
-                cult_drop = "thien_linh_thach"
-            elif floor >= 81 and random.random() < 0.05:
-                cult_drop = "dan_thuong_pham"
-            elif floor >= 41 and random.random() < 0.07:
-                cult_drop = "linh_dan"
-            elif floor >= 1 and random.random() < 0.10:
-                cult_drop = "linh_thao"
-            if cult_drop:
-                await db.execute(
-                    "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, ?, 1) "
-                    "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1",
-                    (sid, cult_drop))
-                result_lines.append(f"🌿 Cống phẩm: **{CULTIVATION_ITEM_NAMES[cult_drop]}** ×1!")
+            if floor >= 161 and random.random() < 0.02:   cult_drop = "tien_tinh"
+            elif floor >= 121 and random.random() < 0.03: cult_drop = "thien_linh_thach"
+            elif floor >= 81 and random.random() < 0.05:  cult_drop = "dan_thuong_pham"
+            elif floor >= 41 and random.random() < 0.07:  cult_drop = "linh_dan"
+            elif floor >= 1 and random.random() < 0.10:   cult_drop = "linh_thao"
 
             db = await get_db()
             try:
+                # Checkpoint
                 await db.execute(
                     "UPDATE dungeon_progress SET checkpoint=MAX(checkpoint, ?) WHERE player_id=?",
                     (floor, sid))
+                # Gem drop
+                if gem_level and random.random() < 0.08:
+                    gt = random.choice(list(GEM_TYPES.keys()))
+                    await db.execute(
+                        "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "
+                        "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
+                        (sid, gt, gem_level))
+                    result_lines.append(f"💎 Rơi: {GEM_TYPES[gt]['name']} C{gem_level}!")
+                # Cult drop
+                if cult_drop:
+                    await db.execute(
+                        "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, ?, 1) "
+                        "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1",
+                        (sid, cult_drop))
+                    result_lines.append(f"🌿 Cống phẩm: **{CULTIVATION_ITEM_NAMES[cult_drop]}** ×1!")
                 await db.commit()
             finally:
                 await db.close()

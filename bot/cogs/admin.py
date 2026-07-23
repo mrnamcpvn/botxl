@@ -301,12 +301,17 @@ class AdminCog(commands.Cog):
         await self._do_drop(interaction.channel)
 
     async def _do_drop(self, channel):
-        from bot.data.equipment import DROP_WEIGHTS
-        total = sum(DROP_WEIGHTS.values())
+        from bot.engine.rewards import is_happy_hour
+        hh = is_happy_hour()
+        weights = {1: 500, 2: 300, 3: 159, 4: 30, 5: 10, 6: 1}
+        if hh:
+            mult = {1: 1, 2: 1.5, 3: 2, 4: 4, 5: 6, 6: 8}
+            weights = {s: int(w * mult.get(s, 1)) for s, w in weights.items()}
+        total = sum(weights.values())
         roll = random.randint(1, total)
         cumulative = 0
         star = 1
-        for s, w in DROP_WEIGHTS.items():
+        for s, w in weights.items():
             cumulative += w
             if roll <= cumulative:
                 star = s
@@ -317,10 +322,15 @@ class AdminCog(commands.Cog):
         eid, equip = random.choice(items)
         stars = STAR_LABELS.get(equip["star"], "⭐")
         slot_name = EQ_SLOT_NAMES.get(equip["slot"], equip["slot"])
+        color = 0xff6600
+        title = "💥 RƠI TRANG BỊ!"
+        if hh:
+            color = 0xff0000
+            title = "🔥🔥🔥 **GIỜ VÀNG RƠI TRANG BỊ!** 🔥🔥🔥"
 
         embed = discord.Embed(
-            title="💥 RƠI TRANG BỊ!",
-            color=0xff6600,
+            title=title,
+            color=color,
             description=(
                 f"# {stars} {equip['name']}\n"
                 f"### {slot_name} — {equip['star']}★\n"

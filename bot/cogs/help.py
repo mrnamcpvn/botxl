@@ -178,9 +178,10 @@ class HelpCog(commands.Cog):
             "name": "🎰 Quay Trang Bị",
             "description": (
                 "`!roll` — Quay trang bị ngẫu nhiên (1.000🪙/lượt)\n"
+                "`!giovang` — Xem khung giờ vàng (tỉ lệ tăng vọt)\n"
                 "Tỉ lệ: 1★ 50% → 6★ 0.1%\n"
                 "Bảo hành: 100 lượt không có 6★ → nhận 6★ miễn phí\n"
-                "Càng quay nhiều, càng gần bảo hành!"
+                "🔥 Giờ Vàng: 12:30-13:30 & 1h-5h sáng (tỉ lệ x2-x8)"
             ),
         },
     }

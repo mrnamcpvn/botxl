@@ -1,9 +1,27 @@
 from bot.config import REWARD_WIN_COINS, REWARD_WIN_XP, LEVEL_XP_BASE
 import random
+from datetime import datetime, timezone, timedelta
 from bot.data.shop_items import SHOP_ITEMS
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, DROP_WEIGHTS
 
 DROP_CHANCE = 0.15
+
+_HH_SLOTS = [(12, 30, 13, 30), (1, 0, 5, 0)]
+
+
+def is_happy_hour() -> bool:
+    tz = timezone(timedelta(hours=7))
+    now = datetime.now(tz)
+    for sh, sm, eh, em in _HH_SLOTS:
+        s = now.replace(hour=sh, minute=sm, second=0, microsecond=0)
+        e = now.replace(hour=eh, minute=em, second=0, microsecond=0)
+        if s <= e:
+            if s <= now <= e:
+                return True
+        else:
+            if now >= s or now <= e:
+                return True
+    return False
 
 # Build lookup tables một lần khi module load — tránh O(n) scan mỗi drop
 _CONSUMABLE_IDS: list[int] = [i for i, it in SHOP_ITEMS.items() if it["type"] == "consumable"]

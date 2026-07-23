@@ -1,11 +1,21 @@
 import discord
 from discord.ext import commands
 import random
+from datetime import datetime, timezone, timedelta
 from bot.database import get_db
 from bot.data.equipment import EQUIPMENT, DROP_WEIGHTS, STAR_LABELS, STAR_NAMES, STAR_COLORS, SLOT_NAMES
 
 ROLL_COST = 1000
 PITY_MAX = 100
+
+TZ_UTC7 = timezone(timedelta(hours=7))
+
+HAPPY_HOUR_SLOTS = [
+    (12, 30, 13, 30),
+    (1, 0, 5, 0),
+]
+
+HH_WEIGHT_MULT = {1: 1, 2: 1.5, 3: 2, 4: 4, 5: 6, 6: 8}
 
 STAR_EMOJIS = {1: "⭐", 2: "⭐⭐", 3: "⭐⭐⭐", 4: "⭐⭐⭐⭐", 5: "⭐⭐⭐⭐⭐", 6: "🌟🌟🌟🌟🌟🌟", 7: "👑👑👑👑👑👑👑"}
 SET_NAMES = {
@@ -34,6 +44,25 @@ STAT_ICONS = {"hp": "❤️", "defense": "🛡️", "spd": "💨", "crit": "💥
 
 PITY_BAR_LENGTH = 20
 
+
+def _is_happy_hour() -> bool:
+    now = datetime.now(TZ_UTC7)
+    for sh, sm, eh, em in HAPPY_HOUR_SLOTS:
+        start = now.replace(hour=sh, minute=sm, second=0, microsecond=0)
+        end = now.replace(hour=eh, minute=em, second=0, microsecond=0)
+        if start <= end:
+            if start <= now <= end:
+                return True
+        else:
+            if now >= start or now <= end:
+                return True
+    return False
+
+
+def _build_hh_weights() -> dict:
+    return {star: int(weight * HH_WEIGHT_MULT.get(star, 1)) for star, weight in DROP_WEIGHTS.items()}
+
+
 class GachaCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -41,10 +70,11 @@ class GachaCog(commands.Cog):
     def _roll_star(self, force_6star: bool) -> int:
         if force_6star:
             return 6
-        total = sum(DROP_WEIGHTS.values())
+        weights = _build_hh_weights() if _is_happy_hour() else DROP_WEIGHTS
+        total = sum(weights.values())
         roll = random.randint(1, total)
         cumulative = 0
-        for star, weight in sorted(DROP_WEIGHTS.items()):
+        for star, weight in sorted(weights.items()):
             cumulative += weight
             if roll <= cumulative:
                 return star
@@ -70,6 +100,25 @@ class GachaCog(commands.Cog):
     async def roll_cmd(self, ctx):
         await self._roll(ctx, ctx.author)
 
+    @commands.command(name="giovang", aliases=["hh", "happyhour"])
+    async def giovang_cmd(self, ctx):
+        hh_slots = "**12:30 - 13:30** và **01:00 - 05:00** (giờ Việt Nam)"
+        active = _is_happy_hour()
+        embed = discord.Embed(
+            title="🔥 GIỜ VÀNG" if active else "⏰ Giờ Vàng",
+            description=(
+                f"Khung giờ: {hh_slots}\n\n"
+                f"**Trạng thái:** {'🔥 **ĐANG HOẠT ĐỘNG!**' if active else '❌ Chưa tới giờ'}\n\n"
+                "Khi Giờ Vàng kích hoạt:\n"
+                "• Tỉ lệ 4★ tăng từ **3% → 8.2%**\n"
+                "• Tỉ lệ 5★ tăng từ **1% → 4.1%**\n"
+                "• Tỉ lệ 6★ tăng từ **0.1% → 0.55%**\n"
+                "• Dùng `!roll` để quay ngay!"
+            ),
+            color=0xff6600 if active else 0x888888)
+        embed.set_footer(text="Giờ Vàng tính theo múi giờ Việt Nam (UTC+7)")
+        await ctx.reply(embed=embed)
+
     async def _roll(self, ctx, user):
         pid = str(user.id)
         db = await get_db()
@@ -88,6 +137,7 @@ class GachaCog(commands.Cog):
             r = await prow.fetchone()
             pity = r[0] if r else 0
 
+            is_hh = _is_happy_hour()
             force_6 = pity >= PITY_MAX - 1
             star = self._roll_star(force_6)
             eid, equip = self._pick_equip(star)
@@ -164,6 +214,11 @@ class GachaCog(commands.Cog):
                 embed.add_field(name="", value="╔══════════════════════╗\n║  🎊 **6 SAO THẦN THOẠI** 🎊  ║\n╚══════════════════════╝", inline=False)
             else:
                 embed.title = "🎰 Quay Trang Bị"
+
+            if is_hh:
+                embed.title = f"🔥 {embed.title}"
+                hh_bar = f"`{'🟡' * PITY_BAR_LENGTH}`"
+                embed.add_field(name="⏰ **GIỜ VÀNG**", value=f"{hh_bar}\n🔥 Tỉ lệ 4★-6★ tăng vọt! Chớp cơ hội!", inline=False)
 
             result_msg = await ctx.reply(embed=embed)
 
