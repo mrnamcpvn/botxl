@@ -886,36 +886,26 @@ class WorldBoss(commands.Cog):
                     "SET reward_given=1, final_rank=?, total_damage=? WHERE boss_id=? AND player_id=?",
                     (rank, self._players.get(pid, {}).get("damage", 0), tid, pid))
 
-                # Tu tiên cống phẩm từ World Boss
-                from bot.config import CULTIVATION_ITEM_NAMES
-                cult_drops = []
-                if rank <= 3:
-                    # Top 1-3: Thiên Linh Thạch + cơ hội Tiên Tinh
+                # Tu tiên cống phẩm từ World Boss (rare — top 1-3, weighted)
+                from bot.config import CULTIVATION_ITEM_NAMES, CULTIVATION_RARE_DROP_RATES, WORLD_BOSS_TOP3_WEIGHTS
+                top3_ids = [p[0] for p in rewards[:3] if p[1] <= 3]  # (pid, rank, rw, name)
+                if top3_ids:
+                    for item_id, rate in CULTIVATION_RARE_DROP_RATES.items():
+                        if random.random() < rate:
+                            winner_pid = random.choices(top3_ids, weights=WORLD_BOSS_TOP3_WEIGHTS[:len(top3_ids)], k=1)[0]
+                            await db.execute(
+                                "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, ?, 1) "
+                                "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1",
+                                (winner_pid, item_id))
+                            item_name = CULTIVATION_ITEM_NAMES.get(item_id, item_id)
+                            if winner_pid == pid:
+                                lines.append(f"  • 🌿 Tu tiên: **{item_name}** ×1!")
+                # Top 4+: 10% Thiên Linh Thạch
+                if rank > 3 and random.random() < 0.10:
                     await db.execute(
                         "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, 'thien_linh_thach', 1) "
                         "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1", (pid,))
-                    cult_drops.append(CULTIVATION_ITEM_NAMES["thien_linh_thach"])
-                    if rank == 1:
-                        # Top 1: Thiên Đạo Hoa (cực hiếm)
-                        await db.execute(
-                            "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, 'thien_dao_hoa', 1) "
-                            "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1", (pid,))
-                        cult_drops.append(CULTIVATION_ITEM_NAMES["thien_dao_hoa"])
-                    elif rank <= 3:
-                        # Top 2-3: Tiên Tinh
-                        await db.execute(
-                            "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, 'tien_tinh', 1) "
-                            "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1", (pid,))
-                        cult_drops.append(CULTIVATION_ITEM_NAMES["tien_tinh"])
-                else:
-                    # Top 4+: 50% Thiên Linh Thạch
-                    if random.random() < 0.50:
-                        await db.execute(
-                            "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, 'thien_linh_thach', 1) "
-                            "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1", (pid,))
-                        cult_drops.append(CULTIVATION_ITEM_NAMES["thien_linh_thach"])
-                if cult_drops:
-                    lines.append(f"  • 🌿 Tu tiên: {', '.join(cult_drops)}")
+                    lines.append(f"  • 🌿 Tu tiên: **{CULTIVATION_ITEM_NAMES['thien_linh_thach']}** ×1!")
 
                 summaries[pid] = "\n".join(lines)
 

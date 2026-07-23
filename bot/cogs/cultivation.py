@@ -10,7 +10,7 @@ from bot.config import (
     CULTIVATION_ASCEND_ITEMS, CULTIVATION_ITEM_NAMES,
     CULTIVATION_STAT_BONUS_PER_STAGE, CULTIVATION_PASSIVES,
     CULTIVATION_MAX_HOURS, get_tuvi_cost,
-    CULTIVATION_COOLDOWN,
+    CULTIVATION_COOLDOWN, CULTIVATION_ITEM_TUVI,
 )
 from bot.engine.cultivation import (
     calc_session_tuvi, is_cultivating, get_session_hours,
@@ -524,6 +524,78 @@ class CultivationCog(commands.Cog):
             )
 
         embed.set_footer(text=f"Cảnh giới hiện tại: {full_title(realm, stage)}")
+        await self._reply(ctx_or_int, embed=embed)
+
+    # ── !dung / /dung — dùng cống phẩm tăng tu vi ────────────
+    @commands.command(name="dung", aliases=["use"])
+    async def dung_cmd(self, ctx, item_id: str = None, quantity: str = "1"):
+        await self._dung(ctx, str(ctx.author.id), ctx.author.display_name, item_id, quantity)
+
+    @app_commands.command(name="dung", description="🌿 Dùng cống phẩm tu tiên để tăng tu vi")
+    @app_commands.describe(item_id="Tên cống phẩm (linh_thao, linh_dan, ...)", quantity="Số lượng (mặc định 1)")
+    async def slash_dung(self, interaction: discord.Interaction, item_id: str, quantity: str = "1"):
+        await self._dung(interaction, str(interaction.user.id), interaction.user.display_name, item_id, quantity)
+
+    async def _dung(self, ctx_or_int, sid: str, display_name: str, item_id: str, quantity: str):
+        if not item_id:
+            await self._reply(ctx_or_int,
+                f"❌ Dùng: `!dung <tên> [sl]`\n"
+                f"Cống phẩm: {', '.join(CULTIVATION_ITEM_NAMES.keys())}\n"
+                f"VD: `!dung linh_thao 5`")
+            return
+        try:
+            qty = max(1, int(quantity))
+        except:
+            qty = 1
+
+        if item_id not in CULTIVATION_ITEM_TUVI:
+            await self._reply(ctx_or_int,
+                f"❌ `{item_id}` không phải cống phẩm!\n"
+                f"Dùng: {', '.join(CULTIVATION_ITEM_NAMES.keys())}")
+            return
+
+        db = await get_db()
+        try:
+            cdata = await _get_or_create(db, sid)
+            if cdata.get("cultivating"):
+                await self._reply(ctx_or_int, "🧘 Đang tu luyện! Gõ `!tulyen` để kết thúc trước.", ephemeral=True)
+                return
+
+            cursor = await db.execute(
+                "SELECT quantity FROM cultivation_items WHERE player_id=? AND item_id=?",
+                (sid, item_id))
+            row = await cursor.fetchone()
+            have = row[0] if row else 0
+            if have < qty:
+                await self._reply(ctx_or_int,
+                    f"❌ Không đủ **{CULTIVATION_ITEM_NAMES.get(item_id, item_id)}**!\nCó: {have}, cần: {qty}")
+                return
+
+            per_item = CULTIVATION_ITEM_TUVI[item_id]
+            gained = per_item * qty
+            new_tuvi = cdata["tuvi"] + gained
+            new_total = cdata.get("tuvi_total", 0) + gained
+
+            new_qty = have - qty
+            if new_qty <= 0:
+                await db.execute("DELETE FROM cultivation_items WHERE player_id=? AND item_id=?", (sid, item_id))
+            else:
+                await db.execute("UPDATE cultivation_items SET quantity=? WHERE player_id=? AND item_id=?", (new_qty, sid, item_id))
+            await db.execute("UPDATE cultivation SET tuvi=?, tuvi_total=? WHERE player_id=?", (new_tuvi, new_total, sid))
+            await db.commit()
+
+            embed = discord.Embed(
+                title="🌿 Dùng Cống Phẩm",
+                description=(
+                    f"**{display_name}** dùng {qty}× **{CULTIVATION_ITEM_NAMES.get(item_id, item_id)}**\n"
+                    f"+**{_format_tuvi(gained)}** tu vi!\n\n"
+                    f"📊 Tổng tu vi: **{_format_tuvi(new_tuvi)}**"
+                ),
+                color=0x90ee90,
+            )
+        finally:
+            await db.close()
+
         await self._reply(ctx_or_int, embed=embed)
 
     async def _reply(self, ctx_or_int, msg: str = None, embed: discord.Embed = None,

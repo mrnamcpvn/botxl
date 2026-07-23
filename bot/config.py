@@ -242,13 +242,32 @@ CULTIVATION_PASSIVES = {
 # Cống phẩm cần để thăng cảnh giới (realm 0→1, 1→2, ...)
 # Format: {"item_id": quantity, ...}  item_id là string key trong cultivation_items
 CULTIVATION_ASCEND_ITEMS = {
-    0: {"linh_thao": 50},                          # LK→TC
-    1: {"linh_dan": 30, "stone_medium": 10},       # TC→KD (stone từ player_enhance_stones)
-    2: {"dan_thuong_pham": 20, "stone_advanced": 5},# KD→NA
-    3: {"thien_linh_thach": 10},                   # NA→HT (drop World Boss)
-    4: {"tien_tinh": 5},                           # HT→DT (World Boss top 3)
-    5: {"thien_dao_hoa": 1},                       # DT→DK (cực hiếm)
+    0: {"linh_thao": 30},                                       # LK→TC
+    1: {"linh_dan": 30, "stone_medium": 10},                     # TC→KD
+    2: {"dan_thuong_pham": 20, "stone_advanced": 10},            # KD→NA
+    3: {"thien_linh_thach": 20, "dan_thuong_pham": 50, "linh_dan": 100},  # NA→HT
+    4: {"tien_tinh": 10, "thien_linh_thach": 30, "dan_thuong_pham": 100}, # HT→DT
+    5: {"thien_dao_hoa": 2, "tien_tinh": 15, "thien_linh_thach": 50},     # DT→ĐK
 }
+
+# Tu vi nhận được khi dùng cống phẩm
+CULTIVATION_ITEM_TUVI = {
+    "linh_thao":        100,
+    "linh_dan":         500,
+    "dan_thuong_pham":  2_000,
+    "thien_linh_thach": 10_000,
+    "tien_tinh":        50_000,
+    "thien_dao_hoa":    500_000,
+}
+
+# World Boss rare drop rates cho top 1-3
+CULTIVATION_RARE_DROP_RATES = {
+    "thien_linh_thach": 0.02,   # 2%
+    "tien_tinh":        0.015,  # 1.5%
+    "thien_dao_hoa":    0.01,   # 1%
+}
+# Phân phối người nhận trong top 3: weight
+WORLD_BOSS_TOP3_WEIGHTS = [50, 30, 20]  # top1=50%, top2=30%, top3=20%
 
 # Drop rate cống phẩm từ NPC/Dungeon/Boss (item_id → nguồn)
 CULTIVATION_ITEM_DROPS = {
