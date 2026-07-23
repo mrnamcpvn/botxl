@@ -175,7 +175,7 @@ class CultivationCog(commands.Cog):
         self.bot = bot
 
     # ── !tulyen / /tulyen — toggle tu luyện ─────────────────
-    @commands.command(name="tulyen", aliases=["tu", "tl"])
+    @commands.command(name="tulyen", aliases=["tu", "tl", "tuluyen"])
     async def tulyen_cmd(self, ctx):
         await self._tulyen(ctx, str(ctx.author.id), ctx.author.display_name,
                            ctx.author.display_avatar.url)
