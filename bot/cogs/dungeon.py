@@ -679,17 +679,15 @@ class DungeonCog(commands.Cog):
             embed = _dungeon_battle_embed(
                 session["floor"], session["player_name"], player, npc, result_lines
             )
-            new_view = DungeonView(
-                self, sid, session["floor"],
-                player, npc, session["player_name"],
-                session["accumulated_rewards"],
-                session.get("_run_id", ""),
-            )
-            # Ưu tiên edit message, fallback followup nếu message không còn
+            # Tái sử dụng view hiện tại — KHÔNG tạo view mới để tránh timeout cũ fire oan
+            # Cập nhật data để view dùng đúng stats mới nhất
+            view.player_pdata = player
+            view.npc_pdata = npc
+            view.accumulated_rewards = session["accumulated_rewards"]
             try:
-                await session["_message"].edit(embed=embed, view=new_view)
+                await session["_message"].edit(embed=embed, view=view)
             except Exception:
-                await interaction.followup.send(embed=embed, view=new_view)
+                await interaction.followup.send(embed=embed, view=view)
 
         except Exception as e:
             # Bất kỳ lỗi nào cũng phát thưởng tích lũy và dọn session
@@ -854,9 +852,14 @@ class DungeonCog(commands.Cog):
 
             embed = _dungeon_battle_embed(next_floor, session["player_name"], player, npc_data, result_lines)
 
+            # Khi chuyển tầng mới phải tạo view mới (floor/npc thay đổi)
+            # Stop view cũ trước để timeout của nó không fire oan
+            view.finished = True
+            view.stop()
             new_view = DungeonView(self, sid, next_floor, player, npc_data,
                                     session["player_name"], acc,
                                     session.get("_run_id", ""))
+            session["_message_view"] = new_view  # track view mới
             try:
                 await session["_message"].edit(embed=embed, view=new_view)
             except Exception:

@@ -529,9 +529,12 @@ class NPCCog(commands.Cog):
         embed = _npc_battle_embed(
             session["player_name"], player, npc, result_lines, wives
         )
-        new_view = NPCBattleView(self, sid, view.npc_id, player, npc,
-                                 npc["name"], session["player_name"], True)
-        await interaction.edit_original_response(embed=embed, view=new_view)
+        # Tái sử dụng view hiện tại — KHÔNG tạo view mới để tránh timeout của view cũ vẫn chạy ngầm
+        # Discord.py tự reset timeout khi player interact với view (bấm nút)
+        # Chỉ cần update data để on_timeout dùng đúng session mới nhất
+        view.player_pdata = player
+        view.npc_pdata = npc
+        await interaction.edit_original_response(embed=embed, view=view)
 
     async def _finish_npc_battle(self, interaction, session, view, player, npc, result_lines, player_wins):
         view.finished = True
