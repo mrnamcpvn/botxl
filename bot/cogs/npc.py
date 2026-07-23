@@ -313,6 +313,16 @@ class NPCCog(commands.Cog):
 
         db = await get_db()
         try:
+            # Kiểm tra đang tu luyện không
+            cult_row = await (await db.execute(
+                "SELECT cultivating FROM cultivation WHERE player_id=?", (sid,))).fetchone()
+            if cult_row and cult_row[0]:
+                msg = "🧘 Đang tu luyện! Gõ `!tulyen` để kết thúc trước khi đánh NPC."
+                if isinstance(ctx_or_int, discord.ext.commands.Context):
+                    await ctx_or_int.reply(msg)
+                else:
+                    await ctx_or_int.response.send_message(msg, ephemeral=True)
+                return
             # Kiểm tra tồn tại player trước khi load full
             exist_cursor = await db.execute("SELECT role_mult, last_battle_time FROM players WHERE id=?", (sid,))
             exist_row = await exist_cursor.fetchone()
@@ -550,6 +560,14 @@ class NPCCog(commands.Cog):
                 wife_lines = await level_wives_xp(db, sid, w_xp, WIFE_XP_SHARE)
                 player["wins"] = player.get("wins", 0) + 1
 
+                # Tu Tiên passive — Trúc Cơ+: hồi 10% HP sau thắng
+                cult_realm = player.get("_cult_realm", -1)
+                if cult_realm >= 1:
+                    p_eff_heal = get_effective_stats(player)
+                    heal_amt = int(p_eff_heal["hp_max"] * 0.10)
+                    player["hp"] = min(p_eff_heal["hp_max"], player.get("hp", 0) + heal_amt)
+                    result_lines.append(f"🌿 Tu tiên hồi **{heal_amt}HP** sau trận!")
+
                 from bot.cogs.quest import update_progress
                 await update_progress(db, sid, 1)
                 if npc.get("level", 0) >= 15:
@@ -600,7 +618,10 @@ class NPCCog(commands.Cog):
 
                 # Codex drop bonus
                 drop_pct = cb.get("drop", 0) + cb.get("all", 0) if cb else 0
-                drop = calc_drop(player.get("role_mult", 1.0), drop_pct)
+                # Tu tiên passive — Kết Đan+: +15% drop rate
+                cult_realm_player = player.get("_cult_realm", -1)
+                cult_drop_pct = 15 if cult_realm_player >= 2 else 0
+                drop = calc_drop(player.get("role_mult", 1.0), drop_pct, cult_drop_pct)
                 if drop:
                     await apply_drop(db, sid, drop)
                     if drop["type"] == "coins":
@@ -610,6 +631,11 @@ class NPCCog(commands.Cog):
                 gem_text = await _drop_gem_npc(db, sid, npc.get("level", 10))
                 if gem_text:
                     result_lines.append(gem_text)
+
+                # Tu tiên cống phẩm drop
+                cult_text = await _drop_cult_item_npc(db, sid, npc.get("level", 1))
+                if cult_text:
+                    result_lines.append(cult_text)
 
                 await db.execute("UPDATE player_buffs SET attack_boost=MAX(0, attack_boost-1), defense_boost=MAX(0, defense_boost-1), lucky=MAX(0, lucky-1) WHERE player_id=?", (sid,))
 
@@ -679,6 +705,29 @@ async def _drop_gem_npc(db, player_id: str, npc_level: int) -> str | None:
         "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
         (player_id, gt, gl))
     return f"💎 Rơi: {GEM_TYPES[gt]['name']} C{gl}!"
+
+
+async def _drop_cult_item_npc(db, player_id: str, npc_level: int) -> str | None:
+    """Drop cống phẩm tu tiên từ NPC theo level."""
+    from bot.config import CULTIVATION_ITEM_DROPS, CULTIVATION_ITEM_NAMES
+    # Xác định item có thể drop theo level NPC
+    candidates = []
+    if npc_level <= 10:
+        candidates = [("linh_thao", 0.15)]
+    elif npc_level <= 20:
+        candidates = [("linh_thao", 0.10), ("linh_dan", 0.08)]
+    else:
+        candidates = [("linh_dan", 0.08), ("dan_thuong_pham", 0.05)]
+
+    for item_id, chance in candidates:
+        if random.random() < chance:
+            await db.execute(
+                "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, ?, 1) "
+                "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1",
+                (player_id, item_id))
+            name = CULTIVATION_ITEM_NAMES.get(item_id, item_id)
+            return f"🌿 Cống phẩm: **{name}** ×1!"
+    return None
 
 async def setup(bot):
     await bot.add_cog(NPCCog(bot))

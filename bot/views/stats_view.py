@@ -230,7 +230,8 @@ class StatsView(discord.ui.View):
             if cdata["cultivating"] and cdata["session_start"] > 0:
                 import time as _time
                 elapsed_h = min((_time.time() - cdata["session_start"]) / 3600, CULTIVATION_MAX_HOURS)
-                pending = calc_session_tuvi(cult_realm, cult_stage, elapsed_h)
+                pending = calc_session_tuvi(cult_realm, cult_stage, elapsed_h,
+                                            pdata.get("role_mult", 1.0))
                 elapsed_str = _format_duration(elapsed_h * 3600)
                 cult_lines.append(f"🧘 Đang tu luyện... ({elapsed_str})")
                 cult_lines.append(f"📈 Tích lũy: +{_format_tuvi(pending)} tu vi")

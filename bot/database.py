@@ -204,12 +204,30 @@ TABLES = [
         kills INTEGER DEFAULT 0,
         PRIMARY KEY (player_id, npc_id)
     )""",
+    """CREATE TABLE IF NOT EXISTS cultivation (
+        player_id TEXT PRIMARY KEY,
+        realm INTEGER NOT NULL DEFAULT 0,
+        stage INTEGER NOT NULL DEFAULT 1,
+        tuvi INTEGER NOT NULL DEFAULT 0,
+        tuvi_total INTEGER NOT NULL DEFAULT 0,
+        last_collect REAL NOT NULL DEFAULT 0,
+        cultivating INTEGER NOT NULL DEFAULT 0,
+        session_start REAL NOT NULL DEFAULT 0
+    )""",
+    """CREATE TABLE IF NOT EXISTS cultivation_items (
+        player_id TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (player_id, item_id)
+    )""",
 ]
 
 MIGRATIONS = [
     "ALTER TABLE players ADD COLUMN role_mult REAL DEFAULT 1.0",
     "ALTER TABLE players ADD COLUMN last_battle_time REAL DEFAULT 0",
     "ALTER TABLE players ADD COLUMN combat_power INTEGER DEFAULT 0",
+    "ALTER TABLE cultivation ADD COLUMN cultivating INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE cultivation ADD COLUMN session_start REAL NOT NULL DEFAULT 0",
 ]
 
 
@@ -324,6 +342,8 @@ async def _create_indexes(db):
         "CREATE INDEX IF NOT EXISTS idx_world_boss_participants_bid ON world_boss_participants(boss_id)",
         "CREATE INDEX IF NOT EXISTS idx_player_gems_player ON player_gems(player_id)",
         "CREATE INDEX IF NOT EXISTS idx_monster_codex_player ON monster_codex(player_id)",
+        "CREATE INDEX IF NOT EXISTS idx_cultivation_player ON cultivation(player_id)",
+        "CREATE INDEX IF NOT EXISTS idx_cultivation_items_player ON cultivation_items(player_id)",
     ]
     for sql in indexes:
         try:

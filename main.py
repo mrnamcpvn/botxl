@@ -54,6 +54,7 @@ async def load_extensions():
     await bot.load_extension("bot.cogs.world_boss")
     await bot.load_extension("bot.cogs.gem_socket")
     await bot.load_extension("bot.cogs.monster_codex")
+    await bot.load_extension("bot.cogs.cultivation")
     await bot.load_extension("bot.cogs.help")
 
 async def main():

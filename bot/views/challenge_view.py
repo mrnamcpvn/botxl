@@ -63,6 +63,16 @@ class ChallengeView(discord.ui.View):
         await interaction.response.defer()
         db = await get_db()
         try:
+            # Kiểm tra đang tu luyện
+            for check_sid in [self.challenger_sid, self.target_sid]:
+                cult_row = await (await db.execute(
+                    "SELECT cultivating FROM cultivation WHERE player_id=?", (check_sid,))).fetchone()
+                if cult_row and cult_row[0]:
+                    who = "Bạn" if check_sid == self.target_sid else self.challenger_name
+                    await interaction.followup.send(
+                        f"🧘 **{who}** đang tu luyện! Cần kết thúc trước khi PvP (`!tulyen`).",
+                        ephemeral=True)
+                    return
             cursor = await db.execute("SELECT 1 FROM challenges WHERE target_id = ?", (self.target_sid,))
             if not await cursor.fetchone():
                 await interaction.followup.send("🤷 Hết hạn!", ephemeral=True)

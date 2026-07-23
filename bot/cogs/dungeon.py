@@ -367,6 +367,14 @@ class DungeonCog(commands.Cog):
 
         db = await get_db()
         try:
+            # Kiểm tra đang tu luyện không
+            cult_row = await (await db.execute(
+                "SELECT cultivating FROM cultivation WHERE player_id=?", (sid,))).fetchone()
+            if cult_row and cult_row[0]:
+                await self._reply(ctx_or_int,
+                    "🧘 Đang tu luyện! Gõ `!tulyen` để kết thúc trước khi vào bí cảnh.")
+                return
+
             player_cursor = await db.execute("SELECT level, coins, hp, role_mult FROM players WHERE id=?", (sid,))
             prow = await player_cursor.fetchone()
             if not prow:
@@ -777,6 +785,22 @@ class DungeonCog(commands.Cog):
                     "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
                     (sid, gt, gem_level))
                 result_lines.append(f"💎 Rơi: {GEM_TYPES[gt]['name']} C{gem_level}!")
+
+            # Tu tiên cống phẩm từ dungeon
+            from bot.config import CULTIVATION_ITEM_NAMES
+            cult_drop = None
+            if floor >= 81 and random.random() < 0.06:
+                cult_drop = "dan_thuong_pham"
+            elif floor >= 41 and random.random() < 0.08:
+                cult_drop = "linh_dan"
+            elif floor >= 1 and random.random() < 0.10:
+                cult_drop = "linh_thao"
+            if cult_drop:
+                await db.execute(
+                    "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, ?, 1) "
+                    "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1",
+                    (sid, cult_drop))
+                result_lines.append(f"🌿 Cống phẩm: **{CULTIVATION_ITEM_NAMES[cult_drop]}** ×1!")
 
             db = await get_db()
             try:

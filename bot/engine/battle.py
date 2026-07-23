@@ -7,7 +7,7 @@ from bot.data.equipment import EQUIPMENT, SET_BONUSES
 from bot.data.classes import CLASSES
 from bot.config import HP_REGEN_INTERVAL, HP_REGEN_PCT, ENHANCE_BONUS_PER_LEVEL, GLOBAL_HP_MULT, GLOBAL_DEF_MULT
 from bot.engine.codex import get_codex_bonuses
-
+from bot.engine.cultivation import apply_cultivation_bonus, get_passive as get_cult_passive
 # Conversion: raw equipment stat → battle-effective percentage
 # raw can reach 500-700 at absolute endgame, so divisors are tuned for balance
 BATTLE_STAT_DIVISORS = {"crit": 3, "pierce": 7, "dodge": 5}
@@ -213,6 +213,33 @@ def get_effective_stats(pdata: dict) -> dict:
                 crit = int(crit * (1 + (cb.get("crit", 0) + all_pct) / 100))
             if pierce:
                 pierce = int(pierce * (1 + (cb.get("pierce", 0) + all_pct) / 100))
+
+    # ── Tu Tiên bonus ──────────────────────────────────────────
+    cult_realm = pdata.get("_cult_realm", -1)
+    cult_stage = pdata.get("_cult_stage", 1)
+    if not pdata.get("_npc_override") and cult_realm >= 0:
+        _cult_stats = {
+            "hp_max": hp_max, "attack_min": atk_min, "attack_max": atk_max,
+            "defense": defense, "spd": spd, "crit": crit, "pierce": pierce,
+        }
+        _cult_stats = apply_cultivation_bonus(_cult_stats, cult_realm, cult_stage)
+        hp_max   = _cult_stats["hp_max"]
+        atk_min  = _cult_stats["attack_min"]
+        atk_max  = _cult_stats["attack_max"]
+        defense  = _cult_stats["defense"]
+        spd      = _cult_stats["spd"]
+        crit     = _cult_stats["crit"]
+        pierce   = _cult_stats["pierce"]
+
+        # Passive Hóa Thần: +20% xuyên giáp thêm
+        if cult_realm >= 4:
+            pierce = min(35, pierce + 20)
+        # Passive Đại Thừa: -20% damage nhận (lưu vào stats để dùng trong combat)
+        if cult_realm >= 5:
+            pdata["_cult_anti_dmg"] = 20
+        # Passive Nguyên Anh: combat regen (đánh dấu để dùng trong execute_action)
+        if cult_realm >= 3:
+            pdata["_cult_combat_regen"] = 5  # 5% HP/turn
 
     return {
         "hp_max": hp_max,
@@ -469,10 +496,15 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
         equip_crit = stat_to_pct(atk_eff.get("crit", 0), "crit")
         is_crit = False
         if equip_crit > 0 and random.random() * 100 < equip_crit:
-            damage = int(damage * 1.5)
-            is_crit = True
+            # Tu Tiên passive — Đại Thừa: 25% không bị crit
+            cult_realm_def = defender.get("_cult_realm", -1)
+            if cult_realm_def >= 5 and not defender.get("_npc_override") and random.random() < 0.25:
+                result_lines.append(f"🌌 **{defender.get('name','?')}** thoát CRIT nhờ Đại Thừa!")
+            else:
+                damage = int(damage * 1.5)
+                is_crit = True
 
-        # Cheat Death — né chết + hồi HP, chỉ 1 lần/trận, áp dụng cho cả player lẫn NPC
+        # Cheat death — né chết + hồi HP, chỉ 1 lần/trận, áp dụng cho cả player lẫn NPC
         cheat_death_proc = False
         cd_key = f"{defender['id']}_cheat_death_used"
         if def_passive["type"] == "cheat_death" and not flags.get(cd_key):
@@ -480,8 +512,29 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
                 damage = max(0, defender.get("hp", 0) - 1)
                 cheat_death_proc = True
                 flags[cd_key] = True
-                # Đánh dấu để skip burn tick trong cùng turn này
                 flags[f"{defender['id']}_cheat_death_this_turn"] = True
+
+        # Tu Tiên passive — Đại Thừa: giảm 20% dmg nhận
+        anti_dmg = defender.get("_cult_anti_dmg", 0)
+        if anti_dmg > 0 and not defender.get("_npc_override") and damage > 0:
+            reduce = int(damage * anti_dmg / 100)
+            damage = max(1, damage - reduce)
+
+        # Tu Tiên passive — Độ Kiếp: Cheat Death từ tu tiên (stack riêng với skill)
+        cult_cd_key = f"{defender['id']}_cult_cheat_death_used"
+        cult_realm = defender.get("_cult_realm", -1)
+        if cult_realm >= 6 and not flags.get(cult_cd_key) and not defender.get("_npc_override"):
+            if damage >= defender.get("hp", 0):
+                damage = max(0, defender.get("hp", 0) - 1)
+                flags[cult_cd_key] = True
+                flags[f"{defender['id']}_cheat_death_this_turn"] = True
+                eff_d = _eff(defender)
+                heal = int(eff_d["hp_max"] * 0.30)
+                defender["hp"] = min(eff_d["hp_max"], defender.get("hp", 0) + heal)
+                result_lines.append(
+                    f"⚡ **{defender.get('name','?')}** kích hoạt **ĐỘ KIẾP BẤT DIỆT!** "
+                    f"Thoát chết + hồi **{heal}HP**!"
+                )
 
         # Apply damage
         defender["hp"] = max(0, defender.get("hp", 0) - damage)
@@ -582,6 +635,15 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             if pskill and pskill.get("type") == "regen":
                 reg = int(eff["hp_max"] * pskill["regen_pct"] / 100)
                 p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
+
+        # Tu Tiên passive — Nguyên Anh+: hồi 5% HP/turn trong combat
+        for p in [p1, p2]:
+            regen_pct = p.get("_cult_combat_regen", 0)
+            if regen_pct > 0 and not p.get("_npc_override"):
+                eff = _eff(p)
+                reg = int(eff["hp_max"] * regen_pct / 100)
+                p["hp"] = min(eff["hp_max"], p.get("hp", 0) + reg)
+                result_lines.append(f"🌿 **{p.get('name','?')}** tu tiên hồi **{reg}HP**!")
 
         # Burn tick — dùng cache _eff
         for p in [p1, p2]:
