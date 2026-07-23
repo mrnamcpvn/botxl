@@ -346,6 +346,13 @@ class Arena(commands.Cog):
             pdata["_cult_last_collect"]  = cult_row[3] if cult_row else 0
             pdata["_cult_cultivating"]   = bool(cult_row[4]) if cult_row else False
             pdata["_cult_session_start"] = cult_row[5] if cult_row else 0
+            # Load codex kills cho stats
+            codex_cursor = await db.execute(
+                "SELECT npc_id, kills FROM monster_codex WHERE player_id=?", (sid,))
+            codex_kills = {}
+            async for cr in codex_cursor:
+                codex_kills[str(cr[0])] = cr[1]
+            pdata["_codex_kills"] = codex_kills
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
             await update_combat_power(sid, pdata, wives_data, db=db)
@@ -980,6 +987,13 @@ class Arena(commands.Cog):
             pdata["_cult_last_collect"]  = cult_row[3] if cult_row else 0
             pdata["_cult_cultivating"]   = bool(cult_row[4]) if cult_row else False
             pdata["_cult_session_start"] = cult_row[5] if cult_row else 0
+            # Load codex kills cho stats
+            codex_cursor = await db.execute(
+                "SELECT npc_id, kills FROM monster_codex WHERE player_id=?", (sid,))
+            codex_kills = {}
+            async for cr in codex_cursor:
+                codex_kills[str(cr[0])] = cr[1]
+            pdata["_codex_kills"] = codex_kills
             regen_hp(pdata)
             await db.execute("UPDATE players SET hp=?, last_hp_update=? WHERE id=?", (pdata["hp"], pdata.get("last_hp_update", time.time()), sid))
             await update_combat_power(sid, pdata, wives_data, db=db)
