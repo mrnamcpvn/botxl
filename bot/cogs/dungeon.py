@@ -34,7 +34,16 @@ def _dungeon_header_embed(floor: int, player_name: str, pdata: dict,
 
     is_boss = is_boss_floor(floor)
     color = dungeon_floor_color(floor)
-    title = f"⚔️ BOSS TẦNG {floor}!" if is_boss else f"🏰 Vực Sâu Xỏ Lá — Tầng {floor}"
+
+    # Zone name theo tầng
+    if floor <= 100:
+        zone = "🏰 Vực Sâu Xỏ Lá"
+    elif floor <= 150:
+        zone = "🌑 Vực Thẳm Hắc Ám"
+    else:
+        zone = "🔥 Địa Ngục Vĩnh Cửu"
+
+    title = f"⚔️ BOSS TẦNG {floor}!" if is_boss else f"{zone} — Tầng {floor}"
 
     prog_bar = dungeon_progress_bar(floor, DUNGEON_MAX_FLOOR, 10)
 
@@ -90,7 +99,7 @@ def _dungeon_battle_embed(floor: int, player_name: str, pdata: dict,
     log_text = format_battle_log(log_lines, max_chars=1800)
 
     embed = discord.Embed(
-        title=f"{'💀 BOSS' if is_boss else '👾 Dungeon'} — Tầng {floor}/{DUNGEON_MAX_FLOOR}",
+        title=f"{'💀 BOSS' if is_boss else ('🌑' if floor > 150 else '🏰') + ' Dungeon'} — Tầng {floor}/{DUNGEON_MAX_FLOOR}",
         color=color
     )
     embed.add_field(name="📊 Trạng Thái", value=status_block, inline=False)
@@ -160,11 +169,19 @@ def generate_dungeon_npc(floor: int) -> dict:
     ]
     name = random.choice(names)
     boss_names = {
-        10: "BOSS TẦNG 10 - QUỶ VƯƠNG", 20: "BOSS TẦNG 20 - LONG VƯƠNG",
-        30: "BOSS TẦNG 30 - MA VƯƠNG", 40: "BOSS TẦNG 40 - THẦN CHẾT",
-        50: "BOSS TẦNG 50 - DIỆT THẾ", 60: "BOSS TẦNG 60 - HỦY DIỆT",
-        70: "BOSS TẦNG 70 - VÔ CỰC", 80: "BOSS TẦNG 80 - HỖN ĐỘN",
-        90: "BOSS TẦNG 90 - TẬN THẾ", 100: "BOSS CUỐI - CHÚA TỂ VỰC SÂU",
+        10:  "BOSS TẦNG 10 - QUỶ VƯƠNG",    20:  "BOSS TẦNG 20 - LONG VƯƠNG",
+        30:  "BOSS TẦNG 30 - MA VƯƠNG",     40:  "BOSS TẦNG 40 - THẦN CHẾT",
+        50:  "BOSS TẦNG 50 - DIỆT THẾ",    60:  "BOSS TẦNG 60 - HỦY DIỆT",
+        70:  "BOSS TẦNG 70 - VÔ CỰC",      80:  "BOSS TẦNG 80 - HỖN ĐỘN",
+        90:  "BOSS TẦNG 90 - TẬN THẾ",     100: "BOSS TẦNG 100 - CHÚA TỂ VỰC SÂU",
+        # Vực Thẳm (T101-T150)
+        110: "BOSS T110 - THẦN LINH CHI VƯƠNG",  120: "BOSS T120 - BẤT TỬ THẦN VỆ",
+        130: "BOSS T130 - THIÊN MA ĐẠI THÁNH",   140: "BOSS T140 - HỦY DIỆT CHI THẦN",
+        150: "BOSS T150 - VỰC THẲM CHÍ TÔN",
+        # Địa Ngục (T151-T200)
+        160: "BOSS T160 - ĐỊA NGỤC ĐẾ VƯƠNG",   170: "BOSS T170 - VÔ THỦY CHI LINH",
+        180: "BOSS T180 - THIÊN ĐỊA CHI CHỦ",   190: "BOSS T190 - HỖN NGUYÊN ĐẠI THÁNH",
+        200: "BOSS CUỐI - VÔ THỦY VÔ CHUNG ĐẾ",
     }
     if floor in boss_names:
         name = boss_names[floor]
@@ -178,7 +195,12 @@ def generate_dungeon_npc(floor: int) -> dict:
         skills = {"attack": 2, "special": 6, "defense": 11, "passive": 17}
     elif floor <= 80:
         skills = {"attack": 3, "special": 7, "defense": 12, "passive": 19}
+    elif floor <= 120:
+        skills = {"attack": 4, "special": 9, "defense": 13, "passive": 20}
+    elif floor <= 160:
+        skills = {"attack": 4, "special": 9, "defense": 13, "passive": 20}
     else:
+        # T161-200: dùng skill mạnh nhất + passive rage/cheat death
         skills = {"attack": 4, "special": 9, "defense": 13, "passive": 20}
 
     return {
@@ -210,17 +232,29 @@ def calc_dungeon_rewards(floor: int) -> dict:
     elif floor <= 50:
         rewards["stones"]["stone_medium"] = random.randint(1, 5)
         rewards["coins"] = random.randint(150, 500)
-    else:
+    elif floor <= 100:
         rewards["stones"]["stone_advanced"] = random.randint(1, 6)
         rewards["coins"] = random.randint(300, 1200)
+    elif floor <= 150:
+        # Vực Thẳm T101-150: thưởng nhiều hơn
+        rewards["stones"]["stone_advanced"] = random.randint(3, 8)
+        rewards["coins"] = random.randint(800, 2500)
+    else:
+        # Địa Ngục T151-200: thưởng hậu hĩnh nhất
+        rewards["stones"]["stone_advanced"] = random.randint(5, 12)
+        rewards["coins"] = random.randint(1500, 4000)
 
     if random.random() < 0.08:
         if floor <= 20:
             star_pool = [1, 2]
         elif floor <= 50:
             star_pool = [1, 2, 3, 4]
-        else:
+        elif floor <= 100:
             star_pool = list(range(1, 7))
+        elif floor <= 150:
+            star_pool = [4, 5, 6]  # Vực Thẳm: chỉ drop đồ 4-6★
+        else:
+            star_pool = [5, 6]     # Địa Ngục: chỉ drop đồ 5-6★
         star = random.choice(star_pool)
         items = [e for eid, e in EQUIPMENT.items() if e["star"] == star]
         if items:
@@ -787,8 +821,12 @@ class DungeonCog(commands.Cog):
                 gem_level = 2
             elif 61 <= floor <= 80:
                 gem_level = 3
-            elif 81 <= floor <= 100:
+            elif 81 <= floor <= 120:
                 gem_level = 4
+            elif 121 <= floor <= 160:
+                gem_level = 5
+            elif 161 <= floor <= 200:
+                gem_level = 6
             if gem_level and random.random() < 0.08:
                 gt = random.choice(list(GEM_TYPES.keys()))
                 await db.execute(
@@ -800,11 +838,15 @@ class DungeonCog(commands.Cog):
             # Tu tiên cống phẩm từ dungeon
             from bot.config import CULTIVATION_ITEM_NAMES
             cult_drop = None
-            if floor >= 81 and random.random() < 0.03:
+            if floor >= 161 and random.random() < 0.02:
+                cult_drop = "tien_tinh"
+            elif floor >= 121 and random.random() < 0.03:
+                cult_drop = "thien_linh_thach"
+            elif floor >= 81 and random.random() < 0.05:
                 cult_drop = "dan_thuong_pham"
-            elif floor >= 41 and random.random() < 0.04:
+            elif floor >= 41 and random.random() < 0.07:
                 cult_drop = "linh_dan"
-            elif floor >= 1 and random.random() < 0.05:
+            elif floor >= 1 and random.random() < 0.10:
                 cult_drop = "linh_thao"
             if cult_drop:
                 await db.execute(

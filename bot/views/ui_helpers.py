@@ -150,13 +150,17 @@ def npc_difficulty_badge(npc_level: int) -> str:
 # ── Dungeon floor color ───────────────────────────────────────
 def dungeon_floor_color(floor: int) -> int:
     if floor <= 20:
-        return 0x44aaff   # xanh dương nhạt
+        return 0x44aaff   # xanh dương nhạt — Vực Sâu sơ cấp
     elif floor <= 50:
-        return 0xaa44ff   # tím
+        return 0xaa44ff   # tím — Vực Sâu trung cấp
     elif floor <= 80:
-        return 0xff6600   # cam
+        return 0xff6600   # cam — Vực Sâu cao cấp
+    elif floor <= 100:
+        return 0xff0000   # đỏ — Boss khu vực
+    elif floor <= 150:
+        return 0x8b0000   # đỏ đậm — Vực Thẳm
     else:
-        return 0xff0000   # đỏ boss
+        return 0x1a0000   # đỏ đen — Địa Ngục
 
 
 def is_boss_floor(floor: int) -> bool:
