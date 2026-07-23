@@ -110,8 +110,7 @@ class GachaCog(commands.Cog):
 
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (ROLL_COST, pid))
             await db.execute(
-                "INSERT INTO player_equipment (player_id, item_id, quantity) VALUES (?, ?, 1) "
-                "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1",
+                "INSERT INTO player_equipment (player_id, item_id, enhance, equipped) VALUES (?, ?, 0, 0)",
                 (pid, eid))
 
             new_pity = 0 if star == 6 else pity + 1
