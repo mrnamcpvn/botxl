@@ -222,36 +222,36 @@ EQUIPMENT = {
     5406: {"name":"Xuyên Tâm Giới","slot":"ring","star":5,"stats":{"hp":30,"pierce":6}},
 
     # ═══════ ⭐6 💗 SET: 💎 Long Giáp (Tank nâng cao) ═══════
-    6101: {"name":"Long Thần Đao","slot":"weapon","star":6,"stats":{"attack_min":50,"attack_max":76,"hp":300}},
-    6102: {"name":"Long Thần Giáp","slot":"armor","star":6,"stats":{"hp":400,"defense":90}},
-    6103: {"name":"Long Thần Hài","slot":"boots","star":6,"stats":{"spd":36,"hp":160,"defense":12}},
-    6104: {"name":"Long Thần Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":44,"attack_max":62,"hp":300}},
-    6105: {"name":"Long Thần Đới","slot":"belt","star":6,"stats":{"hp":600,"defense":50}},
-    6106: {"name":"Long Thần Giới","slot":"ring","star":6,"stats":{"hp":260,"defense":24,"attack_min":16,"attack_max":28}},
+    6101: {"name":"Long Thần Đao","slot":"weapon","star":6,"stats":{"attack_min":56,"attack_max":84,"hp":350}},
+    6102: {"name":"Long Thần Giáp","slot":"armor","star":6,"stats":{"hp":420,"defense":92}},
+    6103: {"name":"Long Thần Hài","slot":"boots","star":6,"stats":{"spd":38,"hp":180,"defense":14}},
+    6104: {"name":"Long Thần Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":48,"attack_max":68,"hp":320}},
+    6105: {"name":"Long Thần Đới","slot":"belt","star":6,"stats":{"hp":620,"defense":52}},
+    6106: {"name":"Long Thần Giới","slot":"ring","star":6,"stats":{"hp":350,"defense":30,"attack_min":20,"attack_max":32,"regen":10}},
 
     # ⭐6 💗 SET: 🔥 Diệt Thế (Glass Cannon nâng cao)
-    6201: {"name":"Diệt Thế Kiếm","slot":"weapon","star":6,"stats":{"attack_min":76,"attack_max":106,"crit":22}},
-    6202: {"name":"Diệt Thế Chiến Bào","slot":"armor","star":6,"stats":{"hp":80,"attack_min":22,"attack_max":34}},
-    6203: {"name":"Diệt Thế Hài","slot":"boots","star":6,"stats":{"attack_min":22,"attack_max":34,"spd":20}},
-    6204: {"name":"Diệt Thế Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":72,"attack_max":100,"crit":20}},
-    6205: {"name":"Diệt Thế Đới","slot":"belt","star":6,"stats":{"attack_min":22,"attack_max":34,"crit":12}},
-    6206: {"name":"Diệt Thế Giới","slot":"ring","star":6,"stats":{"attack_min":52,"attack_max":72,"crit":10}},
+    6201: {"name":"Diệt Thế Kiếm","slot":"weapon","star":6,"stats":{"attack_min":78,"attack_max":108,"crit":22}},
+    6202: {"name":"Diệt Thế Chiến Bào","slot":"armor","star":6,"stats":{"hp":100,"attack_min":26,"attack_max":40}},
+    6203: {"name":"Diệt Thế Hài","slot":"boots","star":6,"stats":{"attack_min":26,"attack_max":40,"spd":22}},
+    6204: {"name":"Diệt Thế Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":74,"attack_max":102,"crit":22}},
+    6205: {"name":"Diệt Thế Đới","slot":"belt","star":6,"stats":{"attack_min":30,"attack_max":46,"crit":15}},
+    6206: {"name":"Diệt Thế Giới","slot":"ring","star":6,"stats":{"attack_min":54,"attack_max":74,"crit":22,"spd":8}},
 
     # ⭐6 💗 SET: ⚡ Lôi Phong (SPD nâng cao)
-    6301: {"name":"Lôi Phong Kiếm","slot":"weapon","star":6,"stats":{"attack_min":44,"attack_max":64,"spd":28}},
-    6302: {"name":"Lôi Phong Giáp","slot":"armor","star":6,"stats":{"hp":160,"defense":18,"spd":18}},
-    6303: {"name":"Lôi Phong Hài","slot":"boots","star":6,"stats":{"hp":80,"spd":46}},
-    6304: {"name":"Lôi Phong Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":36,"attack_max":52,"spd":22}},
-    6305: {"name":"Lôi Phong Đới","slot":"belt","star":6,"stats":{"hp":120,"spd":22}},
-    6306: {"name":"Lôi Phong Giới","slot":"ring","star":6,"stats":{"hp":80,"spd":24}},
+    6301: {"name":"Lôi Phong Kiếm","slot":"weapon","star":6,"stats":{"attack_min":54,"attack_max":78,"spd":32}},
+    6302: {"name":"Lôi Phong Giáp","slot":"armor","star":6,"stats":{"hp":180,"defense":20,"spd":20}},
+    6303: {"name":"Lôi Phong Hài","slot":"boots","star":6,"stats":{"hp":100,"spd":48}},
+    6304: {"name":"Lôi Phong Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":44,"attack_max":62,"spd":26}},
+    6305: {"name":"Lôi Phong Đới","slot":"belt","star":6,"stats":{"hp":140,"spd":24}},
+    6306: {"name":"Lôi Phong Giới","slot":"ring","star":6,"stats":{"hp":120,"spd":32,"attack_min":26,"attack_max":38,"dodge":8}},
 
     # ⭐6 💗 SET: 🌌 Hư Không (PIERCE nâng cao)
-    6401: {"name":"Hư Không Mâu","slot":"weapon","star":6,"stats":{"attack_min":50,"attack_max":72,"pierce":32}},
-    6402: {"name":"Hư Không Giáp","slot":"armor","star":6,"stats":{"hp":180,"defense":20,"pierce":16}},
-    6403: {"name":"Hư Không Hài","slot":"boots","star":6,"stats":{"hp":80,"spd":28,"pierce":20}},
-    6404: {"name":"Hư Không Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":40,"attack_max":58,"pierce":22}},
-    6405: {"name":"Hư Không Đới","slot":"belt","star":6,"stats":{"hp":130,"pierce":20}},
-    6406: {"name":"Hư Không Giới","slot":"ring","star":6,"stats":{"hp":100,"pierce":20}},
+    6401: {"name":"Hư Không Mâu","slot":"weapon","star":6,"stats":{"attack_min":58,"attack_max":84,"pierce":36}},
+    6402: {"name":"Hư Không Giáp","slot":"armor","star":6,"stats":{"hp":200,"defense":22,"pierce":18}},
+    6403: {"name":"Hư Không Hài","slot":"boots","star":6,"stats":{"hp":100,"spd":30,"pierce":22}},
+    6404: {"name":"Hư Không Thủ Sáo","slot":"gloves","star":6,"stats":{"attack_min":48,"attack_max":68,"pierce":26}},
+    6405: {"name":"Hư Không Đới","slot":"belt","star":6,"stats":{"hp":150,"pierce":22}},
+    6406: {"name":"Hư Không Giới","slot":"ring","star":6,"stats":{"hp":140,"attack_min":26,"attack_max":40,"pierce":36,"spd":6}},
 }
 
 
