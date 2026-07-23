@@ -38,22 +38,6 @@ class GachaCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def _get_pity(self, player_id: str) -> int:
-        db = await get_db()
-        row = await db.execute("SELECT roll_count FROM gacha_pity WHERE player_id=?", (player_id,))
-        r = await row.fetchone()
-        await db.close()
-        return r[0] if r else 0
-
-    async def _set_pity(self, player_id: str, count: int):
-        db = await get_db()
-        await db.execute(
-            "INSERT INTO gacha_pity (player_id, roll_count) VALUES (?, ?) "
-            "ON CONFLICT(player_id) DO UPDATE SET roll_count=?",
-            (player_id, count, count))
-        await db.commit()
-        await db.close()
-
     def _roll_star(self, force_6star: bool) -> int:
         if force_6star:
             return 6
@@ -100,7 +84,10 @@ class GachaCog(commands.Cog):
                 await ctx.reply(f"😅 Nghèo! Cần **{ROLL_COST}🪙**, có **{coins}🪙**")
                 return
 
-            pity = await self._get_pity(pid)
+            prow = await db.execute("SELECT roll_count FROM gacha_pity WHERE player_id=?", (pid,))
+            r = await prow.fetchone()
+            pity = r[0] if r else 0
+
             force_6 = pity >= PITY_MAX - 1
             star = self._roll_star(force_6)
             eid, equip = self._pick_equip(star)
@@ -114,7 +101,11 @@ class GachaCog(commands.Cog):
                 (pid, eid))
 
             new_pity = 0 if star == 6 else pity + 1
-            await self._set_pity(pid, new_pity)
+            await db.execute(
+                "INSERT INTO gacha_pity (player_id, roll_count) VALUES (?, ?) "
+                "ON CONFLICT(player_id) DO UPDATE SET roll_count=?",
+                (pid, new_pity, new_pity))
+            await db.commit()
 
             coins_left = coins - ROLL_COST
             stats = equip.get("stats", {})
