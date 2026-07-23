@@ -560,8 +560,14 @@ class NPCCog(commands.Cog):
                 wife_lines = await level_wives_xp(db, sid, w_xp, WIFE_XP_SHARE)
                 player["wins"] = player.get("wins", 0) + 1
 
-                # Tu Tiên passive — Trúc Cơ+: hồi 10% HP sau thắng
+                # Tu Tiên passive — Luyện Khí: +10% coin
                 cult_realm = player.get("_cult_realm", -1)
+                if cult_realm >= 0:
+                    extra_coin = int(w_coins * 0.10)
+                    player["coins"] = player.get("coins", 0) + extra_coin
+                    w_coins += extra_coin
+
+                # Tu Tiên passive — Trúc Cơ+: hồi 10% HP sau thắng
                 if cult_realm >= 1:
                     p_eff_heal = get_effective_stats(player)
                     heal_amt = int(p_eff_heal["hp_max"] * 0.10)
@@ -628,7 +634,7 @@ class NPCCog(commands.Cog):
                         player["coins"] = player.get("coins", 0) + drop["amount"]
                     result_lines.append(f"\n{drop['text']}")
 
-                gem_text = await _drop_gem_npc(db, sid, npc.get("level", 10))
+                gem_text = await _drop_gem_npc(db, sid, npc.get("level", 10), cult_realm_player)
                 if gem_text:
                     result_lines.append(gem_text)
 
@@ -687,11 +693,14 @@ class NPCCog(commands.Cog):
             )
         await interaction.edit_original_response(embed=embed, view=None)
 
-async def _drop_gem_npc(db, player_id: str, npc_level: int) -> str | None:
+async def _drop_gem_npc(db, player_id: str, npc_level: int, cult_realm: int = -1) -> str | None:
     from bot.config import GEM_TYPES
     if npc_level < 10:
         return None
-    if random.random() > 0.10:
+    chance = 0.10
+    if cult_realm >= 2:
+        chance += 0.010  # Kết Đan: +10% gem drop (10% of 10% = +1% absolute)
+    if random.random() > chance:
         return None
     if npc_level <= 19:
         gl = 1

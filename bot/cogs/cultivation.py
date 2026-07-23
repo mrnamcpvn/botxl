@@ -10,6 +10,7 @@ from bot.config import (
     CULTIVATION_ASCEND_ITEMS, CULTIVATION_ITEM_NAMES,
     CULTIVATION_STAT_BONUS_PER_STAGE, CULTIVATION_PASSIVES,
     CULTIVATION_MAX_HOURS, get_tuvi_cost,
+    CULTIVATION_COOLDOWN,
 )
 from bot.engine.cultivation import (
     calc_session_tuvi, is_cultivating, get_session_hours,
@@ -18,6 +19,7 @@ from bot.engine.cultivation import (
 )
 
 _PASSIVE_LABELS = {
+    "coin_boost":        "💰 +10% coin từ NPC",
     "heal_after_win":    "💚 Hồi 10% HP sau thắng trận",
     "drop_boost":        "🎁 +15% drop rate, +10% gem drop",
     "combat_regen":      "🌿 Hồi 5% HP mỗi lượt chiến đấu",
@@ -198,6 +200,14 @@ class CultivationCog(commands.Cog):
 
             if not cdata.get("cultivating"):
                 # ── BẮT ĐẦU TU LUYỆN ──
+                # Kiểm tra cooldown sau session trước
+                last_collect = cdata.get("last_collect", 0)
+                cd_remaining = CULTIVATION_COOLDOWN - (time.time() - last_collect)
+                if cd_remaining > 0 and last_collect > 0:
+                    await self._reply(ctx_or_int,
+                        f"⏳ Vừa tu luyện xong! Đợi **{_format_duration(cd_remaining)}** nữa mới bắt đầu session mới.")
+                    return
+
                 now = time.time()
                 await db.execute(
                     "UPDATE cultivation SET cultivating=1, session_start=? WHERE player_id=?",

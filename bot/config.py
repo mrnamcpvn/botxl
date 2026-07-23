@@ -230,7 +230,7 @@ CULTIVATION_STAT_BONUS_PER_STAGE = [4, 5, 6, 7, 8, 10, 12]  # % mỗi bậc
 
 # Passive theo cảnh giới (áp dụng từ bậc 1 trở đi)
 CULTIVATION_PASSIVES = {
-    0: None,  # Luyện Khí — không có passive
+    0: "coin_boost",        # Luyện Khí: +10% coin từ NPC
     1: "heal_after_win",    # Trúc Cơ: hồi 10% HP sau thắng
     2: "drop_boost",        # Kết Đan: +15% drop rate, +10% gem drop
     3: "combat_regen",      # Nguyên Anh: hồi 5% HP mỗi turn
