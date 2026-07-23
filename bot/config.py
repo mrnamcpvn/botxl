@@ -262,19 +262,19 @@ CULTIVATION_ITEM_TUVI = {
 
 # World Boss rare drop rates cho top 1-3
 CULTIVATION_RARE_DROP_RATES = {
-    "thien_linh_thach": 0.02,   # 2%
-    "tien_tinh":        0.015,  # 1.5%
-    "thien_dao_hoa":    0.01,   # 1%
+    "thien_linh_thach": 0.01,   # 1%
+    "tien_tinh":        0.0075, # 0.75%
+    "thien_dao_hoa":    0.005,  # 0.5%
 }
 # Phân phối người nhận trong top 3: weight
 WORLD_BOSS_TOP3_WEIGHTS = [50, 30, 20]  # top1=50%, top2=30%, top3=20%
 
 # Drop rate cống phẩm từ NPC/Dungeon/Boss (item_id → nguồn)
 CULTIVATION_ITEM_DROPS = {
-    "linh_thao":       {"npc_level_max": 10,  "chance": 0.15},
-    "linh_dan":        {"npc_level_min": 11, "npc_level_max": 20, "chance": 0.10},
-    "dan_thuong_pham": {"npc_level_min": 21, "chance": 0.08},
-    "thien_linh_thach":{"world_boss": True,  "chance": 0.50},  # 50% drop khi đánh boss
+    "linh_thao":       {"npc_level_max": 10,  "chance": 0.075},
+    "linh_dan":        {"npc_level_min": 11, "npc_level_max": 20, "chance": 0.05},
+    "dan_thuong_pham": {"npc_level_min": 21, "chance": 0.04},
+    "thien_linh_thach":{"world_boss": True,  "chance": 0.05},  # 5% drop khi đánh boss
     "tien_tinh":       {"world_boss_top3": True},               # chỉ top 3 boss
     "thien_dao_hoa":   {"world_boss_top1": True},               # chỉ top 1 boss
 }

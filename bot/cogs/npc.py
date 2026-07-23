@@ -722,11 +722,11 @@ async def _drop_cult_item_npc(db, player_id: str, npc_level: int) -> str | None:
     # Xác định item có thể drop theo level NPC
     candidates = []
     if npc_level <= 10:
-        candidates = [("linh_thao", 0.15)]
+        candidates = [("linh_thao", 0.075)]
     elif npc_level <= 20:
-        candidates = [("linh_thao", 0.10), ("linh_dan", 0.08)]
+        candidates = [("linh_thao", 0.05), ("linh_dan", 0.04)]
     else:
-        candidates = [("linh_dan", 0.08), ("dan_thuong_pham", 0.05)]
+        candidates = [("linh_dan", 0.04), ("dan_thuong_pham", 0.025)]
 
     for item_id, chance in candidates:
         if random.random() < chance:

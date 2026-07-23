@@ -900,8 +900,8 @@ class WorldBoss(commands.Cog):
                             item_name = CULTIVATION_ITEM_NAMES.get(item_id, item_id)
                             if winner_pid == pid:
                                 lines.append(f"  • 🌿 Tu tiên: **{item_name}** ×1!")
-                # Top 4+: 10% Thiên Linh Thạch
-                if rank > 3 and random.random() < 0.10:
+                # Top 4+: 5% Thiên Linh Thạch
+                if rank > 3 and random.random() < 0.05:
                     await db.execute(
                         "INSERT INTO cultivation_items (player_id, item_id, quantity) VALUES (?, 'thien_linh_thach', 1) "
                         "ON CONFLICT(player_id, item_id) DO UPDATE SET quantity=quantity+1", (pid,))

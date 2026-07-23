@@ -789,11 +789,11 @@ class DungeonCog(commands.Cog):
             # Tu tiên cống phẩm từ dungeon
             from bot.config import CULTIVATION_ITEM_NAMES
             cult_drop = None
-            if floor >= 81 and random.random() < 0.06:
+            if floor >= 81 and random.random() < 0.03:
                 cult_drop = "dan_thuong_pham"
-            elif floor >= 41 and random.random() < 0.08:
+            elif floor >= 41 and random.random() < 0.04:
                 cult_drop = "linh_dan"
-            elif floor >= 1 and random.random() < 0.10:
+            elif floor >= 1 and random.random() < 0.05:
                 cult_drop = "linh_thao"
             if cult_drop:
                 await db.execute(
