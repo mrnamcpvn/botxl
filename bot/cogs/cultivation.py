@@ -10,7 +10,7 @@ from bot.config import (
     CULTIVATION_ASCEND_ITEMS, CULTIVATION_ITEM_NAMES,
     CULTIVATION_STAT_BONUS_PER_STAGE, CULTIVATION_PASSIVES,
     CULTIVATION_MAX_HOURS, get_tuvi_cost,
-    CULTIVATION_COOLDOWN, CULTIVATION_ITEM_TUVI,
+    CULTIVATION_ITEM_TUVI,
 )
 from bot.engine.cultivation import (
     calc_session_tuvi, is_cultivating, get_session_hours,
@@ -164,7 +164,7 @@ def _build_status_embed(display_name: str, cdata: dict, level: int,
         item_lines = [f"{CULTIVATION_ITEM_NAMES.get(k, k)}: **{v}**" for k, v in cult_items.items()]
         embed.add_field(name="📦 Cống Phẩm", value="\n".join(item_lines), inline=False)
 
-    embed.set_footer(text="!tulyen bắt đầu/kết thúc tu luyện | !dotpha đột phá | !thangcanh thăng cảnh giới")
+    embed.set_footer(text="!tulyen bắt đầu | !ketthuc kết thúc | !dotpha đột phá | !thangcanh thăng cảnh giới")
     if avatar_url:
         embed.set_thumbnail(url=avatar_url)
     return embed
@@ -174,19 +174,19 @@ class CultivationCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # ── !tulyen / /tulyen — toggle tu luyện ─────────────────
+    # ── !tulyen / /tulyen — bắt đầu tu luyện ─────────────────
     @commands.command(name="tulyen", aliases=["tu", "tl", "tuluyen"])
     async def tulyen_cmd(self, ctx):
-        await self._tulyen(ctx, str(ctx.author.id), ctx.author.display_name,
-                           ctx.author.display_avatar.url)
+        await self._start_cult(ctx, str(ctx.author.id), ctx.author.display_name,
+                                ctx.author.display_avatar.url)
 
-    @app_commands.command(name="tulyen", description="🧘 Bắt đầu/kết thúc tu luyện")
+    @app_commands.command(name="tulyen", description="🧘 Bắt đầu tu luyện")
     async def slash_tulyen(self, interaction: discord.Interaction):
-        await self._tulyen(interaction, str(interaction.user.id),
-                           interaction.user.display_name,
-                           interaction.user.display_avatar.url)
+        await self._start_cult(interaction, str(interaction.user.id),
+                                interaction.user.display_name,
+                                interaction.user.display_avatar.url)
 
-    async def _tulyen(self, ctx_or_int, sid: str, display_name: str, avatar_url: str):
+    async def _start_cult(self, ctx_or_int, sid: str, display_name: str, avatar_url: str):
         db = await get_db()
         try:
             prow = await (await db.execute(
@@ -198,98 +198,113 @@ class CultivationCog(commands.Cog):
             role_mult = prow[1] if prow[1] else 1.0
             cdata = await _get_or_create(db, sid)
 
-            if not cdata.get("cultivating"):
-                # ── BẮT ĐẦU TU LUYỆN ──
-                # Kiểm tra cooldown sau session trước
-                last_collect = cdata.get("last_collect", 0)
-                cd_remaining = CULTIVATION_COOLDOWN - (time.time() - last_collect)
-                if cd_remaining > 0 and last_collect > 0:
-                    await self._reply(ctx_or_int,
-                        f"⏳ Vừa tu luyện xong! Đợi **{_format_duration(cd_remaining)}** nữa mới bắt đầu session mới.")
-                    return
+            if cdata.get("cultivating"):
+                elapsed = get_session_hours(cdata)
+                elapsed_str = _format_duration(elapsed * 3600)
+                await self._reply(ctx_or_int,
+                    f"🧘 Bạn đang tu luyện! ({elapsed_str})\n"
+                    f"Gõ `!ketthuc` để kết thúc và nhận tu vi.")
+                return
 
-                now = time.time()
-                await db.execute(
-                    "UPDATE cultivation SET cultivating=1, session_start=? WHERE player_id=?",
-                    (now, sid))
-                await db.commit()
-                cdata["cultivating"] = 1
-                cdata["session_start"] = now
+            now = time.time()
+            await db.execute(
+                "UPDATE cultivation SET cultivating=1, session_start=? WHERE player_id=?",
+                (now, sid))
+            await db.commit()
 
-                # Rate tính theo stage + role
-                from bot.config import get_cultivation_role_mult
-                cult_role_mult = get_cultivation_role_mult(role_mult)
-                stage_mult = 1.0 + (cdata["stage"] - 1) * 0.25
-                actual_rate = int(CULTIVATION_SESSION_TUVI[cdata["realm"]] * stage_mult * cult_role_mult)
-                realm_rate = _format_tuvi(actual_rate)
+            from bot.config import get_cultivation_role_mult
+            cult_role_mult = get_cultivation_role_mult(role_mult)
+            stage_mult = 1.0 + (cdata["stage"] - 1) * 0.25
+            actual_rate = int(CULTIVATION_SESSION_TUVI[cdata["realm"]] * stage_mult * cult_role_mult)
+            realm_rate = _format_tuvi(actual_rate)
 
-                # Role label
-                role_label = ""
-                if cult_role_mult == 3.0:   role_label = " _(Dragon ×3)_"
-                elif cult_role_mult == 2.0: role_label = " _(VIP ×2)_"
-                elif cult_role_mult == 1.1: role_label = " _(Support ×1.1)_"
-                elif cult_role_mult == 0.8: role_label = " _(Blacklist ×0.8)_"
+            role_label = ""
+            if cult_role_mult == 3.0:   role_label = " _(Dragon ×3)_"
+            elif cult_role_mult == 2.0: role_label = " _(VIP ×2)_"
+            elif cult_role_mult == 1.1: role_label = " _(Support ×1.1)_"
+            elif cult_role_mult == 0.8: role_label = " _(Blacklist ×0.8)_"
 
-                embed = discord.Embed(
-                    title="🧘 Bắt Đầu Tu Luyện!",
-                    description=(
-                        f"**{display_name}** ngồi vào tư thế thiền định...\n\n"
-                        f"📍 Cảnh giới: **{full_title(cdata['realm'], cdata['stage'])}**\n"
-                        f"⚡ Tốc độ: **{realm_rate} tu vi/giờ**{role_label}\n\n"
-                        f"⚠️ Trong lúc tu luyện **không thể đánh NPC hay vào Dungeon**!\n"
-                        f"Gõ `!tulyen` lần nữa để kết thúc và nhận tu vi."
-                    ),
-                    color=0x9400D3,
-                )
-                embed.set_footer(text=f"Tối đa {CULTIVATION_MAX_HOURS} giờ/session")
-            else:
-                # ── KẾT THÚC TU LUYỆN ──
-                start = cdata.get("session_start", 0)
-                elapsed_h = min((time.time() - start) / 3600, CULTIVATION_MAX_HOURS) if start else 0
-                gained = calc_session_tuvi(cdata["realm"], cdata["stage"], elapsed_h, role_mult)
-
-                new_tuvi = cdata["tuvi"] + gained
-                new_total = cdata.get("tuvi_total", 0) + gained
-                elapsed_str = _format_duration(elapsed_h * 3600)
-
-                await db.execute(
-                    "UPDATE cultivation SET cultivating=0, session_start=0, "
-                    "tuvi=?, tuvi_total=?, last_collect=? WHERE player_id=?",
-                    (new_tuvi, new_total, time.time(), sid))
-                await db.commit()
-                cdata["cultivating"] = 0
-                cdata["tuvi"] = new_tuvi
-                cdata["tuvi_total"] = new_total
-
-                if elapsed_h < 1/60:  # dưới 1 phút
-                    embed = discord.Embed(
-                        title="⏸️ Kết Thúc Tu Luyện",
-                        description=(
-                            f"Tu luyện quá ngắn (**{elapsed_str}**), không nhận được tu vi!\n"
-                            f"Cần ít nhất vài phút để có hiệu quả."
-                        ),
-                        color=0x888888,
-                    )
-                else:
-                    cult_items = await _get_cult_items(db, sid)
-                    embed = _build_status_embed(display_name, cdata, level, cult_items, avatar_url, role_mult)
-                    embed.description = (
-                        f"⏹️ **Kết thúc tu luyện** sau **{elapsed_str}**\n"
-                        f"✅ Nhận **{_format_tuvi(gained)}** tu vi!\n\n"
-                    )
-                    if isinstance(ctx_or_int, commands.Context):
-                        await ctx_or_int.reply(embed=embed)
-                    else:
-                        await ctx_or_int.response.send_message(embed=embed)
-                    return
-
+            embed = discord.Embed(
+                title="🧘 Bắt Đầu Tu Luyện!",
+                description=(
+                    f"**{display_name}** ngồi vào tư thế thiền định...\n\n"
+                    f"📍 Cảnh giới: **{full_title(cdata['realm'], cdata['stage'])}**\n"
+                    f"⚡ Tốc độ: **{realm_rate} tu vi/giờ**{role_label}\n\n"
+                    f"⚠️ Trong lúc tu luyện **không thể đánh NPC hay vào Dungeon**!\n"
+                    f"Gõ `!ketthuc` để kết thúc và nhận tu vi."
+                ),
+                color=0x9400D3,
+            )
+            embed.set_footer(text=f"Tối đa {CULTIVATION_MAX_HOURS} giờ/session")
         finally:
             await db.close()
 
-        if isinstance(ctx_or_int, commands.Context):
-            await ctx_or_int.reply(embed=embed)
-        else:
-            await ctx_or_int.response.send_message(embed=embed)
+        await self._reply(ctx_or_int, embed=embed)
+
+    # ── !ketthuc / /ketthuc — kết thúc tu luyện ────────────────
+    @commands.command(name="ketthuc", aliases=["kt"])
+    async def ketthuc_cmd(self, ctx):
+        await self._end_cult(ctx, str(ctx.author.id), ctx.author.display_name,
+                              ctx.author.display_avatar.url)
+
+    @app_commands.command(name="ketthuc", description="⏹️ Kết thúc tu luyện")
+    async def slash_ketthuc(self, interaction: discord.Interaction):
+        await self._end_cult(interaction, str(interaction.user.id),
+                              interaction.user.display_name,
+                              interaction.user.display_avatar.url)
+
+    async def _end_cult(self, ctx_or_int, sid: str, display_name: str, avatar_url: str):
+        db = await get_db()
+        try:
+            prow = await (await db.execute(
+                "SELECT level, role_mult FROM players WHERE id=?", (sid,))).fetchone()
+            if not prow:
+                await self._reply(ctx_or_int, "🤷 Chưa đăng ký!")
+                return
+            level = prow[0]
+            role_mult = prow[1] if prow[1] else 1.0
+            cdata = await _get_or_create(db, sid)
+
+            if not cdata.get("cultivating"):
+                embed = _build_status_embed(display_name, cdata, level, await _get_cult_items(db, sid), avatar_url, role_mult)
+                await self._reply(ctx_or_int, embed=embed)
+                return
+
+            start = cdata.get("session_start", 0)
+            elapsed_h = min((time.time() - start) / 3600, CULTIVATION_MAX_HOURS) if start else 0
+            gained = calc_session_tuvi(cdata["realm"], cdata["stage"], elapsed_h, role_mult)
+            new_tuvi = cdata["tuvi"] + gained
+            new_total = cdata.get("tuvi_total", 0) + gained
+            elapsed_str = _format_duration(elapsed_h * 3600)
+
+            await db.execute(
+                "UPDATE cultivation SET cultivating=0, session_start=0, "
+                "tuvi=?, tuvi_total=?, last_collect=? WHERE player_id=?",
+                (new_tuvi, new_total, time.time(), sid))
+            await db.commit()
+
+            if elapsed_h < 1/60:
+                embed = discord.Embed(
+                    title="⏸️ Kết Thúc Tu Luyện",
+                    description=(
+                        f"Tu luyện quá ngắn (**{elapsed_str}**), không nhận được tu vi!\n"
+                        f"Cần ít nhất vài phút để có hiệu quả."
+                    ),
+                    color=0x888888,
+                )
+            else:
+                cdata["tuvi"] = new_tuvi
+                cdata["tuvi_total"] = new_total
+                cult_items = await _get_cult_items(db, sid)
+                embed = _build_status_embed(display_name, cdata, level, cult_items, avatar_url, role_mult)
+                embed.description = (
+                    f"⏹️ **Kết thúc tu luyện** sau **{elapsed_str}**\n"
+                    f"✅ Nhận **{_format_tuvi(gained)}** tu vi!\n\n"
+                )
+        finally:
+            await db.close()
+
+        await self._reply(ctx_or_int, embed=embed)
 
     # ── !dotpha / /dotpha ────────────────────────────────────
     @commands.command(name="dotpha", aliases=["dp"])

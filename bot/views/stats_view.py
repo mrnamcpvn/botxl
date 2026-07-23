@@ -253,7 +253,7 @@ class StatsView(discord.ui.View):
         else:
             embed.add_field(
                 name="🏛️ Tu Tiên",
-                value="_Chưa bắt đầu_\nDùng `!tulyen` để khởi động!",
+                value="_Chưa bắt đầu_\nDùng `!tulyen` bắt đầu · `!ketthuc` kết thúc!",
                 inline=False,
             )
 
