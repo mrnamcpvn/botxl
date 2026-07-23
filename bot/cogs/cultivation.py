@@ -527,7 +527,7 @@ class CultivationCog(commands.Cog):
         await self._reply(ctx_or_int, embed=embed)
 
     # ── !dung / /dung — dùng cống phẩm tăng tu vi ────────────
-    @commands.command(name="dung", aliases=["use"])
+    @commands.command(name="dung", aliases=["d"])
     async def dung_cmd(self, ctx, item_id: str = None, quantity: str = "1"):
         await self._dung(ctx, str(ctx.author.id), ctx.author.display_name, item_id, quantity)
 
