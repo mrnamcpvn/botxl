@@ -151,6 +151,20 @@
             </form>
         </div>
     </div>
+
+    <div class="card">
+        <h2>⬆️ Set Level</h2>
+        <form method="post" action="/admin/level">
+            <select name="player_id" required>
+                <option value="">-- Chọn người chơi --</option>
+                {% for p in players %}
+                <option value="{{ p.id }}">{{ p.name }} (Lv.{{ p.level }})</option>
+                {% endfor %}
+            </select>
+            <input name="level" placeholder="Level mới" type="number" min="1" max="1000" required>
+            <button type="submit">Set</button>
+        </form>
+    </div>
 </div>
 
 <script>

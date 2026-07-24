@@ -316,3 +316,29 @@ async def admin_resetcd(request: Request, player_id: str = Form(...)):
         "request": request, "is_admin": True,
         "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
+
+@router.post("/admin/level", response_class=HTMLResponse)
+async def admin_level(request: Request, player_id: str = Form(...), level: int = Form(...)):
+    if not request.session.get("admin"):
+        return RedirectResponse(url="/login")
+    conn = get_db()
+    msg = ""
+    try:
+        level = max(1, min(1000, level))
+        from bot.config import LEVEL_XP_BASE, STAT_POINTS_PER_LEVEL
+        xp = LEVEL_XP_BASE * level * (level - 1) // 2
+        stat_points = (level - 1) * STAT_POINTS_PER_LEVEL
+        conn.execute(
+            "UPDATE players SET level=?, xp=?, stat_points=? WHERE id=?",
+            (level, xp, stat_points, player_id))
+        conn.commit()
+        msg = f"✅ Set level **{level}** cho <@{player_id}>"
+    except Exception as e:
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
+    })
