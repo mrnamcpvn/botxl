@@ -217,6 +217,15 @@
                         <button type="submit">Thu hồi</button>
                     </form>
                 </td></tr>
+            <tr><td>📊 Stat Points</td><td>{{ inv.player.stat_points }} (HP+{{ inv.player.upgrade_hp }}, ATK+{{ inv.player.upgrade_atk }}, DEF+{{ inv.player.upgrade_def }})</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="stat_points">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
         </table>
         <h4>⚒️ Trang Bị ({{ inv.equip_count }})</h4>
         <table class="inv-table">

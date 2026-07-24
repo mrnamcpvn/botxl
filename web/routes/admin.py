@@ -360,10 +360,12 @@ async def admin_inspect(request: Request, player_id: str = Form(...)):
     inv = {}
     msg = ""
     try:
-        p = conn.execute("SELECT id, name, level, coins, wins, losses, elo, class_id FROM players WHERE id=?", (player_id,)).fetchone()
+        p = conn.execute("SELECT id, name, level, coins, wins, losses, elo, class_id, stat_points, upgrade_hp, upgrade_atk, upgrade_def FROM players WHERE id=?", (player_id,)).fetchone()
         if p:
             inv["player"] = {"id": p["id"], "name": p["name"], "level": p["level"], "coins": p["coins"],
-                             "wins": p["wins"], "losses": p["losses"], "elo": p["elo"], "class_id": p["class_id"]}
+                             "wins": p["wins"], "losses": p["losses"], "elo": p["elo"], "class_id": p["class_id"],
+                             "stat_points": p["stat_points"], "upgrade_hp": p["upgrade_hp"],
+                             "upgrade_atk": p["upgrade_atk"], "upgrade_def": p["upgrade_def"]}
         stones = conn.execute("SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?", (player_id,)).fetchone()
         inv["stones"] = {"basic": stones[0] if stones else 0, "medium": stones[1] if stones else 0, "advanced": stones[2] if stones else 0}
         equip_rows = conn.execute("SELECT id, item_id, enhance, equipped FROM player_equipment WHERE player_id=?", (player_id,)).fetchall()
@@ -423,6 +425,9 @@ async def admin_revoke(request: Request,
         elif revoke_type == "stone_advanced":
             conn.execute("UPDATE player_enhance_stones SET stone_advanced=MAX(0, stone_advanced-?) WHERE player_id=?", (amount, player_id))
             msg = f"✅ Thu hồi **{amount}** đá cao cấp từ <@{player_id}>"
+        elif revoke_type == "stat_points":
+            conn.execute("UPDATE players SET stat_points=MAX(0, stat_points-?) WHERE id=?", (amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** stat points từ <@{player_id}>"
         elif revoke_type == "equip":
             conn.execute("DELETE FROM player_equipment WHERE id=? AND player_id=?", (revoke_id, player_id))
             msg = f"✅ Đã xóa trang bị ID **{revoke_id}**"
