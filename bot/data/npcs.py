@@ -230,7 +230,7 @@ NPC_DEFINITIONS = {
     },
     "29": {
         "name": '⚔️ Nhị Lang Thần Chân Quân', "class_id": 'trumcuoi', "level": 85,
-        "hp": 25860, "hp_max": 25860, "attack_min": 4370, "attack_max": 5270, "defense": 7900,
+        "hp": 20860, "hp_max": 20860, "attack_min": 4370, "attack_max": 5270, "defense": 7900,
         "trait": '🌟 All-in-one - Stun',
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {'attack': 4, 'special': 8, 'defense': 12, 'passive': 20},
@@ -238,7 +238,7 @@ NPC_DEFINITIONS = {
     },
     "30": {
         "name": '👑 Ngọc Hoàng Đại Đế', "class_id": 'trumcuoi', "level": 90,
-        "hp": 30440, "hp_max": 30440, "attack_min": 4700, "attack_max": 5750, "defense": 8000,
+        "hp": 20440, "hp_max": 20440, "attack_min": 4700, "attack_max": 5750, "defense": 9000,
         "trait": '👑 BOSS CUỐI',
         "upgrade_hp": 0, "upgrade_atk": 0, "upgrade_def": 0, "equipped": {},
         "skill_equipped": {'attack': 4, 'special': 9, 'defense': 13, 'passive': 20},
