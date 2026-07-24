@@ -103,7 +103,7 @@ class MonsterCodex(commands.Cog):
         embed.add_field(name="Trang 1", value="\n".join(lines[:half]) or "_Trống_", inline=True)
         embed.add_field(name="Trang 2", value="\n".join(lines[half:]) or "_Trống_", inline=True)
         embed.add_field(name="📊 Tổng Bonus Hiện Tại", value=bonus_text, inline=False)
-        embed.set_footer(text=f"!codex <1-30> để xem chi tiết | Milestone: {' → '.join(str(m) for m in CODEX_MILESTONES)} kills")
+        embed.set_footer(text=f"!codex <1-60> để xem chi tiết | Milestone: {' → '.join(str(m) for m in CODEX_MILESTONES)} kills")
         return embed
 
     async def _show_npc_detail(self, ctx, npc_id: int, codex_kills: dict):
