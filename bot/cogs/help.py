@@ -60,7 +60,8 @@ class HelpCog(commands.Cog):
         "nang_cap": {
             "name": "⚒️ Nâng Cấp",
             "description": (
-                "`!enhance` — Mở giao diện cường hóa\n"
+                "`!cuonghoa` / `!enhance` — Cường hóa trang bị\n"
+                "`!reroll` / `!rerollhidden` — Reroll thuộc tính ẩn\n"
                 "Dùng đá Sơ Cấp / Trung Cấp / Cao Cấp để nâng sao trang bị\n"
                 "Cấp càng cao tỉ lệ thành công càng thấp\n"
                 "Nâng cấp thành công có thể unlock hidden stats"

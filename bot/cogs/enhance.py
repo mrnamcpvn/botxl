@@ -220,6 +220,149 @@ class EnhanceCog(commands.Cog):
         else:
             await ctx_or_int.response.send_message(msg, ephemeral=ephemeral)
 
+    @commands.command(name="reroll", aliases=["rerollhidden", "rolllai"])
+    async def reroll_cmd(self, ctx, eq_id: str = None):
+        await self._reroll(ctx, str(ctx.author.id), eq_id, ctx.author.display_name, "!")
+
+    @app_commands.command(name="reroll", description="🌟 Reroll thuộc tính ẩn của trang bị")
+    @app_commands.describe(eq_id="ID trang bị (xem /inv)")
+    async def slash_reroll(self, interaction: discord.Interaction, eq_id: str):
+        await self._reroll(interaction, str(interaction.user.id), eq_id,
+                           interaction.user.display_name, "/")
+
+    @slash_reroll.autocomplete("eq_id")
+    async def reroll_autocomplete(self, interaction: discord.Interaction, current: str):
+        uid = str(interaction.user.id)
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, item_id, enhance FROM player_equipment WHERE player_id=? AND enhance>=4 AND hidden_stats!=''",
+                (uid,))
+            choices = []
+            async for r in cursor:
+                eid, eiid, enh = r
+                name = EQUIPMENT.get(eiid, {}).get("name", eiid)
+                label = f"({eiid}) {name} +{enh}"[:100]
+                if current.lower() in label.lower():
+                    choices.append(app_commands.Choice(name=label, value=str(eid)))
+            return choices[:25]
+        finally:
+            await db.close()
+
+    REROLL_TIERS = {
+        1: {"min_enhance": 4, "stone_id": STONE_BASIC_ID, "stone_qty": 20, "coin_cost": 5000, "milestone": 4},
+        2: {"min_enhance": 7, "stone_id": STONE_MEDIUM_ID, "stone_qty": 20, "coin_cost": 10000, "milestone": 7},
+        3: {"min_enhance": 9, "stone_id": STONE_ADVANCED_ID, "stone_qty": 20, "coin_cost": 20000, "milestone": 9},
+    }
+
+    STONE_LABELS = {STONE_BASIC_ID: "đá sơ cấp", STONE_MEDIUM_ID: "đá trung cấp", STONE_ADVANCED_ID: "đá cao cấp"}
+    STONE_COLUMNS = {STONE_BASIC_ID: "stone_basic", STONE_MEDIUM_ID: "stone_medium", STONE_ADVANCED_ID: "stone_advanced"}
+
+    async def _reroll(self, ctx_or_int, sid: str, eq_id: str, display_name: str, prefix: str):
+        if not eq_id:
+            await self._reply(ctx_or_int, f"❌ Dùng: `{prefix}reroll <ID>` (xem ID trong `/inv`)")
+            return
+        try:
+            eid = int(eq_id.strip())
+        except:
+            await self._reply(ctx_or_int, "❌ ID không hợp lệ!")
+            return
+
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE id=? AND player_id=?",
+                (eid, sid))
+            row = await cursor.fetchone()
+            if not row:
+                await self._reply(ctx_or_int, "📭 Không có trang bị này! Xem `/inv`")
+                return
+            eq = dict(row)
+            eiid = eq["item_id"]
+            enhance = eq["enhance"]
+            hidden = eq["hidden_stats"] or ""
+
+            if eiid not in EQUIPMENT:
+                await self._reply(ctx_or_int, "❌ Chỉ reroll được trang bị hệ thống!")
+                return
+            if enhance < 4:
+                await self._reply(ctx_or_int, "❌ Trang bị chưa mở khóa thuộc tính ẩn (cần +4)!")
+                return
+            if not hidden:
+                await self._reply(ctx_or_int, "❌ Trang bị chưa có thuộc tính ẩn! Dùng `/cuonghoa` để mở khóa.")
+                return
+
+            tier = 1
+            if enhance >= 9:
+                tier = 3
+            elif enhance >= 7:
+                tier = 2
+
+            cfg = self.REROLL_TIERS[tier]
+            stone_key = self.STONE_COLUMNS[cfg["stone_id"]]
+            stone_label = self.STONE_LABELS[cfg["stone_id"]]
+
+            player_cursor = await db.execute("SELECT coins FROM players WHERE id=?", (sid,))
+            prow = await player_cursor.fetchone()
+            if not prow:
+                await self._reply(ctx_or_int, "🤷 Chưa đăng ký!")
+                return
+            player_coins = prow[0]
+
+            stone_cursor = await db.execute(
+                "SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?",
+                (sid,))
+            srow = await stone_cursor.fetchone()
+            stones = {"stone_basic": srow[0] if srow else 0,
+                      "stone_medium": srow[1] if srow else 0,
+                      "stone_advanced": srow[2] if srow else 0}
+
+            if stones.get(stone_key, 0) < cfg["stone_qty"]:
+                await self._reply(ctx_or_int,
+                    f"❌ Thiếu đá! Cần **{cfg['stone_qty']}** {stone_label}, có **{stones.get(stone_key, 0)}**")
+                return
+            if player_coins < cfg["coin_cost"]:
+                await self._reply(ctx_or_int,
+                    f"😅 Nghèo! Cần **{cfg['coin_cost']}🪙**, có **{player_coins}🪙**")
+                return
+
+            equip_star = EQUIPMENT[eiid]["star"]
+            new_hidden = generate_hidden_stat(equip_star, cfg["milestone"])
+            import json
+            hs = json.loads(new_hidden)
+            parts = []
+            for k, v in hs.items():
+                pool = HIDDEN_STAT_POOLS.get(k, {})
+                parts.append(f"{pool.get('icon','')} +{v} {pool.get('label',k)}")
+
+            await db.execute(f"UPDATE player_enhance_stones SET {stone_key}={stone_key}-? WHERE player_id=?",
+                             (cfg["stone_qty"], sid))
+            await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (cfg["coin_cost"], sid))
+            await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (new_hidden, eid))
+            await db.commit()
+
+            equip_name = EQUIPMENT[eiid]["name"]
+            stars = STAR_LABELS.get(equip_star, "⭐")
+            embed_color = STAR_COLORS.get(equip_star, 0x00ff00)
+            if equip_star == 6:
+                equip_name = f"[Thần Thoại] {equip_name}"
+
+            embed = discord.Embed(
+                title="🌟 REROLL THUỘC TÍNH ẨN!",
+                description=(
+                    f"{stars} **{equip_name}** +{enhance}\n"
+                    f"💰 Mất: {cfg['stone_qty']} {stone_label} | {cfg['coin_cost']}🪙\n"
+                    f"\n📊 Thuộc tính ẩn mới:\n" + "\n".join(parts)
+                ),
+                color=embed_color)
+            if isinstance(ctx_or_int, commands.Context):
+                await ctx_or_int.reply(embed=embed)
+            else:
+                await ctx_or_int.response.send_message(embed=embed)
+
+        finally:
+            await db.close()
+
 
 async def setup(bot):
     await bot.add_cog(EnhanceCog(bot))
