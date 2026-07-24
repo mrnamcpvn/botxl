@@ -428,6 +428,15 @@ async def admin_revoke(request: Request,
         elif revoke_type == "stat_points":
             conn.execute("UPDATE players SET stat_points=MAX(0, stat_points-?) WHERE id=?", (amount, player_id))
             msg = f"✅ Thu hồi **{amount}** stat points từ <@{player_id}>"
+        elif revoke_type == "upgrade_hp":
+            conn.execute("UPDATE players SET upgrade_hp=MAX(0, upgrade_hp-?), stat_points=stat_points+? WHERE id=?", (amount, amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** HP đã cộng từ <@{player_id}>"
+        elif revoke_type == "upgrade_atk":
+            conn.execute("UPDATE players SET upgrade_atk=MAX(0, upgrade_atk-?), stat_points=stat_points+? WHERE id=?", (amount, amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** ATK đã cộng từ <@{player_id}>"
+        elif revoke_type == "upgrade_def":
+            conn.execute("UPDATE players SET upgrade_def=MAX(0, upgrade_def-?), stat_points=stat_points+? WHERE id=?", (amount, amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** DEF đã cộng từ <@{player_id}>"
         elif revoke_type == "equip":
             conn.execute("DELETE FROM player_equipment WHERE id=? AND player_id=?", (revoke_id, player_id))
             msg = f"✅ Đã xóa trang bị ID **{revoke_id}**"

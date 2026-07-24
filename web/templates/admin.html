@@ -223,6 +223,33 @@
                         <input type="hidden" name="player_id" value="{{ inv.player.id }}">
                         <input type="hidden" name="revoke_type" value="stat_points">
                         <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi SP</button>
+                    </form>
+                </td></tr>
+            <tr><td>　❤️ HP đã cộng</td><td>+{{ inv.player.upgrade_hp }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="upgrade_hp">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            <tr><td>　⚔️ ATK đã cộng</td><td>+{{ inv.player.upgrade_atk }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="upgrade_atk">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            <tr><td>　🛡️ DEF đã cộng</td><td>+{{ inv.player.upgrade_def }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="upgrade_def">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
                         <button type="submit">Thu hồi</button>
                     </form>
                 </td></tr>
