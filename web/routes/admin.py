@@ -375,11 +375,11 @@ async def admin_inspect(request: Request, player_id: str = Form(...)):
         from bot.data.shop_items import SHOP_ITEMS
         inv["consumables"] = [{"id": r["item_id"], "qty": r["quantity"],
                                "name": SHOP_ITEMS.get(r["item_id"], {}).get("name", f"#{r['item_id']}")} for r in inv_consume]
-        ach_rows = conn.execute("SELECT ach_id, completed, claimed FROM player_achievements WHERE player_id=? AND completed=1 AND claimed=0", (player_id,)).fetchall()
+        ach_rows = conn.execute("SELECT ach_id, completed, claimed FROM player_achievements WHERE player_id=? AND completed=1", (player_id,)).fetchall()
         from bot.config import ACHIEVEMENTS
-        inv["unclaimed"] = [{"id": r["ach_id"], "name": ACHIEVEMENTS.get(r["ach_id"], {}).get("name", f"#{r['ach_id']}"),
-                             "coins": ACHIEVEMENTS.get(r["ach_id"], {}).get("reward_coins", 0),
-                             "stones": ACHIEVEMENTS.get(r["ach_id"], {}).get("reward_stones", {})} for r in ach_rows]
+        inv["achievements"] = [{"id": r["ach_id"], "name": ACHIEVEMENTS.get(r["ach_id"], {}).get("name", f"#{r['ach_id']}"),
+                                "claimed": r["claimed"], "coins": ACHIEVEMENTS.get(r["ach_id"], {}).get("reward_coins", 0),
+                                "stones": ACHIEVEMENTS.get(r["ach_id"], {}).get("reward_stones", {})} for r in ach_rows]
     except Exception as e:
         msg = f"❌ Lỗi: {e}"
     finally:

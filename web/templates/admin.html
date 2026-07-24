@@ -267,11 +267,12 @@
             {% endfor %}
         </table>
         {% endif %}
-        {% if inv.unclaimed %}
-        <h4>🏆 Thành Tựu Chưa Claim</h4>
+        {% if inv.achievements %}
+        <h4>🏆 Thành Tựu</h4>
         <table class="inv-table">
-            {% for a in inv.unclaimed %}
+            {% for a in inv.achievements %}
             <tr><td>{{ a.name }}</td><td>💰{{ a.coins }}{% if a.stones %} +💎{% for k,v in a.stones.items() %}{{ v }} {% endfor %}{% endif %}</td>
+                <td>{% if a.claimed %}✅ Đã claim{% else %}⬜ Chưa claim{% endif %}</td>
                 <td>
                     <form method="post" action="/admin/revoke" style="display:inline">
                         <input type="hidden" name="player_id" value="{{ inv.player.id }}">
