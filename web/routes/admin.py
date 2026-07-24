@@ -364,7 +364,7 @@ async def admin_inspect(request: Request, player_id: str = Form(...)):
         for r in equip_rows:
             e = EQUIPMENT.get(r["item_id"], {})
             star = STAR_LABELS.get(e.get("star", 1), "⭐")
-            eq_name = f"{star} {e.get('name', f'#{r[\"item_id\"]}')}"
+            eq_name = f"{star} {e.get('name', '#' + str(r['item_id']))}"
             inv["equipment"].append({"id": r["id"], "item_id": r["item_id"], "enhance": r["enhance"], "equipped": r["equipped"], "name": eq_name})
         inv["equip_count"] = len(inv["equipment"])
         gem_rows = conn.execute("SELECT gem_type, gem_level, quantity FROM player_gems WHERE player_id=? AND quantity>0", (player_id,)).fetchall()
