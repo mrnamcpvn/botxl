@@ -1,7 +1,4 @@
-"""One-time migration: old hidden_stats format → 3-slot format.
-
-Old: {"crit": 5, "hp": 40}       (2 flat stats)
-New: {"1":{"k":"crit","v":5}, "2":{"k":"hp","v":40}}  (3 independent slots)
+"""Regenerate hidden stats for ALL equipment (VPS recovery).
 
 Run from project root:  python scripts/migrate_hidden_stats.py
 """
@@ -16,26 +13,33 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 DB_PATH = os.path.join(DATA_DIR, "botxl.db")
 
-HIDDEN_STAT_POOLS = {
-    "atk_min": {"icon": "⚔️", "label": "Tấn Công Tối Thiểu", "val": lambda s: 2 + s * 3},
-    "atk_max": {"icon": "⚔️", "label": "Tấn Công Tối Đa", "val": lambda s: 3 + s * 4},
-    "hp": {"icon": "❤️", "label": "HP", "val": lambda s: 20 + s * 15},
-    "defense": {"icon": "🛡️", "label": "Phòng Thủ", "val": lambda s: 3 + s * 2},
-    "spd": {"icon": "💨", "label": "Tốc Độ", "val": lambda s: 2 + s},
-    "crit": {"icon": "💥", "label": "Chí Mạng", "val": lambda s: 2 + s},
-    "pierce": {"icon": "🔱", "label": "Xuyên Giáp", "val": lambda s: 2 + s},
-    "dodge": {"icon": "🍀", "label": "Né Đòn", "val": lambda s: 1 + s},
-    "reflect": {"icon": "🔄", "label": "Phản Đòn", "val": lambda s: 1 + s},
-    "regen": {"icon": "💚", "label": "Hồi Phục", "val": lambda s: 1 + s // 2},
+HIDDEN_STAT_POOLS = [
+    "atk_min", "atk_max", "hp", "defense", "spd",
+    "crit", "pierce", "dodge", "reflect", "regen",
+]
+STAT_VAL = {
+    "atk_min": lambda s: 2 + s * 3,
+    "atk_max": lambda s: 3 + s * 4,
+    "hp": lambda s: 20 + s * 15,
+    "defense": lambda s: 3 + s * 2,
+    "spd": lambda s: 2 + s,
+    "crit": lambda s: 2 + s,
+    "pierce": lambda s: 2 + s,
+    "dodge": lambda s: 1 + s,
+    "reflect": lambda s: 1 + s,
+    "regen": lambda s: 1 + s // 2,
 }
+SLOT_MULT = {1: 1.5, 2: 3.0, 3: 5.0}
 
-SLOT_MULTIPLIERS = {1: 1.5, 2: 3.0, 3: 5.0}
 
-def generate_hidden_stat(star: int, slot: int) -> str:
-    k = random.choice(list(HIDDEN_STAT_POOLS.keys()))
-    pool = HIDDEN_STAT_POOLS[k]
-    val = int(pool["val"](star) * SLOT_MULTIPLIERS[slot])
-    return json.dumps({"k": k, "v": val})
+def generate_slot(star: int, slot: int) -> list:
+    count = random.randint(2, 3)
+    chosen = random.sample(HIDDEN_STAT_POOLS, min(count, len(HIDDEN_STAT_POOLS)))
+    result = []
+    for k in chosen:
+        val = int(STAT_VAL[k](star) * SLOT_MULT[slot])
+        result.append({"k": k, "v": val})
+    return result
 
 
 def migrate():
@@ -43,57 +47,29 @@ def migrate():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT id, item_id, enhance, hidden_stats FROM player_equipment WHERE hidden_stats != ''")
+
+    cursor.execute("SELECT id, item_id, enhance FROM player_equipment WHERE enhance >= 4")
     rows = cursor.fetchall()
     count = 0
+
     for row in rows:
-        eid, eiid, enhance, hidden_raw = row["id"], row["item_id"], row["enhance"], row["hidden_stats"]
-        if not hidden_raw:
-            continue
-        try:
-            old = json.loads(hidden_raw)
-        except:
-            continue
-        if not isinstance(old, dict):
-            continue
+        eid, eiid, enhance = row["id"], row["item_id"], row["enhance"]
+        equip = EQUIPMENT.get(eiid)
+        star = equip["star"] if equip else 3
 
-        first_val = next(iter(old.values()), None)
-        old_format = not isinstance(first_val, dict)
-
-        if old_format:
-            stat_keys = list(old.keys())
-            new_data = {}
-            new_data["1"] = {"k": stat_keys[0], "v": old[stat_keys[0]]}
-            if len(stat_keys) > 1 and enhance >= 7:
-                new_data["2"] = {"k": stat_keys[1], "v": old[stat_keys[1]]}
-
-            equip = EQUIPMENT.get(eiid)
-            star = equip["star"] if equip else 3
-
-            if enhance >= 7 and "2" not in new_data:
-                hs = generate_hidden_stat(star, 2)
-                new_data["2"] = json.loads(hs)
-            if enhance >= 9 and "3" not in new_data:
-                hs = generate_hidden_stat(star, 3)
-                new_data["3"] = json.loads(hs)
-        else:
-            new_data = dict(old)
-            changed = False
-            if enhance < 7 and "2" in new_data:
-                del new_data["2"]
-                changed = True
-            if enhance < 9 and "3" in new_data:
-                del new_data["3"]
-                changed = True
-            if not changed:
-                continue
+        new_data = {}
+        new_data["1"] = generate_slot(star, 1)
+        if enhance >= 7:
+            new_data["2"] = generate_slot(star, 2)
+        if enhance >= 9:
+            new_data["3"] = generate_slot(star, 3)
 
         cursor.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (json.dumps(new_data), eid))
         count += 1
 
     conn.commit()
     conn.close()
-    print(f"Migrated {count} equipment rows to new 3-slot hidden stat format.")
+    print(f"Regenerated hidden stats for {count} equipment.")
 
 
 if __name__ == "__main__":

@@ -28,10 +28,15 @@ HIDDEN_STAT_POOLS = {
 
 def generate_hidden_stat(star: int, slot: int) -> str:
     import random, json
-    k = random.choice(list(HIDDEN_STAT_POOLS.keys()))
-    pool = HIDDEN_STAT_POOLS[k]
-    val = int(pool["val"](star) * SLOT_MULTIPLIERS[slot])
-    return json.dumps({"k": k, "v": val})
+    count = random.randint(2, 3)
+    pool_keys = list(HIDDEN_STAT_POOLS.keys())
+    chosen = random.sample(pool_keys, min(count, len(pool_keys)))
+    result = []
+    for k in chosen:
+        pool = HIDDEN_STAT_POOLS[k]
+        val = int(pool["val"](star) * SLOT_MULTIPLIERS[slot])
+        result.append({"k": k, "v": val})
+    return json.dumps(result)
 
 
 class EnhanceCog(commands.Cog):
@@ -179,9 +184,12 @@ class EnhanceCog(commands.Cog):
                     existing[str(slot)] = json.loads(new_stat)
                     merged = json.dumps(existing)
                     await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (merged, eid))
-                    hs = existing[str(slot)]
-                    pool = HIDDEN_STAT_POOLS.get(hs["k"], {})
-                    hidden_msg = f"\n🌟 MỞ KHÓA THUỘC TÍNH ẨN {slot}!\n{pool.get('icon','')} +{hs['v']} {pool.get('label', hs['k'])}"
+                    arr = existing[str(slot)]
+                    parts = []
+                    for item in arr:
+                        pool = HIDDEN_STAT_POOLS.get(item["k"], {})
+                        parts.append(f"{pool.get('icon','')}+{item['v']} {pool.get('label', item['k'])}")
+                    hidden_msg = f"\n🌟 MỞ KHÓA THUỘC TÍNH ẨN {slot}!\n" + "\n".join(parts)
                 await db.commit()
                 if target >= MAX_ENHANCE:
                     next_str = "🌟 MAX 🌟"
@@ -348,9 +356,11 @@ class EnhanceCog(commands.Cog):
             new_stat = generate_hidden_stat(equip_star, slot_int)
             existing[str(slot_int)] = json.loads(new_stat)
             merged = json.dumps(existing)
-            hs = existing[str(slot_int)]
-            pool = HIDDEN_STAT_POOLS.get(hs["k"], {})
-            line = f"{pool.get('icon','')} +{hs['v']} {pool.get('label', hs['k'])}"
+            arr = existing[str(slot_int)]
+            parts = []
+            for item in arr:
+                pool = HIDDEN_STAT_POOLS.get(item["k"], {})
+                parts.append(f"{pool.get('icon','')}+{item['v']} {pool.get('label', item['k'])}")
 
             await db.execute(f"UPDATE player_enhance_stones SET {stone_key}={stone_key}-? WHERE player_id=?",
                              (cfg["stone_qty"], sid))
@@ -368,8 +378,8 @@ class EnhanceCog(commands.Cog):
                 title="🌟 REROLL THUỘC TÍNH ẨN!",
                 description=(
                     f"{stars} **{equip_name}** +{enhance}\n"
-                    f"🎯 Slot {slot_int} → {line}\n"
-                    f"💰 Mất: {cfg['stone_qty']} {stone_label} | {cfg['coin_cost']}🪙"
+                    f"🎯 Slot {slot_int}:\n" + "\n".join(parts) +
+                    f"\n💰 Mất: {cfg['stone_qty']} {stone_label} | {cfg['coin_cost']}🪙"
                 ),
                 color=embed_color)
             if isinstance(ctx_or_int, commands.Context):

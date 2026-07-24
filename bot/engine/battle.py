@@ -106,20 +106,23 @@ def get_effective_stats(pdata: dict) -> dict:
             try:
                 hs = json.loads(hidden_json)
                 for slot_key, hdata in hs.items():
-                    if not isinstance(hdata, dict) or "k" not in hdata:
+                    if not isinstance(hdata, list):
                         continue
-                    k = hdata["k"]
-                    v = hdata["v"]
-                    if k == "hp" or k == "hp_max": hp_max += v
-                    elif k == "attack_min": atk_min += v
-                    elif k == "attack_max": atk_max += v
-                    elif k == "defense": defense += v
-                    elif k == "spd": spd += v
-                    elif k == "crit": crit += v
-                    elif k == "pierce": pierce += v
-                    elif k == "dodge": dodge += v
-                    elif k == "reflect": reflect += v
-                    elif k == "regen": regen += v
+                    for item in hdata:
+                        if not isinstance(item, dict) or "k" not in item:
+                            continue
+                        k = item["k"]
+                        v = item["v"]
+                        if k == "hp" or k == "hp_max": hp_max += v
+                        elif k == "attack_min": atk_min += v
+                        elif k == "attack_max": atk_max += v
+                        elif k == "defense": defense += v
+                        elif k == "spd": spd += v
+                        elif k == "crit": crit += v
+                        elif k == "pierce": pierce += v
+                        elif k == "dodge": dodge += v
+                        elif k == "reflect": reflect += v
+                        elif k == "regen": regen += v
             except:
                 pass
 
