@@ -39,7 +39,7 @@ CLASSES = {
         "hp_base": 110, "hp_scale": 10,
         "atk_base": 18, "atk_scale": 5,
         "def_base": 6, "def_scale": 1,
-        "desc": "Hút 80% dmg gây ra thành HP | +ATK +SPD",
+        "desc": "Hút +30% HP từ skill lifesteal | +ATK +SPD",
         "price": 10000,
         "perk": "lifesteal_boost"
     },
@@ -77,7 +77,7 @@ PERK_DESCRIPTIONS = {
     "defend_reduce": "Nhận ít dmg hơn 20% nếu đang phòng thủ",
     "first_strike": "Đòn tấn công đầu trận ×1.5",
     "cd_reduce": "CD gốc tất cả skill giảm -1",
-    "lifesteal_boost": "Hút máu +30% hiệu quả",
+    "lifesteal_boost": "Skill hút máu hiệu quả ×1.3 (50% → 65%)",
     "rage_boost": "Rage tích +50% nhanh hơn, sát thương rage ×2.5",
     "last_stand_boost": "Né chết hồi 70% HP thay vì 50%",
     "random_buff": "Random buff mỗi turn",
