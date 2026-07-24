@@ -92,16 +92,20 @@ class MonsterCodex(commands.Cog):
             bonus_lines.append(f"{label} **+{pct}%**")
         bonus_text = "  ·  ".join(bonus_lines) if bonus_lines else "_Chưa có bonus nào_"
 
-        # Chia thành 2 cột (15 NPC mỗi cột)
-        half = len(lines) // 2 + len(lines) % 2
+        # Chia thành 3 cột (20 NPC mỗi cột) — tránh lỗi 1024 ký tự với 60 NPC
+        third = len(lines) // 3
+        remainder = len(lines) % 3
+        col1_end = third + (1 if remainder > 0 else 0)
+        col2_end = col1_end + third + (1 if remainder > 1 else 0)
         embed = discord.Embed(
             title="📖 Đồ Thư Quái Vật",
             description=f"⚔️ Tổng kills: **{total_kills:,}**\n\n"
                         f"_Giết đủ số lượng để nhận bonus vĩnh viễn_".replace(",", "."),
             color=0x8b4513,
         )
-        embed.add_field(name="Trang 1", value="\n".join(lines[:half]) or "_Trống_", inline=True)
-        embed.add_field(name="Trang 2", value="\n".join(lines[half:]) or "_Trống_", inline=True)
+        embed.add_field(name="Trang 1", value="\n".join(lines[:col1_end]) or "_Trống_", inline=True)
+        embed.add_field(name="Trang 2", value="\n".join(lines[col1_end:col2_end]) or "_Trống_", inline=True)
+        embed.add_field(name="Trang 3", value="\n".join(lines[col2_end:]) or "_Trống_", inline=True)
         embed.add_field(name="📊 Tổng Bonus Hiện Tại", value=bonus_text, inline=False)
         embed.set_footer(text=f"!codex <1-60> để xem chi tiết | Milestone: {' → '.join(str(m) for m in CODEX_MILESTONES)} kills")
         return embed
