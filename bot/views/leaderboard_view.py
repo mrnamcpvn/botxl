@@ -103,7 +103,7 @@ class LeaderboardView(discord.ui.View):
                 style=discord.ButtonStyle.gray if active else style,
                 disabled=active,
                 custom_id=f"lb_tab_{i}",
-                row=0,
+                row=i // 3,
             )
             btn.callback = self._make_cb(i + 1)
             self.add_item(btn)
