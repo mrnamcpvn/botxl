@@ -169,8 +169,13 @@ class EnhanceCog(commands.Cog):
                 await update_progress(db, sid, 3)
                 hidden_msg = ""
                 if target in MILESTONES:
-                    from bot.engine.ach_utils import ach_progress
-                    await ach_progress(sid, f"enhance_{target}")
+                    from bot.engine.ach_utils import ach_check
+                    for ach_target in (4, 7, 9):
+                        cursor = await db.execute(
+                            "SELECT COUNT(*) FROM player_equipment WHERE player_id=? AND enhance>=?",
+                            (sid, ach_target))
+                        row = await cursor.fetchone()
+                        await ach_check(sid, f"enhance_count_{ach_target}", row[0] if row else 0)
                     import json
                     existing = {}
                     cursor = await db.execute(
@@ -374,6 +379,9 @@ class EnhanceCog(commands.Cog):
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (cfg["coin_cost"], sid))
             await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (merged, eid))
             await db.commit()
+
+            from bot.engine.ach_utils import ach_progress
+            await ach_progress(sid, "reroll_count")
 
             equip_name = EQUIPMENT[eiid]["name"]
             stars = STAR_LABELS.get(equip_star, "⭐")

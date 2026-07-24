@@ -152,6 +152,13 @@ class GemSocket(commands.Cog):
                 "ON CONFLICT(player_id, gem_type, gem_level) DO UPDATE SET quantity=quantity+1",
                 (sid, gem_type, target_level))
             await db.commit()
+
+            from bot.engine.ach_utils import ach_check
+            cursor = await db.execute(
+                "SELECT MAX(gem_level) FROM player_gems WHERE player_id=?", (sid,))
+            row = await cursor.fetchone()
+            max_lv = row[0] if row else 0
+            await ach_check(sid, "gem_level", max_lv)
         finally:
             await db.close()
 

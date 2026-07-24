@@ -55,22 +55,44 @@ def migrate():
     c.execute("SELECT player_id, realm FROM cultivation")
     realms = {r["player_id"]: r["realm"] for r in c.fetchall()}
 
-    # Lấy 6★ count
+    # Lấy 6★ và 7★ count
     try:
         from bot.data.equipment import EQUIPMENT
-        six_star_items = [k for k, v in EQUIPMENT.items() if v.get("star") == 6]
-        if six_star_items:
-            placeholders = ",".join("?" for _ in six_star_items)
-            c.execute(f"SELECT player_id, COUNT(*) as cnt FROM player_equipment WHERE item_id IN ({placeholders}) GROUP BY player_id", six_star_items)
+        six_items = [k for k, v in EQUIPMENT.items() if v.get("star") == 6]
+        seven_items = [k for k, v in EQUIPMENT.items() if v.get("star") == 7]
+        seven_items = [k for k in seven_items if k in EQUIPMENT]  # chỉ item hệ thống
+        six_star_counts = {}
+        seven_star_counts = {}
+        if six_items:
+            ph = ",".join("?" for _ in six_items)
+            c.execute(f"SELECT player_id, COUNT(*) as cnt FROM player_equipment WHERE item_id IN ({ph}) GROUP BY player_id", six_items)
             six_star_counts = {r["player_id"]: r["cnt"] for r in c.fetchall()}
-        else:
-            six_star_counts = {}
+        if seven_items:
+            ph = ",".join("?" for _ in seven_items)
+            c.execute(f"SELECT player_id, COUNT(*) as cnt FROM player_equipment WHERE item_id IN ({ph}) GROUP BY player_id", seven_items)
+            seven_star_counts = {r["player_id"]: r["cnt"] for r in c.fetchall()}
     except:
         six_star_counts = {}
+        seven_star_counts = {}
 
-    # Lấy enhance milestones
-    c.execute("SELECT player_id, MAX(enhance) as max_enh FROM player_equipment GROUP BY player_id")
-    enhance_data = {r["player_id"]: r["max_enh"] for r in c.fetchall()}
+    # Lấy enhance count (số món đạt từng mốc)
+    c.execute("SELECT player_id, enhance FROM player_equipment")
+    enhance_counts = {}  # pid -> {4: count, 7: count, 9: count}
+    for r in c.fetchall():
+        pid = r["player_id"]
+        enh = r["enhance"]
+        if pid not in enhance_counts:
+            enhance_counts[pid] = {4: 0, 7: 0, 9: 0}
+        if enh >= 4: enhance_counts[pid][4] += 1
+        if enh >= 7: enhance_counts[pid][7] += 1
+        if enh >= 9: enhance_counts[pid][9] += 1
+
+    # Lấy max gem level
+    try:
+        c.execute("SELECT player_id, MAX(gem_level) as max_lv FROM player_gems WHERE quantity>0 GROUP BY player_id")
+        gem_levels = {r["player_id"]: r["max_lv"] for r in c.fetchall()}
+    except:
+        gem_levels = {}
 
     count = 0
     for player in players:
@@ -80,7 +102,9 @@ def migrate():
         kills = npc_kills.get(sid, 0)
         realm = realms.get(sid, -1)
         six_cnt = six_star_counts.get(sid, 0)
-        max_enh = enhance_data.get(sid, 0)
+        seven_cnt = seven_star_counts.get(sid, 0)
+        enh_cnt = enhance_counts.get(sid, {4: 0, 7: 0, 9: 0})
+        max_gem = gem_levels.get(sid, 0)
 
         for ach_id, ach_def in ACHIEVEMENTS.items():
             atype = ach_def["type"]
@@ -100,15 +124,18 @@ def migrate():
             elif atype == "reach_level":
                 progress = min(level, target)
                 completed = 1 if level >= target else 0
-            elif atype == "enhance_4":
-                completed = 1 if max_enh >= 4 else 0
-                progress = 1 if completed else 0
-            elif atype == "enhance_7":
-                completed = 1 if max_enh >= 7 else 0
-                progress = 1 if completed else 0
-            elif atype == "enhance_9":
-                completed = 1 if max_enh >= 9 else 0
-                progress = 1 if completed else 0
+            elif atype == "enhance_count_4":
+                c4 = enh_cnt[4]
+                progress = min(c4, target)
+                completed = 1 if c4 >= target else 0
+            elif atype == "enhance_count_7":
+                c7 = enh_cnt[7]
+                progress = min(c7, target)
+                completed = 1 if c7 >= target else 0
+            elif atype == "enhance_count_9":
+                c9 = enh_cnt[9]
+                progress = min(c9, target)
+                completed = 1 if c9 >= target else 0
             elif atype == "cultivate":
                 completed = 1 if realm >= 0 else 0
                 progress = 1 if completed else 0
@@ -119,9 +146,16 @@ def migrate():
                 pity = gacha_data.get(sid, 0)
                 progress = min(pity, target)
                 completed = 1 if pity >= target else 0
-            elif atype == "own_6star":
-                progress = min(six_cnt, target)
-                completed = 1 if six_cnt >= target else 0
+            elif atype == "own_7star":
+                progress = min(seven_cnt, target)
+                completed = 1 if seven_cnt >= target else 0
+            elif atype == "gem_level":
+                progress = min(max_gem, target)
+                completed = 1 if max_gem >= target else 0
+            elif atype == "reroll_count":
+                # Không thể backfill số lần reroll cũ, mặc định 0
+                progress = 0
+                completed = 0
 
             c.execute(
                 "INSERT OR REPLACE INTO player_achievements (player_id, ach_id, progress, completed, claimed) VALUES (?,?,?,?,0)",
