@@ -327,12 +327,20 @@ async def admin_level(request: Request, player_id: str = Form(...), level: int =
         level = max(1, min(1000, level))
         from bot.config import LEVEL_XP_BASE, STAT_POINTS_PER_LEVEL
         xp = LEVEL_XP_BASE * level * (level - 1) // 2
-        stat_points = (level - 1) * STAT_POINTS_PER_LEVEL
+        current = conn.execute("SELECT level, upgrade_hp, upgrade_atk, upgrade_def FROM players WHERE id=?", (player_id,)).fetchone()
+        if not current:
+            msg = f"❌ Không tìm thấy người chơi!"
+            return
+        old_level = current["level"]
+        total_earned = (level - 1) * STAT_POINTS_PER_LEVEL
+        spent = current["upgrade_hp"] + current["upgrade_atk"] + current["upgrade_def"]
+        new_stat_points = max(0, total_earned - spent)
         conn.execute(
             "UPDATE players SET level=?, xp=?, stat_points=? WHERE id=?",
-            (level, xp, stat_points, player_id))
+            (level, xp, new_stat_points, player_id))
         conn.commit()
-        msg = f"✅ Set level **{level}** cho <@{player_id}>"
+        diff = level - old_level
+        msg = f"✅ Set level **{old_level} → {level}** cho <@{player_id}> (stat_points: {new_stat_points})"
     except Exception as e:
         msg = f"❌ Lỗi: {e}"
     finally:
