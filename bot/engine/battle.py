@@ -622,6 +622,10 @@ async def execute_action(p1: dict, p2: dict, turn_player: int, action: dict, fla
             heal = int(damage * lifesteal_pct / 100)
             attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal)
             result_lines.append(f"🩡 H\u00fat {heal} HP!")
+        elif damage > 0 and get_class_perk(attacker.get("class_id", "")) == "lifesteal_boost":
+            heal = int(damage * 12 / 100)
+            attacker["hp"] = min(atk_eff["hp_max"], attacker.get("hp", 0) + heal)
+            result_lines.append(f"🩡 H\u00fat {heal} HP!")
 
         # Burn
         if skill.get("type") == "burn":
