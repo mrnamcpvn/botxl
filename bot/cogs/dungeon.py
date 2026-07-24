@@ -185,9 +185,22 @@ def generate_dungeon_npc(floor: int) -> dict:
     }
     if floor in boss_names:
         name = boss_names[floor]
-        hp      = int(hp * 1.8)
-        atk     = int(atk * 1.8)
-        defense = int(defense * 1.2)
+        # Boss multiplier tăng dần theo tier tầng
+        if floor >= 150:
+            hp_mult, atk_mult = 4.0, 3.5
+        elif floor >= 100:
+            hp_mult, atk_mult = 3.5, 3.0
+        elif floor >= 80:
+            hp_mult, atk_mult = 3.0, 2.5
+        elif floor >= 60:
+            hp_mult, atk_mult = 2.5, 2.2
+        elif floor >= 40:
+            hp_mult, atk_mult = 2.2, 2.0
+        else:
+            hp_mult, atk_mult = 1.8, 1.8
+        hp      = int(hp * hp_mult)
+        atk     = int(atk * atk_mult)
+        defense = int(defense * 1.3)
 
     if floor <= 20:
         skills = {"attack": 1, "special": 5, "defense": 10, "passive": 14}
