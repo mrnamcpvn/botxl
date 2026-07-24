@@ -593,7 +593,7 @@ class NPCCog(commands.Cog):
                     (sid, npc_id))
 
                 from bot.engine.ach_utils import ach_progress
-                await ach_progress(sid, "npc_kill")
+                await ach_progress(sid, "npc_kill", db=db)
 
                 # Dùng lại codex_kills từ pdata đã load — cộng thêm 1 kill vừa ghi
                 codex_kills = dict(player.get("_codex_kills", {}))

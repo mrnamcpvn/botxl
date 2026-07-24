@@ -175,7 +175,7 @@ class EnhanceCog(commands.Cog):
                             "SELECT COUNT(*) FROM player_equipment WHERE player_id=? AND enhance>=?",
                             (sid, ach_target))
                         row = await cursor.fetchone()
-                        await ach_check(sid, f"enhance_count_{ach_target}", row[0] if row else 0)
+                        await ach_check(sid, f"enhance_count_{ach_target}", row[0] if row else 0, db=db)
                     import json
                     existing = {}
                     cursor = await db.execute(

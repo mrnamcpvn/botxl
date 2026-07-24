@@ -2,8 +2,10 @@ from bot.database import get_db
 from bot.config import ACHIEVEMENTS
 
 
-async def ach_progress(sid: str, ach_type: str, amount: int = 1):
-    db = await get_db()
+async def ach_progress(sid: str, ach_type: str, amount: int = 1, db=None):
+    close = db is None
+    if close:
+        db = await get_db()
     try:
         for ach_id, ach_def in ACHIEVEMENTS.items():
             if ach_def["type"] != ach_type:
@@ -22,13 +24,17 @@ async def ach_progress(sid: str, ach_type: str, amount: int = 1):
             await db.execute(
                 "INSERT OR REPLACE INTO player_achievements (player_id, ach_id, progress, completed, claimed) VALUES (?,?,?,?,0)",
                 (sid, ach_id, new_p, completed))
-        await db.commit()
+        if close:
+            await db.commit()
     finally:
-        await db.close()
+        if close:
+            await db.close()
 
 
-async def ach_check(sid: str, ach_type: str, current_value: int):
-    db = await get_db()
+async def ach_check(sid: str, ach_type: str, current_value: int, db=None):
+    close = db is None
+    if close:
+        db = await get_db()
     try:
         for ach_id, ach_def in ACHIEVEMENTS.items():
             if ach_def["type"] != ach_type:
@@ -45,6 +51,8 @@ async def ach_check(sid: str, ach_type: str, current_value: int):
                 await db.execute(
                     "INSERT OR REPLACE INTO player_achievements (player_id, ach_id, progress, completed, claimed) VALUES (?,?,?,?,0)",
                     (sid, ach_id, progress, 1))
-        await db.commit()
+        if close:
+            await db.commit()
     finally:
-        await db.close()
+        if close:
+            await db.close()

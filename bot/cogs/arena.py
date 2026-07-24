@@ -71,7 +71,7 @@ class Arena(commands.Cog):
                         wdata["wins"] = wdata.get("wins", 0) + 1
                         await db.execute("UPDATE players SET wins=?, last_battle_time=? WHERE id=?", (wdata["wins"], time.time(), winner_id))
                         from bot.engine.ach_utils import ach_progress
-                        await ach_progress(winner_id, "arena_win")
+                        await ach_progress(winner_id, "arena_win", db=db)
                     if ldata:
                         ldata["losses"] = ldata.get("losses", 0) + 1
                         await db.execute("UPDATE players SET losses=?, last_battle_time=? WHERE id=?", (ldata["losses"], time.time(), loser_id))
@@ -192,8 +192,8 @@ class Arena(commands.Cog):
                 await self._save_player_data(db, p1_id, p1)
                 await self._save_player_data(db, p2_id, p2)
                 from bot.engine.ach_utils import ach_check
-                await ach_check(p1_id, "reach_level", p1.get("level", 1))
-                await ach_check(p2_id, "reach_level", p2.get("level", 1))
+                await ach_check(p1_id, "reach_level", p1.get("level", 1), db=db)
+                await ach_check(p2_id, "reach_level", p2.get("level", 1), db=db)
                 await db.execute("UPDATE players SET last_battle_time=? WHERE id=? OR id=?", (time.time(), p1_id, p2_id))
                 await db.execute("DELETE FROM active_battles WHERE id=?", (battle["id"],))
                 await db.commit()

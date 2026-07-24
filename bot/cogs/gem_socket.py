@@ -158,7 +158,7 @@ class GemSocket(commands.Cog):
                 "SELECT MAX(gem_level) FROM player_gems WHERE player_id=?", (sid,))
             row = await cursor.fetchone()
             max_lv = row[0] if row else 0
-            await ach_check(sid, "gem_level", max_lv)
+            await ach_check(sid, "gem_level", max_lv, db=db)
         finally:
             await db.close()
 
