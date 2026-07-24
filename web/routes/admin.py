@@ -342,3 +342,101 @@ async def admin_level(request: Request, player_id: str = Form(...), level: int =
         "request": request, "is_admin": True,
         "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
     })
+
+
+@router.post("/admin/inspect", response_class=HTMLResponse)
+async def admin_inspect(request: Request, player_id: str = Form(...)):
+    if not request.session.get("admin"):
+        return RedirectResponse(url="/login")
+    conn = get_db()
+    inv = {}
+    msg = ""
+    try:
+        p = conn.execute("SELECT id, name, level, coins, wins, losses, elo, class_id FROM players WHERE id=?", (player_id,)).fetchone()
+        if p:
+            inv["player"] = {"id": p["id"], "name": p["name"], "level": p["level"], "coins": p["coins"],
+                             "wins": p["wins"], "losses": p["losses"], "elo": p["elo"], "class_id": p["class_id"]}
+        stones = conn.execute("SELECT stone_basic, stone_medium, stone_advanced FROM player_enhance_stones WHERE player_id=?", (player_id,)).fetchone()
+        inv["stones"] = {"basic": stones[0] if stones else 0, "medium": stones[1] if stones else 0, "advanced": stones[2] if stones else 0}
+        equip_rows = conn.execute("SELECT id, item_id, enhance, equipped FROM player_equipment WHERE player_id=?", (player_id,)).fetchall()
+        from bot.data.equipment import EQUIPMENT, STAR_LABELS
+        inv["equipment"] = []
+        for r in equip_rows:
+            e = EQUIPMENT.get(r["item_id"], {})
+            star = STAR_LABELS.get(e.get("star", 1), "⭐")
+            eq_name = f"{star} {e.get('name', f'#{r[\"item_id\"]}')}"
+            inv["equipment"].append({"id": r["id"], "item_id": r["item_id"], "enhance": r["enhance"], "equipped": r["equipped"], "name": eq_name})
+        inv["equip_count"] = len(inv["equipment"])
+        gem_rows = conn.execute("SELECT gem_type, gem_level, quantity FROM player_gems WHERE player_id=? AND quantity>0", (player_id,)).fetchall()
+        from bot.config import GEM_TYPES
+        inv["gems"] = [{"type": g["gem_type"], "level": g["gem_level"], "qty": g["quantity"],
+                        "name": GEM_TYPES.get(g["gem_type"], {}).get("name", g["gem_type"])} for g in gem_rows]
+        inv_consume = conn.execute("SELECT item_id, quantity FROM inventory WHERE player_id=?", (player_id,)).fetchall()
+        from bot.data.shop_items import SHOP_ITEMS
+        inv["consumables"] = [{"id": r["item_id"], "qty": r["quantity"],
+                               "name": SHOP_ITEMS.get(r["item_id"], {}).get("name", f"#{r['item_id']}")} for r in inv_consume]
+        ach_rows = conn.execute("SELECT ach_id, completed, claimed FROM player_achievements WHERE player_id=? AND completed=1 AND claimed=0", (player_id,)).fetchall()
+        from bot.config import ACHIEVEMENTS
+        inv["unclaimed"] = [{"id": r["ach_id"], "name": ACHIEVEMENTS.get(r["ach_id"], {}).get("name", f"#{r['ach_id']}"),
+                             "coins": ACHIEVEMENTS.get(r["ach_id"], {}).get("reward_coins", 0),
+                             "stones": ACHIEVEMENTS.get(r["ach_id"], {}).get("reward_stones", {})} for r in ach_rows]
+    except Exception as e:
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True, "players": players,
+        "equips": equips, "skills": skills, "gems": gems,
+        "inv": inv, "msg": msg, "inspect_id": player_id
+    })
+
+
+@router.post("/admin/revoke", response_class=HTMLResponse)
+async def admin_revoke(request: Request,
+                       player_id: str = Form(...),
+                       revoke_type: str = Form(...),
+                       revoke_id: str = Form(""),
+                       amount: int = Form(0)):
+    if not request.session.get("admin"):
+        return RedirectResponse(url="/login")
+    conn = get_db()
+    msg = ""
+    try:
+        if revoke_type == "coins":
+            conn.execute("UPDATE players SET coins=MAX(0, coins-?) WHERE id=?", (amount, player_id))
+            msg = f"✅ Thu hồi **{amount}**🪙 từ <@{player_id}>"
+        elif revoke_type == "stone_basic":
+            conn.execute("UPDATE player_enhance_stones SET stone_basic=MAX(0, stone_basic-?) WHERE player_id=?", (amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** đá sơ cấp từ <@{player_id}>"
+        elif revoke_type == "stone_medium":
+            conn.execute("UPDATE player_enhance_stones SET stone_medium=MAX(0, stone_medium-?) WHERE player_id=?", (amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** đá trung cấp từ <@{player_id}>"
+        elif revoke_type == "stone_advanced":
+            conn.execute("UPDATE player_enhance_stones SET stone_advanced=MAX(0, stone_advanced-?) WHERE player_id=?", (amount, player_id))
+            msg = f"✅ Thu hồi **{amount}** đá cao cấp từ <@{player_id}>"
+        elif revoke_type == "equip":
+            conn.execute("DELETE FROM player_equipment WHERE id=? AND player_id=?", (revoke_id, player_id))
+            msg = f"✅ Đã xóa trang bị ID **{revoke_id}**"
+        elif revoke_type == "gem":
+            conn.execute("UPDATE player_gems SET quantity=MAX(0, quantity-?) WHERE player_id=? AND gem_type=? AND gem_level=?", (amount, player_id, revoke_id.split("_")[0], int(revoke_id.split("_")[1])))
+            msg = f"✅ Thu hồi **{amount}** đá {revoke_id}"
+        elif revoke_type == "consumable":
+            conn.execute("UPDATE inventory SET quantity=MAX(0, quantity-?) WHERE player_id=? AND item_id=?", (amount, player_id, int(revoke_id)))
+            msg = f"✅ Thu hồi **{amount}** item ID {revoke_id}"
+        elif revoke_type == "reset_ach":
+            ach_id = int(revoke_id)
+            conn.execute("UPDATE player_achievements SET completed=0, claimed=0 WHERE player_id=? AND ach_id=?", (player_id, ach_id))
+            from bot.config import ACHIEVEMENTS
+            ach_name = ACHIEVEMENTS.get(ach_id, {}).get("name", f"#{ach_id}")
+            msg = f"✅ Reset thành tựu **{ach_name}** (có thể claim lại)"
+        conn.commit()
+    except Exception as e:
+        msg = f"❌ Lỗi: {e}"
+    finally:
+        conn.close()
+    players = get_players(); equips = get_equip_list(); skills = get_skill_list(); gems = get_gem_list()
+    return templates.TemplateResponse(request, "admin.html", {
+        "request": request, "is_admin": True,
+        "players": players, "equips": equips, "skills": skills, "gems": gems, "msg": msg
+    })

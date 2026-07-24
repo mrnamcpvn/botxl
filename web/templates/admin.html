@@ -165,6 +165,127 @@
             <button type="submit">Set</button>
         </form>
     </div>
+
+    <div class="card">
+        <h2>🔍 Tra Cứu & Thu Hồi</h2>
+        <form method="post" action="/admin/inspect">
+            <select name="player_id" required>
+                <option value="">-- Chọn người chơi --</option>
+                {% for p in players %}
+                <option value="{{ p.id }}">{{ p.name }} (Lv.{{ p.level }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Xem</button>
+        </form>
+        {% if inv and inv.player %}
+        <hr>
+        <h3>📊 {{ inv.player.name }} (Lv.{{ inv.player.level }})</h3>
+        <table class="inv-table">
+            <tr><td>💰 Coin</td><td>{{ inv.player.coins }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="coins">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            <tr><td>💎 Đá Sơ Cấp</td><td>{{ inv.stones.basic }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="stone_basic">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            <tr><td>💎 Đá Trung Cấp</td><td>{{ inv.stones.medium }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="stone_medium">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            <tr><td>💎 Đá Cao Cấp</td><td>{{ inv.stones.advanced }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="stone_advanced">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+        </table>
+        <h4>⚒️ Trang Bị ({{ inv.equip_count }})</h4>
+        <table class="inv-table">
+            {% for eq in inv.equipment %}
+            <tr><td>{{ eq.name }} {% if eq.equipped %}✅{% endif %}</td><td>+{{ eq.enhance }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="equip">
+                        <input type="hidden" name="revoke_id" value="{{ eq.id }}">
+                        <input type="hidden" name="amount" value="1">
+                        <button type="submit">Xóa</button>
+                    </form>
+                </td></tr>
+            {% endfor %}
+        </table>
+        {% if inv.gems %}
+        <h4>💠 Đá Khảm</h4>
+        <table class="inv-table">
+            {% for g in inv.gems %}
+            <tr><td>{{ g.name }} C{{ g.level }}</td><td>x{{ g.qty }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="gem">
+                        <input type="hidden" name="revoke_id" value="{{ g.type }}_{{ g.level }}">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% if inv.consumables %}
+        <h4>🧪 Vật Phẩm</h4>
+        <table class="inv-table">
+            {% for c in inv.consumables %}
+            <tr><td>{{ c.name }}</td><td>x{{ c.qty }}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="consumable">
+                        <input type="hidden" name="revoke_id" value="{{ c.id }}">
+                        <input name="amount" type="number" min="0" placeholder="SL" style="width:60px" required>
+                        <button type="submit">Thu hồi</button>
+                    </form>
+                </td></tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% if inv.unclaimed %}
+        <h4>🏆 Thành Tựu Chưa Claim</h4>
+        <table class="inv-table">
+            {% for a in inv.unclaimed %}
+            <tr><td>{{ a.name }}</td><td>💰{{ a.coins }}{% if a.stones %} +💎{% for k,v in a.stones.items() %}{{ v }} {% endfor %}{% endif %}</td>
+                <td>
+                    <form method="post" action="/admin/revoke" style="display:inline">
+                        <input type="hidden" name="player_id" value="{{ inv.player.id }}">
+                        <input type="hidden" name="revoke_type" value="reset_ach">
+                        <input type="hidden" name="revoke_id" value="{{ a.id }}">
+                        <input type="hidden" name="amount" value="1">
+                        <button type="submit">Reset</button>
+                    </form>
+                </td></tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% endif %}
+    </div>
 </div>
 
 <script>
