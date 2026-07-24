@@ -750,42 +750,41 @@ class WorldBoss(commands.Cog):
 
     def _calc_boss_reward(self, rank: int, total: int) -> dict:
         """
-        Bảng thưởng theo rank:
-        Top 1  : 1.000🪙 · 700XP · 3 Đá Cao Cấp · 1 trang bị 5★
-        Top 2  : 800🪙  · 550XP · 2 Đá Cao Cấp · 2 trang bị 4★
-        Top 3  : 600🪙  · 400XP · 3 Đá Trung Cấp · 1 trang bị 4★
-        Top 4-5: 450🪙  · 280XP · 2 Đá Trung Cấp · 2 trang bị 3★
-        Top 6-10: 300🪙 · 160XP · 1 trang bị random 2-3★
+        Bảng thưởng theo rank (hạ 1 sao trang bị so với trước):
+        Top 1  : 1.000🪙 · 700XP · 3 Đá Cao Cấp · 1 trang bị 4★
+        Top 2  : 800🪙  · 550XP · 2 Đá Cao Cấp · 2 trang bị 3★
+        Top 3  : 600🪙  · 400XP · 3 Đá Trung Cấp · 1 trang bị 3★
+        Top 4-5: 450🪙  · 280XP · 2 Đá Trung Cấp · 2 trang bị 2★
+        Top 6-10: 300🪙 · 160XP · 1 trang bị 1-2★
         Top 11+: 150🪙  · 60XP
-        (+ người kết liễu boss nhận thêm 1 trang bị 5★, xử lý riêng trong _apply_boss_rewards)
+        (+ người kết liễu boss vẫn nhận thêm 1 trang bị 5★)
         """
         if rank == 1:
             return {
                 "coins": random.randint(900, 1100), "xp": 700,
                 "stones": ("stone_advanced", random.randint(3, 5)),
-                "equips": [(5, 1)],          # [(star, count)]
+                "equips": [(4, 1)],          # hạ từ 5★ → 4★
             }
         elif rank == 2:
             return {
                 "coins": random.randint(700, 900), "xp": 550,
                 "stones": ("stone_advanced", random.randint(2, 3)),
-                "equips": [(4, 2)],
+                "equips": [(3, 2)],          # hạ từ 4★ → 3★
             }
         elif rank == 3:
             return {
                 "coins": random.randint(500, 700), "xp": 400,
                 "stones": ("stone_medium", random.randint(3, 5)),
-                "equips": [(4, 1)],
+                "equips": [(3, 1)],          # hạ từ 4★ → 3★
             }
         elif rank <= 5:
             return {
                 "coins": random.randint(400, 500), "xp": random.randint(250, 300),
                 "stones": ("stone_medium", random.randint(1, 2)),
-                "equips": [(3, 2)],
+                "equips": [(2, 2)],          # hạ từ 3★ → 2★
             }
         elif rank <= 10:
-            # 1 trang bị random 2 hoặc 3 sao
-            star = random.choice([2, 3])
+            star = random.choice([1, 2])     # hạ từ 2-3★ → 1-2★
             return {
                 "coins": random.randint(250, 350), "xp": random.randint(130, 180),
                 "equips": [(star, 1)],

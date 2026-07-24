@@ -836,11 +836,11 @@ class DungeonCog(commands.Cog):
             elif 161 <= floor <= 200: gem_level = 6
 
             cult_drop = None
-            if floor >= 161 and random.random() < 0.02:   cult_drop = "tien_tinh"
-            elif floor >= 121 and random.random() < 0.03: cult_drop = "thien_linh_thach"
-            elif floor >= 81 and random.random() < 0.05:  cult_drop = "dan_thuong_pham"
-            elif floor >= 41 and random.random() < 0.07:  cult_drop = "linh_dan"
-            elif floor >= 1 and random.random() < 0.10:   cult_drop = "linh_thao"
+            if floor >= 161 and random.random() < 0.01:   cult_drop = "tien_tinh"
+            elif floor >= 121 and random.random() < 0.015: cult_drop = "thien_linh_thach"
+            elif floor >= 81 and random.random() < 0.025:  cult_drop = "dan_thuong_pham"
+            elif floor >= 41 and random.random() < 0.035:  cult_drop = "linh_dan"
+            elif floor >= 1 and random.random() < 0.05:    cult_drop = "linh_thao"
 
             db = await get_db()
             try:
@@ -849,7 +849,7 @@ class DungeonCog(commands.Cog):
                     "UPDATE dungeon_progress SET checkpoint=MAX(checkpoint, ?) WHERE player_id=?",
                     (floor, sid))
                 # Gem drop
-                if gem_level and random.random() < 0.08:
+                if gem_level and random.random() < 0.04:  # giảm từ 8% → 4%
                     gt = random.choice(list(GEM_TYPES.keys()))
                     await db.execute(
                         "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "

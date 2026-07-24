@@ -700,17 +700,18 @@ async def _drop_gem_npc(db, player_id: str, npc_level: int, cult_realm: int = -1
     from bot.config import GEM_TYPES
     if npc_level < 10:
         return None
-    chance = 0.10
+    # Giảm drop rate: 10% → 5%, C3 chỉ từ Lv40+
+    chance = 0.05
     if cult_realm >= 2:
-        chance += 0.010  # Kết Đan: +10% gem drop (10% of 10% = +1% absolute)
+        chance += 0.005  # Kết Đan: +5% của 5% = +0.25% absolute
     if random.random() > chance:
         return None
     if npc_level <= 19:
         gl = 1
-    elif npc_level <= 25:
+    elif npc_level <= 71:
         gl = 2
     else:
-        gl = 3
+        gl = 3  # C3 chỉ drop từ NPC 25+ (Lv72+)
     gt = random.choice(list(GEM_TYPES.keys()))
     await db.execute(
         "INSERT INTO player_gems (player_id, gem_type, gem_level, quantity) VALUES (?, ?, ?, 1) "
@@ -720,16 +721,15 @@ async def _drop_gem_npc(db, player_id: str, npc_level: int, cult_realm: int = -1
 
 
 async def _drop_cult_item_npc(db, player_id: str, npc_level: int) -> str | None:
-    """Drop cống phẩm tu tiên từ NPC theo level."""
-    from bot.config import CULTIVATION_ITEM_DROPS, CULTIVATION_ITEM_NAMES
-    # Xác định item có thể drop theo level NPC
+    """Drop cống phẩm tu tiên từ NPC theo level — tỉ lệ giảm."""
+    from bot.config import CULTIVATION_ITEM_NAMES
     candidates = []
     if npc_level <= 10:
-        candidates = [("linh_thao", 0.075)]
+        candidates = [("linh_thao", 0.03)]         # 3% (giảm từ 7.5%)
     elif npc_level <= 20:
-        candidates = [("linh_thao", 0.05), ("linh_dan", 0.04)]
+        candidates = [("linh_thao", 0.02), ("linh_dan", 0.015)]  # giảm 50%
     else:
-        candidates = [("linh_dan", 0.04), ("dan_thuong_pham", 0.025)]
+        candidates = [("linh_dan", 0.015), ("dan_thuong_pham", 0.008)]  # giảm 50%
 
     for item_id, chance in candidates:
         if random.random() < chance:
