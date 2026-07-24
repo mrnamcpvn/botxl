@@ -105,7 +105,11 @@ def get_effective_stats(pdata: dict) -> dict:
         if hidden_json:
             try:
                 hs = json.loads(hidden_json)
-                for k, v in hs.items():
+                for slot_key, hdata in hs.items():
+                    if not isinstance(hdata, dict) or "k" not in hdata:
+                        continue
+                    k = hdata["k"]
+                    v = hdata["v"]
                     if k == "hp" or k == "hp_max": hp_max += v
                     elif k == "attack_min": atk_min += v
                     elif k == "attack_max": atk_max += v

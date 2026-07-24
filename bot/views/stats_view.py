@@ -355,17 +355,20 @@ class StatsView(discord.ui.View):
                     if k in mapping:
                         sp.append(mapping[k])
 
-                # Hidden stats
+                # Hidden stats (3 slots)
                 hidden_json = equip_hidden.get(str(eq_id), "")
                 hidden_str = ""
                 if hidden_json:
                     try:
                         hs = json.loads(hidden_json)
                         hparts = []
-                        for hk, hv in hs.items():
-                            pool = HIDDEN_STAT_POOLS.get(hk, {})
-                            hparts.append(f"{pool.get('icon','')}+{hv}")
-                        hidden_str = f"\n　🌟 Ẩn: {'  '.join(hparts)}"
+                        for slot_num in ("1", "2", "3"):
+                            hdata = hs.get(slot_num)
+                            if hdata and isinstance(hdata, dict) and "k" in hdata:
+                                pool = HIDDEN_STAT_POOLS.get(hdata["k"], {})
+                                hparts.append(f"{pool.get('icon','')}+{hdata['v']}")
+                        if hparts:
+                            hidden_str = f"\n　🌟 Ẩn: {'  '.join(hparts)}"
                     except Exception:
                         pass
 

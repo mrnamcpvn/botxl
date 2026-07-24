@@ -10,6 +10,8 @@ from bot.config import (
 )
 
 MILESTONES = {4, 7, 9}
+MILESTONE_SLOT = {4: 1, 7: 2, 9: 3}
+SLOT_MULTIPLIERS = {1: 1.5, 2: 3.0, 3: 5.0}
 
 HIDDEN_STAT_POOLS = {
     "atk_min": {"icon": "⚔️", "label": "Tấn Công Tối Thiểu", "val": lambda s: 2 + s * 3},
@@ -24,18 +26,12 @@ HIDDEN_STAT_POOLS = {
     "regen": {"icon": "💚", "label": "Hồi Phục", "val": lambda s: 1 + s // 2},
 }
 
-def generate_hidden_stat(star: int, milestone: int) -> str:
+def generate_hidden_stat(star: int, slot: int) -> str:
     import random, json
-    existing = {}
-    stat_keys = list(HIDDEN_STAT_POOLS.keys())
-    random.shuffle(stat_keys)
-    selected = stat_keys[:2]
-    for k in selected:
-        pool = HIDDEN_STAT_POOLS[k]
-        mult = 1.0 + (milestone / 9) * 1.5
-        val = int(pool["val"](star) * mult)
-        existing[k] = val
-    return json.dumps(existing)
+    k = random.choice(list(HIDDEN_STAT_POOLS.keys()))
+    pool = HIDDEN_STAT_POOLS[k]
+    val = int(pool["val"](star) * SLOT_MULTIPLIERS[slot])
+    return json.dumps({"k": k, "v": val})
 
 
 class EnhanceCog(commands.Cog):
@@ -168,15 +164,24 @@ class EnhanceCog(commands.Cog):
                 await update_progress(db, sid, 3)
                 hidden_msg = ""
                 if target in MILESTONES:
-                    hidden = generate_hidden_stat(equip_star, target)
-                    await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (hidden, eid))
                     import json
-                    hs = json.loads(hidden)
-                    parts = []
-                    for k, v in hs.items():
-                        pool = HIDDEN_STAT_POOLS.get(k, {})
-                        parts.append(f"{pool.get('icon','')} +{v} {pool.get('label',k)}")
-                    hidden_msg = f"\n🌟 MỞ KHÓA THUỘC TÍNH ẨN!\n" + "\n".join(parts)
+                    existing = {}
+                    cursor = await db.execute(
+                        "SELECT hidden_stats FROM player_equipment WHERE id=?", (eid,))
+                    row = await cursor.fetchone()
+                    if row and row[0]:
+                        try:
+                            existing = json.loads(row[0])
+                        except:
+                            existing = {}
+                    slot = MILESTONE_SLOT[target]
+                    new_stat = generate_hidden_stat(equip_star, slot)
+                    existing[str(slot)] = json.loads(new_stat)
+                    merged = json.dumps(existing)
+                    await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (merged, eid))
+                    hs = existing[str(slot)]
+                    pool = HIDDEN_STAT_POOLS.get(hs["k"], {})
+                    hidden_msg = f"\n🌟 MỞ KHÓA THUỘC TÍNH ẨN {slot}!\n{pool.get('icon','')} +{hs['v']} {pool.get('label', hs['k'])}"
                 await db.commit()
                 if target >= MAX_ENHANCE:
                     next_str = "🌟 MAX 🌟"
@@ -221,13 +226,13 @@ class EnhanceCog(commands.Cog):
             await ctx_or_int.response.send_message(msg, ephemeral=ephemeral)
 
     @commands.command(name="reroll", aliases=["rerollhidden", "rolllai"])
-    async def reroll_cmd(self, ctx, eq_id: str = None):
-        await self._reroll(ctx, str(ctx.author.id), eq_id, ctx.author.display_name, "!")
+    async def reroll_cmd(self, ctx, eq_id: str = None, slot: str = None):
+        await self._reroll(ctx, str(ctx.author.id), eq_id, slot, ctx.author.display_name, "!")
 
     @app_commands.command(name="reroll", description="🌟 Reroll thuộc tính ẩn của trang bị")
-    @app_commands.describe(eq_id="ID trang bị (xem /inv)")
-    async def slash_reroll(self, interaction: discord.Interaction, eq_id: str):
-        await self._reroll(interaction, str(interaction.user.id), eq_id,
+    @app_commands.describe(eq_id="ID trang bị (xem /inv)", slot="Slot 1/2/3 muốn reroll")
+    async def slash_reroll(self, interaction: discord.Interaction, eq_id: str, slot: int = None):
+        await self._reroll(interaction, str(interaction.user.id), eq_id, str(slot) if slot else None,
                            interaction.user.display_name, "/")
 
     @slash_reroll.autocomplete("eq_id")
@@ -249,24 +254,29 @@ class EnhanceCog(commands.Cog):
         finally:
             await db.close()
 
-    REROLL_TIERS = {
-        1: {"min_enhance": 4, "stone_id": STONE_BASIC_ID, "stone_qty": 20, "coin_cost": 5000, "milestone": 4},
-        2: {"min_enhance": 7, "stone_id": STONE_MEDIUM_ID, "stone_qty": 20, "coin_cost": 10000, "milestone": 7},
-        3: {"min_enhance": 9, "stone_id": STONE_ADVANCED_ID, "stone_qty": 20, "coin_cost": 20000, "milestone": 9},
+    REROLL_COSTS = {
+        1: {"min_enhance": 4, "stone_id": STONE_BASIC_ID, "stone_qty": 20, "coin_cost": 3000},
+        2: {"min_enhance": 7, "stone_id": STONE_MEDIUM_ID, "stone_qty": 20, "coin_cost": 6000},
+        3: {"min_enhance": 9, "stone_id": STONE_ADVANCED_ID, "stone_qty": 20, "coin_cost": 9000},
     }
 
     STONE_LABELS = {STONE_BASIC_ID: "đá sơ cấp", STONE_MEDIUM_ID: "đá trung cấp", STONE_ADVANCED_ID: "đá cao cấp"}
     STONE_COLUMNS = {STONE_BASIC_ID: "stone_basic", STONE_MEDIUM_ID: "stone_medium", STONE_ADVANCED_ID: "stone_advanced"}
 
-    async def _reroll(self, ctx_or_int, sid: str, eq_id: str, display_name: str, prefix: str):
+    async def _reroll(self, ctx_or_int, sid: str, eq_id: str, slot: str, display_name: str, prefix: str):
         if not eq_id:
-            await self._reply(ctx_or_int, f"❌ Dùng: `{prefix}reroll <ID>` (xem ID trong `/inv`)")
+            await self._reply(ctx_or_int, f"❌ Dùng: `{prefix}reroll <ID> <slot>` (slot 1/2/3)")
             return
         try:
             eid = int(eq_id.strip())
         except:
             await self._reply(ctx_or_int, "❌ ID không hợp lệ!")
             return
+
+        if not slot or slot not in ("1", "2", "3"):
+            await self._reply(ctx_or_int, "❌ Chọn slot 1, 2 hoặc 3 để reroll!")
+            return
+        slot_int = int(slot)
 
         db = await get_db()
         try:
@@ -285,20 +295,22 @@ class EnhanceCog(commands.Cog):
             if eiid not in EQUIPMENT:
                 await self._reply(ctx_or_int, "❌ Chỉ reroll được trang bị hệ thống!")
                 return
-            if enhance < 4:
-                await self._reply(ctx_or_int, "❌ Trang bị chưa mở khóa thuộc tính ẩn (cần +4)!")
-                return
             if not hidden:
                 await self._reply(ctx_or_int, "❌ Trang bị chưa có thuộc tính ẩn! Dùng `/cuonghoa` để mở khóa.")
                 return
 
-            tier = 1
-            if enhance >= 9:
-                tier = 3
-            elif enhance >= 7:
-                tier = 2
+            # Check slot availability based on enhance
+            if slot_int == 1 and enhance < 4:
+                await self._reply(ctx_or_int, "❌ Slot 1 cần trang bị +4 trở lên!")
+                return
+            if slot_int == 2 and enhance < 7:
+                await self._reply(ctx_or_int, "❌ Slot 2 cần trang bị +7 trở lên!")
+                return
+            if slot_int == 3 and enhance < 9:
+                await self._reply(ctx_or_int, "❌ Slot 3 cần trang bị +9 trở lên!")
+                return
 
-            cfg = self.REROLL_TIERS[tier]
+            cfg = self.REROLL_COSTS[slot_int]
             stone_key = self.STONE_COLUMNS[cfg["stone_id"]]
             stone_label = self.STONE_LABELS[cfg["stone_id"]]
 
@@ -327,18 +339,23 @@ class EnhanceCog(commands.Cog):
                 return
 
             equip_star = EQUIPMENT[eiid]["star"]
-            new_hidden = generate_hidden_stat(equip_star, cfg["milestone"])
             import json
-            hs = json.loads(new_hidden)
-            parts = []
-            for k, v in hs.items():
-                pool = HIDDEN_STAT_POOLS.get(k, {})
-                parts.append(f"{pool.get('icon','')} +{v} {pool.get('label',k)}")
+            existing = {}
+            try:
+                existing = json.loads(hidden) if hidden else {}
+            except:
+                existing = {}
+            new_stat = generate_hidden_stat(equip_star, slot_int)
+            existing[str(slot_int)] = json.loads(new_stat)
+            merged = json.dumps(existing)
+            hs = existing[str(slot_int)]
+            pool = HIDDEN_STAT_POOLS.get(hs["k"], {})
+            line = f"{pool.get('icon','')} +{hs['v']} {pool.get('label', hs['k'])}"
 
             await db.execute(f"UPDATE player_enhance_stones SET {stone_key}={stone_key}-? WHERE player_id=?",
                              (cfg["stone_qty"], sid))
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (cfg["coin_cost"], sid))
-            await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (new_hidden, eid))
+            await db.execute("UPDATE player_equipment SET hidden_stats=? WHERE id=?", (merged, eid))
             await db.commit()
 
             equip_name = EQUIPMENT[eiid]["name"]
@@ -351,8 +368,8 @@ class EnhanceCog(commands.Cog):
                 title="🌟 REROLL THUỘC TÍNH ẨN!",
                 description=(
                     f"{stars} **{equip_name}** +{enhance}\n"
-                    f"💰 Mất: {cfg['stone_qty']} {stone_label} | {cfg['coin_cost']}🪙\n"
-                    f"\n📊 Thuộc tính ẩn mới:\n" + "\n".join(parts)
+                    f"🎯 Slot {slot_int} → {line}\n"
+                    f"💰 Mất: {cfg['stone_qty']} {stone_label} | {cfg['coin_cost']}🪙"
                 ),
                 color=embed_color)
             if isinstance(ctx_or_int, commands.Context):
