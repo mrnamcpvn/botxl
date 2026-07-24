@@ -238,9 +238,14 @@ class EnhanceCog(commands.Cog):
         await self._reroll(ctx, str(ctx.author.id), eq_id, slot, ctx.author.display_name, "!")
 
     @app_commands.command(name="reroll", description="🌟 Reroll thuộc tính ẩn của trang bị")
-    @app_commands.describe(eq_id="ID trang bị (xem /inv)", slot="Slot 1/2/3 muốn reroll")
-    async def slash_reroll(self, interaction: discord.Interaction, eq_id: str, slot: int = None):
-        await self._reroll(interaction, str(interaction.user.id), eq_id, str(slot) if slot else None,
+    @app_commands.describe(eq_id="ID trang bị (xem /inv)", slot="Slot muốn reroll")
+    @app_commands.choices(slot=[
+        app_commands.Choice(name="Slot 1 (20 đá sơ cấp + 3k🪙)", value=1),
+        app_commands.Choice(name="Slot 2 (20 đá trung + 6k🪙)", value=2),
+        app_commands.Choice(name="Slot 3 (20 đá cao cấp + 9k🪙)", value=3),
+    ])
+    async def slash_reroll(self, interaction: discord.Interaction, eq_id: str, slot: int):
+        await self._reroll(interaction, str(interaction.user.id), eq_id, str(slot),
                            interaction.user.display_name, "/")
 
     @slash_reroll.autocomplete("eq_id")
@@ -282,7 +287,7 @@ class EnhanceCog(commands.Cog):
             return
 
         if not slot or slot not in ("1", "2", "3"):
-            await self._reply(ctx_or_int, "❌ Chọn slot 1, 2 hoặc 3 để reroll!")
+            await self._reply(ctx_or_int, "❌ Dùng: `!reroll <ID> 1` (Slot 1: 20 đá sơ cấp + 3k🪙) | 2 (20 đá trung + 6k🪙) | 3 (20 đá cao cấp + 9k🪙)")
             return
         slot_int = int(slot)
 

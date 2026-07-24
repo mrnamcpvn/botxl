@@ -61,7 +61,7 @@ class HelpCog(commands.Cog):
             "name": "⚒️ Nâng Cấp",
             "description": (
                 "`!cuonghoa` / `!enhance` — Cường hóa trang bị\n"
-                "`!reroll <ID> <slot>` — Reroll thuộc tính ẩn slot 1/2/3\n"
+                "`!reroll <ID> <1|2|3>` — Reroll thuộc tính ẩn (Slots: 1→20 đá sc+3k, 2→20 đá tc+6k, 3→20 đá cc+9k)\n"
                 "Dùng đá Sơ Cấp / Trung Cấp / Cao Cấp để nâng sao trang bị\n"
                 "Cấp càng cao tỉ lệ thành công càng thấp\n"
                 "Nâng cấp thành công có thể unlock hidden stats"
