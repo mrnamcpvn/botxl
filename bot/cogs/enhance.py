@@ -11,7 +11,7 @@ from bot.config import (
 
 MILESTONES = {4, 7, 9}
 MILESTONE_SLOT = {4: 1, 7: 2, 9: 3}
-SLOT_MULTIPLIERS = {1: 1.5, 2: 3.0, 3: 5.0}
+SLOT_MULTIPLIERS = {1: 0.5, 2: 1.0, 3: 1.5}
 
 HIDDEN_STAT_POOLS = {
     "atk_min": {"icon": "⚔️", "label": "Tấn Công Tối Thiểu", "val": lambda s: 2 + s * 3},

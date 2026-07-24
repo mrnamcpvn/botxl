@@ -29,7 +29,7 @@ STAT_VAL = {
     "reflect": lambda s: 1 + s,
     "regen": lambda s: 1 + s // 2,
 }
-SLOT_MULT = {1: 1.5, 2: 3.0, 3: 5.0}
+SLOT_MULT = {1: 0.5, 2: 1.0, 3: 1.5}
 
 
 def generate_slot(star: int, slot: int) -> list:
