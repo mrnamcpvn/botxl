@@ -212,6 +212,9 @@ class CultivationCog(commands.Cog):
                 (now, sid))
             await db.commit()
 
+            from bot.engine.ach_utils import ach_progress
+            await ach_progress(sid, "cultivate")
+
             from bot.config import get_cultivation_role_mult
             cult_role_mult = get_cultivation_role_mult(role_mult)
             stage_mult = 1.0 + (cdata["stage"] - 1) * 0.25
@@ -473,6 +476,9 @@ class CultivationCog(commands.Cog):
                 "UPDATE cultivation SET realm=?, stage=1, tuvi=0 WHERE player_id=?",
                 (next_realm, sid))
             await db.commit()
+
+            from bot.engine.ach_utils import ach_progress
+            await ach_progress(sid, "reach_realm")
 
             passive_text = _PASSIVE_LABELS.get(
                 CULTIVATION_PASSIVES.get(next_realm), "") or ""

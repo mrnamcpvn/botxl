@@ -8,6 +8,7 @@ from bot.database import get_db
 from bot.data.classes import CLASSES, DEFAULT_SKILLS, DEFAULT_SKILL_SLOTS
 from bot.data.equipment import EQUIPMENT, STAR_LABELS, SLOT_NAMES as EQ_SLOT_NAMES
 from bot.logger import logger
+from bot.views.leaderboard_view import WEEKLY_PRIZES
 
 ADMIN_IDS = ["454923120986292224"]
 DROP_CHANNEL_ID = 1040459995319373864
@@ -561,6 +562,67 @@ class LootDropView(discord.ui.View):
                     await self.message.edit(embed=embed, view=self)
         except:
             pass
+
+
+    @commands.command(name="weeklyreward", aliases=["traitop"])
+    async def weeklyreward_cmd(self, ctx):
+        await self._weeklyreward(ctx)
+
+    async def _weeklyreward(self, ctx_or_int):
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, name, wins, combat_power FROM players ORDER BY wins DESC LIMIT 10")
+            top = await cursor.fetchall()
+            lines = []
+            for i, row in enumerate(top):
+                prize = WEEKLY_PRIZES.get(i + 1, {})
+                lines.append(f"{prize.get('desc', f'#{i+1}')} **{row['name']}** — {row['wins']} wins — 💰+{prize.get('coins', 0)}")
+
+            embed = discord.Embed(
+                title="🎁 BXH Tuần Này",
+                description="\n".join(lines) if lines else "Chưa có dữ liệu",
+                color=0xf1c40f)
+            embed.set_footer(text="Admin dùng !weeklyreward để trao thưởng")
+
+            if isinstance(ctx_or_int, commands.Context):
+                await ctx_or_int.reply(embed=embed)
+        finally:
+            await db.close()
+
+    @commands.command(name="distributeweekly", aliases=["traotop"])
+    async def distributeweekly_cmd(self, ctx):
+        if ctx.author.id != 454923120986292224:
+            await ctx.reply("🚫 Chỉ admin mới dùng!")
+            return
+        db = await get_db()
+        try:
+            cursor = await db.execute(
+                "SELECT id, name, wins FROM players ORDER BY wins DESC LIMIT 10")
+            top = await cursor.fetchall()
+            results = []
+            for i, row in enumerate(top):
+                prize = WEEKLY_PRIZES.get(i + 1)
+                if not prize:
+                    continue
+                coins = prize.get("coins", 0)
+                if coins:
+                    await db.execute("UPDATE players SET coins=coins+? WHERE id=?", (coins, row["id"]))
+                for stone_key in ("stone_basic", "stone_medium", "stone_advanced"):
+                    qty = prize.get(stone_key, 0)
+                    if qty:
+                        await db.execute(
+                            f"INSERT INTO player_enhance_stones (player_id) VALUES (?) ON CONFLICT(player_id) DO UPDATE SET {stone_key}={stone_key}+?",
+                            (row["id"], qty))
+                results.append(f"{prize['desc']} **{row['name']}** — 💰{coins}")
+            await db.commit()
+            embed = discord.Embed(
+                title="🎁 ĐÃ TRAO THƯỞNG CUỐI TUẦN!",
+                description="\n".join(results),
+                color=0xffd700)
+            await ctx.reply(embed=embed)
+        finally:
+            await db.close()
 
 
 async def setup(bot):

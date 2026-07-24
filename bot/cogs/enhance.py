@@ -169,6 +169,8 @@ class EnhanceCog(commands.Cog):
                 await update_progress(db, sid, 3)
                 hidden_msg = ""
                 if target in MILESTONES:
+                    from bot.engine.ach_utils import ach_progress
+                    await ach_progress(sid, f"enhance_{target}")
                     import json
                     existing = {}
                     cursor = await db.execute(

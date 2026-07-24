@@ -15,6 +15,8 @@ class HelpCog(commands.Cog):
                 "`!stats` — Xem chỉ số nhân vật\n"
                 "`!upgrade <hp/atk/def>` — Nâng cấp chỉ số\n"
                 "`!leaderboard` — Bảng xếp hạng\n"
+                "`!daily` — Điểm danh nhận quà\n"
+                "`!achievement` — Thành tựu & nhận thưởng\n"
                 "`!trogiup` — Xem hướng dẫn này"
             ),
         },

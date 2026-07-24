@@ -157,6 +157,9 @@ class GachaCog(commands.Cog):
                 (pid, new_pity, new_pity))
             await db.commit()
 
+            from bot.engine.ach_utils import ach_progress
+            await ach_progress(pid, "gacha")
+
             coins_left = coins - ROLL_COST
             stats = equip.get("stats", {})
             star_emojis = STAR_EMOJIS.get(star, "⭐")

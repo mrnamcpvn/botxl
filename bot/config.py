@@ -344,3 +344,38 @@ def get_cultivation_role_mult(role_mult: float) -> float:
     if role_mult >= 1.1:  return 1.0   # Coder   → x1.0
     if role_mult <= 0.8:  return 0.8   # Blacklist → x0.8
     return 1.0
+
+# ── Daily Login Rewards ──────────────────────────────────────
+DAILY_LOGIN_REWARDS = {
+    1: {"coins": 500,  "stones": {"stone_basic": 5}},
+    2: {"coins": 500,  "stones": {"stone_basic": 10}},
+    3: {"coins": 1000, "stones": {"stone_medium": 3}},
+    4: {"coins": 1500, "stones": {"stone_medium": 5}},
+    5: {"coins": 3000, "stones": {"stone_advanced": 2}},
+    6: {"coins": 5000, "stones": {"stone_basic": 15, "stone_medium": 5}},
+    7: {"coins": 10000, "stones": {"stone_advanced": 5}, "gacha_free": True},
+}
+
+# ── Achievement System ───────────────────────────────────────
+ACHIEVEMENTS = {
+    1:  {"name": "🔰 Tân Thủ",           "desc": "Đăng ký tài khoản",           "icon": "🔰", "type": "register",    "target": 1,        "reward_coins": 500},
+    2:  {"name": "⚔️ Tập Sự",            "desc": "Giết 100 NPC",               "icon": "⚔️", "type": "npc_kill",    "target": 100,      "reward_coins": 1000, "reward_stones": {"stone_basic": 10}},
+    3:  {"name": "⚔️ Chiến Binh",         "desc": "Giết 1000 NPC",              "icon": "⚔️", "type": "npc_kill",    "target": 1000,     "reward_coins": 5000, "reward_stones": {"stone_medium": 10}},
+    4:  {"name": "⚔️ Tướng Quân",         "desc": "Giết 10000 NPC",             "icon": "⚔️", "type": "npc_kill",    "target": 10000,    "reward_coins": 20000, "reward_stones": {"stone_advanced": 10}},
+    5:  {"name": "🏆 Đấu Sĩ",             "desc": "Thắng 10 trận arena",        "icon": "🏆", "type": "arena_win",   "target": 10,       "reward_coins": 2000, "reward_stones": {"stone_basic": 10}},
+    6:  {"name": "🏆 Cao Thủ",            "desc": "Thắng 100 trận arena",       "icon": "🏆", "type": "arena_win",   "target": 100,      "reward_coins": 10000, "reward_stones": {"stone_medium": 10}},
+    7:  {"name": "🏆 Huyền Thoại",        "desc": "Thắng 500 trận arena",       "icon": "🏆", "type": "arena_win",   "target": 500,      "reward_coins": 50000, "reward_stones": {"stone_advanced": 10}},
+    8:  {"name": "⬆️ Lên Level",          "desc": "Đạt level 30",               "icon": "⬆️", "type": "reach_level", "target": 30,       "reward_coins": 3000, "reward_stones": {"stone_medium": 5}},
+    9:  {"name": "⬆️ Cao Cấp",            "desc": "Đạt level 50",               "icon": "⬆️", "type": "reach_level", "target": 50,       "reward_coins": 8000, "reward_stones": {"stone_advanced": 5}},
+    10: {"name": "⬆️ Đỉnh Cao",           "desc": "Đạt level 100",              "icon": "⬆️", "type": "reach_level", "target": 100,      "reward_coins": 20000, "reward_stones": {"stone_advanced": 20}},
+    11: {"name": "🔨 Thợ Rèn",            "desc": "Cường hóa +4 lần đầu",       "icon": "🔨", "type": "enhance_4",   "target": 1,        "reward_coins": 1000, "reward_stones": {"stone_basic": 10}},
+    12: {"name": "🔨 Thợ Cả",             "desc": "Cường hóa lên +7",           "icon": "🔨", "type": "enhance_7",   "target": 1,        "reward_coins": 5000, "reward_stones": {"stone_medium": 10}},
+    13: {"name": "🔨 Thần Thợ",           "desc": "Cường hóa lên +9",           "icon": "🔨", "type": "enhance_9",   "target": 1,        "reward_coins": 15000, "reward_stones": {"stone_advanced": 10}},
+    14: {"name": "🧘 Tu Sĩ",              "desc": "Tu luyện lần đầu",           "icon": "🧘", "type": "cultivate",   "target": 1,        "reward_coins": 2000, "reward_stones": {"stone_medium": 5}},
+    15: {"name": "🧘 Đại Sư",             "desc": "Đạt Trúc Cơ",                "icon": "🧘", "type": "reach_realm", "target": 1,        "reward_coins": 10000, "reward_stones": {"stone_advanced": 10}},
+    16: {"name": "🧘 Chân Nhân",          "desc": "Đạt Kết Đan",                "icon": "🧘", "type": "reach_realm", "target": 2,        "reward_coins": 30000, "reward_stones": {"stone_advanced": 20}},
+    17: {"name": "🎰 May Mắn",            "desc": "Quay gacha 1 lần",           "icon": "🎰", "type": "gacha",       "target": 1,        "reward_coins": 1000},
+    18: {"name": "🎰 Nghiện Quay",         "desc": "Quay gacha 100 lần",         "icon": "🎰", "type": "gacha",       "target": 100,      "reward_coins": 20000, "reward_stones": {"stone_advanced": 10}},
+    19: {"name": "⭐ Thần Thoại",          "desc": "Sở hữu 1 món 6★",            "icon": "⭐", "type": "own_6star",   "target": 1,        "reward_coins": 5000, "reward_stones": {"stone_advanced": 5}},
+    20: {"name": "⭐ Sưu Tập",             "desc": "Sở hữu 5 món 6★",            "icon": "⭐", "type": "own_6star",   "target": 5,        "reward_coins": 50000, "reward_stones": {"stone_advanced": 30}},
+}

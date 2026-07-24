@@ -114,6 +114,21 @@ TABLES = [
         date TEXT NOT NULL,
         PRIMARY KEY (player_id, quest_id, date)
     )""",
+    """CREATE TABLE IF NOT EXISTS daily_logins (
+        player_id TEXT NOT NULL,
+        week_start TEXT NOT NULL,
+        day INTEGER NOT NULL,
+        claimed INTEGER DEFAULT 0,
+        PRIMARY KEY (player_id, week_start, day)
+    )""",
+    """CREATE TABLE IF NOT EXISTS player_achievements (
+        player_id TEXT NOT NULL,
+        ach_id INTEGER NOT NULL,
+        progress INTEGER DEFAULT 0,
+        completed INTEGER DEFAULT 0,
+        claimed INTEGER DEFAULT 0,
+        PRIMARY KEY (player_id, ach_id)
+    )""",
     """CREATE TABLE IF NOT EXISTS player_wives (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         player_id TEXT NOT NULL,

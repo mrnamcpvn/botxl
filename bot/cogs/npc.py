@@ -592,6 +592,9 @@ class NPCCog(commands.Cog):
                     "ON CONFLICT(player_id, npc_id) DO UPDATE SET kills=kills+1",
                     (sid, npc_id))
 
+                from bot.engine.ach_utils import ach_progress
+                await ach_progress(sid, "npc_kill")
+
                 # Dùng lại codex_kills từ pdata đã load — cộng thêm 1 kill vừa ghi
                 codex_kills = dict(player.get("_codex_kills", {}))
                 old_kills = codex_kills.get(str(npc_id), 0)
@@ -666,6 +669,8 @@ class NPCCog(commands.Cog):
                                player.get("coins", 0), player.get("xp", 0), player.get("level", 1),
                                player.get("stat_points", 0), now, now, sid))
             await db.commit()
+            from bot.engine.ach_utils import ach_check
+            await ach_check(sid, "reach_level", player.get("level", 1))
             await update_combat_power(sid, db=db)
         finally:
             await db.close()

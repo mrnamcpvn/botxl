@@ -70,6 +70,8 @@ class Arena(commands.Cog):
                     if wdata:
                         wdata["wins"] = wdata.get("wins", 0) + 1
                         await db.execute("UPDATE players SET wins=?, last_battle_time=? WHERE id=?", (wdata["wins"], time.time(), winner_id))
+                        from bot.engine.ach_utils import ach_progress
+                        await ach_progress(winner_id, "arena_win")
                     if ldata:
                         ldata["losses"] = ldata.get("losses", 0) + 1
                         await db.execute("UPDATE players SET losses=?, last_battle_time=? WHERE id=?", (ldata["losses"], time.time(), loser_id))
@@ -189,6 +191,9 @@ class Arena(commands.Cog):
                 p2["elo"] = new_elo_p2
                 await self._save_player_data(db, p1_id, p1)
                 await self._save_player_data(db, p2_id, p2)
+                from bot.engine.ach_utils import ach_check
+                await ach_check(p1_id, "reach_level", p1.get("level", 1))
+                await ach_check(p2_id, "reach_level", p2.get("level", 1))
                 await db.execute("UPDATE players SET last_battle_time=? WHERE id=? OR id=?", (time.time(), p1_id, p2_id))
                 await db.execute("DELETE FROM active_battles WHERE id=?", (battle["id"],))
                 await db.commit()
@@ -249,6 +254,10 @@ class Arena(commands.Cog):
                 await db.execute("INSERT OR REPLACE INTO player_skill_slots (player_id, slot, skill_id) VALUES (?, ?, ?)", (sid, slot, sk_id))
             await self._sync_role_mult(db, ctx.author)
             await db.commit()
+
+            from bot.engine.ach_utils import ach_progress, ach_check
+            await ach_progress(sid, "register")
+            await ach_check(sid, "reach_level", 1)
             await ctx.reply(f"✅ **{ctx.author.display_name}** đăng ký thành công! 💪")
         finally:
             await db.close()

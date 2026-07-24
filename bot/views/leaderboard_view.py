@@ -21,7 +21,21 @@ _TABS = [
     ("🏆", "Thắng",     discord.ButtonStyle.success,  "wins",         "🏆 BXH Chiến Thắng", lambda v: f"**{v}** trận thắng"),
     ("💰", "Coin",      discord.ButtonStyle.secondary,"coins",        "💰 BXH Xu",          lambda v: f"💰 **{v:,}**🪙".replace(",", ".")),
     ("📈", "ELO",       discord.ButtonStyle.primary,  "elo",          "📈 BXH ELO",         lambda v: f"ELO **{v}**"),
+    ("🎁", "Weekly",    discord.ButtonStyle.success,  "wins",         "🎁 BXH Tuần Này",    lambda v: f"**{v}** điểm"),
 ]
+
+WEEKLY_PRIZES = {
+    1:  {"coins": 50000, "stone_advanced": 15, "desc": "🏆 Giải Nhất"},
+    2:  {"coins": 30000, "stone_advanced": 10, "desc": "🥈 Giải Nhì"},
+    3:  {"coins": 20000, "stone_advanced": 5,  "desc": "🥉 Giải Ba"},
+    4:  {"coins": 10000, "stone_medium": 10,   "desc": "4️⃣ Giải Tư"},
+    5:  {"coins": 5000,  "stone_medium": 5,    "desc": "5️⃣ Giải Năm"},
+    6:  {"coins": 3000,  "stone_basic": 10,    "desc": "6️⃣ Giải Sáu"},
+    7:  {"coins": 2000,  "stone_basic": 5,     "desc": "7️⃣ Giải Bảy"},
+    8:  {"coins": 1000,  "stone_basic": 3,     "desc": "8️⃣ Giải Tám"},
+    9:  {"coins": 500,   "stone_basic": 2,     "desc": "9️⃣ Giải Chín"},
+    10: {"coins": 500,   "stone_basic": 1,     "desc": "🔟 Giải Mười"},
+}
 
 
 def _rank_badge(elo: int) -> str:
