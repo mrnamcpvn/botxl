@@ -612,8 +612,9 @@ class ShopCog(commands.Cog):
 
             # Deduct coins before roll (always lost)
             await db.execute("UPDATE players SET coins=coins-? WHERE id=?", (coin_cost, uid))
-            # Delete the 3 input items
+            # Delete the 3 input items (kèm socket data)
             for r in rows:
+                await db.execute("DELETE FROM equipment_sockets WHERE equip_instance_id=?", (r["id"],))
                 await db.execute("DELETE FROM player_equipment WHERE id=?", (r["id"],))
 
             import random
