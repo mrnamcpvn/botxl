@@ -13,7 +13,7 @@ SHOP_ITEMS = {
     15:{"name":"🌑 Tắt Điện Đột Ngột [ĐẶC BIỆT]","desc":"2.5x + choáng | CD:5","price":5000,"type":"skill","skill_id":8},
     16:{"name":"⚡ Sét Đánh Ngang Tai [ĐẶC BIỆT]","desc":"5x, xuyên 50% DEF | CD:4","price":15000,"type":"skill","skill_id":9},
     17:{"name":"🔄 Gậy Ông Đập Lưng Ông [PHÒNG THỦ]","desc":"Miễn dmg + phản 2.5x | CD:3","price":2500,"type":"skill","skill_id":11},
-    18:{"name":"💚 Uống Thuốc Dỏm [PHÒNG THỦ]","desc":"Hồi 40% HP + xóa debuff | CD:3","price":3000,"type":"skill","skill_id":12},
+     18:{"name":"💚 Uống Thuốc Dỏm [PHÒNG THỦ]","desc":"Hồi 20% HP + xóa debuff | CD:4","price":3000,"type":"skill","skill_id":12},
     19:{"name":"🛡️ Khiên Nồi Cơm Điện [PHÒNG THỦ]","desc":"Khiên 35%/2t + hồi khi vỡ | CD:3","price":6000,"type":"skill","skill_id":13},
     20:{"name":"⚔️ Tập Tạ Đồng Nát [BỊ ĐỘNG]","desc":"+15% dmg","price":3000,"type":"skill","skill_id":15},
     21:{"name":"🛡️ Mặc Áo Mưa Sắt [BỊ ĐỘNG]","desc":"+20 DEF","price":3000,"type":"skill","skill_id":16},

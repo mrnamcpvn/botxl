@@ -35,7 +35,7 @@ SKILLS_DB = {
     # ═══════ DEFENSE SKILLS (nút "Chống Xỏ Lá") ═══════
     10: {"name":"🛡️ Chống Xỏ Lá","desc":"×3 DEF + hồi 8% HP | CD:0","category":"defense","type":"defend","heal_pct":8,"cooldown":0,"price":0,"rarity":"common","icon":"🛡️"},
     11: {"name":"🔄 Gậy Ông Đập Lưng Ông","desc":"Miễn dmg + phản 2.5x","category":"defense","type":"counter","multiplier":2.5,"cooldown":3,"price":250,"rarity":"uncommon","icon":"🔄"},
-    12: {"name":"💚 Uống Thuốc Dỏm","desc":"Hồi 40% HP + xóa debuff","category":"defense","type":"heal","heal_pct":40,"cooldown":3,"price":300,"rarity":"rare","icon":"💚"},
+     12: {"name":"💚 Uống Thuốc Dỏm","desc":"Hồi 20% HP + xóa debuff","category":"defense","type":"heal","heal_pct":20,"cooldown":4,"price":300,"rarity":"rare","icon":"💚"},
     13: {"name":"🛡️ Khiên Nồi Cơm Điện","desc":"Khiên 35% HP + hồi khi vỡ","category":"defense","type":"shield","shield_pct":35,"shield_turns":2,"shield_pop_heal":15,"cooldown":3,"price":300,"rarity":"rare","icon":"🛡️"},
     # ═══════ PASSIVE SKILLS (luôn active) ═══════
     14: {"name":"❤️ Máu Chó Điên","desc":"+15% max HP vĩnh viễn","category":"passive","type":"stat_boost","stat":"hp_max","boost_pct":15,"price":0,"rarity":"common","icon":"❤️"},
@@ -109,7 +109,7 @@ SHOP_ITEMS = {
     15:{"name":"🌑 Tắt Điện Đột Ngột [ĐẶC BIỆT]","desc":"2.5x + choáng | CD:5","price":500,"type":"skill","skill_id":8},
     16:{"name":"⚡ Sét Đánh Ngang Tai [ĐẶC BIỆT]","desc":"5x, xuyên 50% DEF | CD:4","price":700,"type":"skill","skill_id":9},
     17:{"name":"🔄 Gậy Ông Đập Lưng Ông [PHÒNG THỦ]","desc":"Miễn dmg + phản 2.5x | CD:3","price":250,"type":"skill","skill_id":11},
-    18:{"name":"💚 Uống Thuốc Dỏm [PHÒNG THỦ]","desc":"Hồi 40% HP + xóa debuff | CD:3","price":300,"type":"skill","skill_id":12},
+     18:{"name":"💚 Uống Thuốc Dỏm [PHÒNG THỦ]","desc":"Hồi 20% HP + xóa debuff | CD:4","price":300,"type":"skill","skill_id":12},
     19:{"name":"🛡️ Khiên Nồi Cơm Điện [PHÒNG THỦ]","desc":"Khiên 35%/2t + hồi khi vỡ | CD:3","price":300,"type":"skill","skill_id":13},
     20:{"name":"⚔️ Tập Tạ Đồng Nát [BỊ ĐỘNG]","desc":"+15% dmg","price":300,"type":"skill","skill_id":15},
     21:{"name":"🛡️ Mặc Áo Mưa Sắt [BỊ ĐỘNG]","desc":"+20 DEF","price":300,"type":"skill","skill_id":16},

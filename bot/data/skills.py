@@ -13,7 +13,7 @@ SKILLS_DB = {
     # ═══════ DEFENSE SKILLS ═══════
     10: {"name":"🛡️ Chống Xỏ Lá","desc":"×3 DEF + hồi 8% HP | CD:2","category":"defense","type":"defend","heal_pct":8,"cooldown":2,"price":0,"rarity":"common","icon":"🛡️"},
     11: {"name":"🔄 Gậy Ông Đập Lưng Ông","desc":"Giảm 80% dmg + phản 10% dmg","category":"defense","type":"counter","multiplier":0.1,"cooldown":5,"price":2500,"rarity":"uncommon","icon":"🔄"},
-    12: {"name":"💚 Uống Thuốc Dỏm","desc":"Hồi 40% HP + xóa debuff","category":"defense","type":"heal","heal_pct":40,"cooldown":3,"price":3000,"rarity":"rare","icon":"💚"},
+     12: {"name":"💚 Uống Thuốc Dỏm","desc":"Hồi 20% HP + xóa debuff","category":"defense","type":"heal","heal_pct":20,"cooldown":4,"price":3000,"rarity":"rare","icon":"💚"},
     13: {"name":"🛡️ Khiên Nồi Cơm Điện","desc":"Khiên 35% HP + hồi khi vỡ","category":"defense","type":"shield","shield_pct":35,"shield_turns":2,"shield_pop_heal":15,"cooldown":3,"price":6000,"rarity":"rare","icon":"🛡️"},
     # ═══════ PASSIVE SKILLS ═══════
     14: {"name":"❤️ Máu Chó Điên","desc":"+15% max HP vĩnh viễn","category":"passive","type":"stat_boost","stat":"hp_max","boost_pct":15,"price":0,"rarity":"common","icon":"❤️"},
